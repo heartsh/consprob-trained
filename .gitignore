@@ -3,10 +3,9 @@
 target
 !*.rs
 !*.py
-!*.fa
-!*.afa
-!*.aln
-!*.sth
 !Cargo.toml
 !.gitignore
 !README.md
+!trna.fa
+!sampled_trnas.fa
+!rfam_seed_stas_v14.3.sth
