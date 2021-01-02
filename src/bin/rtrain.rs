@@ -46,15 +46,15 @@ fn main() {
     ),
     "UINT",
   );
-  /* opts.optopt(
+  opts.optopt(
     "",
     "learn_rate",
     &format!(
       "A learning rate (Uses {} by default)",
       DEFAULT_LEARN_RATE,
     ),
-    "UINT",
-  ); */
+    "FLOAT",
+  );
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
@@ -97,7 +97,7 @@ fn main() {
   } else {
     DEFAULT_EPOCH
   };
-  /* let learn_rate = if matches.opt_present("learn_rate") {
+  let learn_rate = if matches.opt_present("learn_rate") {
     matches
       .opt_str("learn_rate")
       .unwrap()
@@ -105,7 +105,7 @@ fn main() {
       .unwrap()
   } else {
     DEFAULT_LEARN_RATE
-  }; */
+  };
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
@@ -124,6 +124,6 @@ fn main() {
       });
     }
   });
-  println!("Learning starts.");
-  rtrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, epoch, /* learn_rate */ );
+  // println!("Learning starts.");
+  rtrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, epoch, output_file_path, learn_rate);
 }
