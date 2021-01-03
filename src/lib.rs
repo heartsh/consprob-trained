@@ -246,17 +246,11 @@ impl FeatureCountSets {
     for train_datum in train_data {
       let ref obs = train_datum.observed_feature_count_sets;
       let ref expect = train_datum.expected_feature_count_sets;
-      // let mut sum = 0.;
       for i in 0 .. obs.hairpin_loop_length_counts.len() {
         grad.hairpin_loop_length_counts[i] -= obs.hairpin_loop_length_counts[i] - expect.hairpin_loop_length_counts[i];
-        /* sum += obs.hairpin_loop_length_counts[i] - expect.hairpin_loop_length_counts[i];
-        grad.hairpin_loop_length_counts[i] -= sum; */
       }
-      // let mut sum = 0.;
       for i in 0 .. obs.bulge_loop_length_counts.len() {
         grad.bulge_loop_length_counts[i] -= obs.bulge_loop_length_counts[i] - expect.bulge_loop_length_counts[i];
-        /* sum += obs.bulge_loop_length_counts[i] - expect.bulge_loop_length_counts[i];
-        grad.bulge_loop_length_counts[i] -= sum; */
       }
       let len = obs.interior_loop_length_count_mat.len();
       for i in 0 .. len {
@@ -265,12 +259,6 @@ impl FeatureCountSets {
           let obs_count = obs.interior_loop_length_count_mat[dict_min_loop_len_pair.0][dict_min_loop_len_pair.1];
           let expect_count = expect.interior_loop_length_count_mat[dict_min_loop_len_pair.0][dict_min_loop_len_pair.1];
           grad.interior_loop_length_count_mat[i][j] -= obs_count - expect_count;
-          /* let diff = obs_count - expect_count;
-          for k in i .. len {
-            for l in j .. len {
-              grad.interior_loop_length_count_mat[k][l] -= diff;
-            }
-          } */
         }
       }
       for i in 0 .. NUM_OF_BASES {
@@ -1570,15 +1558,9 @@ where
                 if !skips {
                   let score = part_funcs.part_func + part_func;
                   sumormax(&mut sum_4_ml, score, is_viterbi);
-                  /* if sum_4_ml > NEG_INFINITY {
-                    println!("sum_4_ml: {}", score);
-                  } */
                   let ref part_funcs = part_func_sets.part_funcs_on_sa;
                   let score = part_funcs.part_func + part_func;
                   sumormax(&mut sum_4_first_bpas_on_mls, score, is_viterbi);
-                  /* if sum_4_first_bpas_on_mls > NEG_INFINITY {
-                    println!("sum_4_first_bpas_on_mls: {}", score);
-                  } */
                 }
                 if produces_access_probs || trains_score_params {
                   if pos_quadruple_2.0 - i - T::one() + j - pos_quadruple_2.1 - T::one() > T::from_usize(CONSPROB_MAX_TWOLOOP_LEN).unwrap() {
@@ -1604,9 +1586,6 @@ where
                   );
                   let score = part_funcs.part_func + part_func + twoloop_score + twoloop_score_2;
                   sumormax(&mut sum_4_2loop, score, is_viterbi);
-                  /* if sum_4_2loop > NEG_INFINITY {
-                    println!("sum_4_2loop: {}", sum_4_2loop);
-                  } */
                 }
               }
               None => {}
@@ -2150,8 +2129,6 @@ where
   }];
   let edge_part_func_on_sa = tmp_part_funcs.part_funcs_on_sa.part_func;
   let edge_part_func_4_ml = tmp_part_funcs.part_funcs_4_ml.part_func;
-  // println!("edge_part_func_on_sa: {}", edge_part_func_on_sa);
-  // println!("edge_part_func_4_ml: {}", edge_part_func_4_ml);
   (
     tmp_part_func_set_mat,
     edge_part_func_on_sa,
@@ -3345,9 +3322,6 @@ where
                             let upp_4_2l = prob_coeff + feature_score_sets.opening_gap_count
                               + part_funcs_4_2loop.part_func_4_align
                               + backward_term_4_insert_on_sa;
-                            /* if upp_4_2l > NEG_INFINITY {
-                              println!("upp_4_2l: {}", upp_4_2l);
-                            } */
                             if produces_access_probs {
                               sumormax(
                                 &mut sta_prob_mats.upp_mat_pair_4_2l.0[long_u],
