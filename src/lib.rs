@@ -101,10 +101,6 @@ pub struct FeatureCountSets {
   pub interior_loop_length_counts_cumulative: InteriorLoopLengthCounts,
   pub interior_loop_length_counts_symm_cumulative: InteriorLoopLengthCountsSymm,
   pub interior_loop_length_counts_asymm_cumulative: InteriorLoopLengthCountsAsymm,
-  /* pub moment_vec: FeatureCounts,
-  pub velocity_vec: FeatureCounts,
-  pub curr_beta_1: FeatureCount,
-  pub curr_beta_2: FeatureCount, */
 }
 #[derive(Clone)]
 pub struct TmpPartFuncSets {
@@ -239,15 +235,7 @@ impl FeatureCountSets {
       interior_loop_length_counts_cumulative: [init_val; CONSPROB_MAX_TWOLOOP_LEN - 1],
       interior_loop_length_counts_symm_cumulative: [init_val; CONSPROB_MAX_INTERIOR_LOOP_LEN_SYMM],
       interior_loop_length_counts_asymm_cumulative: [init_val; CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM],
-      /* moment_vec: empty_vec.clone(),
-      velocity_vec: empty_vec,
-      curr_beta_1: ADAM_BETA_1,
-      curr_beta_2: ADAM_BETA_2, */
     }
-    /* let zero_count_vec = Array::from(vec![0.; feature_count_sets.get_len()]);
-    feature_count_sets.moment_vec = zero_count_vec.clone();
-    feature_count_sets.velocity_vec = zero_count_vec; */
-    // feature_count_sets
   }
 
   pub fn transfer(&mut self) {
@@ -543,20 +531,6 @@ impl FeatureCountSets {
     }
     convert_struct_2_vec(&grad, false) + feature_scores / GAUSS_PRIOR_VAR
   }
-
-  /* pub fn adam(&mut self, grad: &FeatureCounts, learn_rate: FeatureCount) {
-    let new_moment_vec = ADAM_BETA_1 * self.moment_vec.clone() + (1. - ADAM_BETA_1) * grad;
-    let new_velocity_vec = ADAM_BETA_2 * self.velocity_vec.clone() + (1. - ADAM_BETA_2) * grad * grad;
-    let new_beta_1 = self.curr_beta_1 * ADAM_BETA_1;
-    let new_beta_2 = self.curr_beta_2 * ADAM_BETA_2;
-    let corrected_moment_vec = new_moment_vec.clone() / (1. - self.curr_beta_1);
-    let corrected_velocity_vec = new_velocity_vec.clone() / (1. - self.curr_beta_2);
-    *self = convert_vec_2_struct(&(convert_struct_2_vec(self, false) - learn_rate * corrected_moment_vec / (corrected_velocity_vec.mapv(f32::sqrt) + ADAM_EPSILON)), false);
-    self.moment_vec = new_moment_vec;
-    self.velocity_vec = new_velocity_vec;
-    self.curr_beta_1 = new_beta_1;
-    self.curr_beta_2 = new_beta_2;
-  } */
 
   pub fn get_log_loss<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>]) -> FeatureCount {
     let mut log_likelihood = 0.;
@@ -1028,11 +1002,6 @@ pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_EXPLICIT: usize = 4;
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_SYMM: usize = CONSPROB_MAX_TWOLOOP_LEN / 2;
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM: usize = CONSPROB_MAX_TWOLOOP_LEN  - 2;
 pub const DEFAULT_NUM_OF_EPOCHS: usize = 100;
-/* pub const DEFAULT_LEARN_RATE: Prob = 0.001;
-pub const ADAM_BETA_1: FeatureCount = 0.9;
-pub const ADAM_BETA_2: FeatureCount = 0.999;
-pub const ADAM_EPSILON: FeatureCount = 0.000_000_01; */
-pub const MINIBATCH_SIZE: usize = 512;
 pub const GAUSS_PRIOR_VAR: FeatureCount = 1.;
 pub const BPP_MAT_FILE_NAME: &'static str = "bpp_mats.dat";
 pub const MAX_BPP_MAT_FILE_NAME: &'static str = "max_bpp_mats.dat";
@@ -1278,7 +1247,6 @@ where
               &long_pos_pair_2,
             );
           let score = basepair_align_score
-            + 2. * feature_score_sets.multi_loop_base_count
             + multi_loop_closing_basepairing_score
             + multi_loop_closing_basepairing_score_2
             + part_func_4_ml;
@@ -1313,8 +1281,7 @@ where
                 pos_quadruple,
                 sum
                   + multi_loop_accessible_basepairing_score
-                  + multi_loop_accessible_basepairing_score_2
-                  + 2. * feature_score_sets.multi_loop_accessible_basepairing_count,
+                  + multi_loop_accessible_basepairing_score_2,
               );
           }
           match sta_part_func_mats
@@ -2611,7 +2578,7 @@ where
                   }
                   let pos_pair_3 = (m, n);
                   let loop_len_pair = (long_i - long_m - 1, long_n - long_j - 1);
-                  if loop_len_pair.0 + loop_len_pair.1 > MAX_2_LOOP_LEN {
+                  if loop_len_pair.0 + loop_len_pair.1 > CONSPROB_MAX_TWOLOOP_LEN {
                     continue;
                   }
                   if !bpp_mat_pair.0.contains_key(&pos_pair_3) {
@@ -2641,7 +2608,7 @@ where
                         continue;
                       }
                       let loop_len_pair_2 = (long_k - long_o - 1, long_p - long_l - 1);
-                      if long_p - long_l - 1 + long_k - long_o - 1 > MAX_2_LOOP_LEN {
+                      if loop_len_pair_2.0 + loop_len_pair_2.1 > CONSPROB_MAX_TWOLOOP_LEN {
                         continue;
                       }
                       let pos_quadruple_2 = (m, n, o, p);
@@ -2916,7 +2883,6 @@ where
                           if part_func_4_ml > NEG_INFINITY {
                             let coefficient = part_func_ratio
                               + basepair_align_score
-                              + 2. * feature_score_sets.multi_loop_base_count
                               + multi_loop_closing_basepairing_score
                               + multi_loop_closing_basepairing_score_2
                               + part_func_4_bpa_2;
@@ -3102,7 +3068,7 @@ where
           {
             Some(part_funcs) => {
               let loop_align_score = feature_score_sets.loop_align_count_mat[base][base_2];
-              let loop_align_prob_4_el = loop_align_score + part_funcs.part_func + backward_term_4_align - global_part_func;
+              let loop_align_prob_4_el = loop_align_score + part_funcs.part_func + backward_term_4_align - global_part_func + 2. * feature_score_sets.external_loop_accessible_baseunpairing_count;
               if produces_access_probs {
                 sumormax(
                   &mut sta_prob_mats.upp_mat_pair_4_el.0[long_u],
@@ -3136,7 +3102,7 @@ where
             .get(&pos_pair_4_insert)
           {
             Some(part_funcs) => {
-              let insert_prob = feature_score_sets.opening_gap_count + part_funcs.part_func_4_align + backward_term_4_insert - global_part_func;
+              let insert_prob = feature_score_sets.opening_gap_count + part_funcs.part_func_4_align + backward_term_4_insert - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if produces_access_probs {
                 sumormax(
                   &mut sta_prob_mats.upp_mat_pair_4_el.0[long_u],
@@ -3156,7 +3122,7 @@ where
                   is_viterbi,
                 );
               }
-              let insert_prob = feature_score_sets.extending_gap_count + part_funcs.part_func_4_insert + backward_term_4_insert - global_part_func;
+              let insert_prob = feature_score_sets.extending_gap_count + part_funcs.part_func_4_insert + backward_term_4_insert - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if produces_access_probs {
                 sumormax(
                   &mut sta_prob_mats.upp_mat_pair_4_el.0[long_u],
@@ -3176,7 +3142,7 @@ where
                   is_viterbi,
                 );
               }
-              let insert_prob = feature_score_sets.opening_gap_count + part_funcs.part_func_4_insert_2 + backward_term_4_insert - global_part_func;
+              let insert_prob = feature_score_sets.opening_gap_count + part_funcs.part_func_4_insert_2 + backward_term_4_insert - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if produces_access_probs {
                 sumormax(
                   &mut sta_prob_mats.upp_mat_pair_4_el.0[long_u],
@@ -3206,7 +3172,7 @@ where
             .get(&pos_pair_4_insert_2)
           {
             Some(part_funcs) => {
-              let insert_prob = feature_score_sets.opening_gap_count + part_funcs.part_func_4_align + backward_term_4_insert_2 - global_part_func;
+              let insert_prob = feature_score_sets.opening_gap_count + part_funcs.part_func_4_align + backward_term_4_insert_2 - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if produces_access_probs {
                 sumormax(
                   &mut sta_prob_mats.upp_mat_pair_4_el.1[long_v],
@@ -3226,7 +3192,7 @@ where
                   is_viterbi,
                 );
               }
-              let insert_prob = feature_score_sets.opening_gap_count + part_funcs.part_func_4_insert + backward_term_4_insert_2 - global_part_func;
+              let insert_prob = feature_score_sets.opening_gap_count + part_funcs.part_func_4_insert + backward_term_4_insert_2 - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if produces_access_probs {
                 sumormax(
                   &mut sta_prob_mats.upp_mat_pair_4_el.1[long_v],
@@ -3246,7 +3212,7 @@ where
                   is_viterbi,
                 );
               }
-              let insert_prob = feature_score_sets.extending_gap_count + part_funcs.part_func_4_insert_2 + backward_term_4_insert_2 - global_part_func;
+              let insert_prob = feature_score_sets.extending_gap_count + part_funcs.part_func_4_insert_2 + backward_term_4_insert_2 - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if produces_access_probs {
                 sumormax(
                   &mut sta_prob_mats.upp_mat_pair_4_el.1[long_v],
@@ -3396,7 +3362,7 @@ where
                           );
                         }
                         let loop_align_prob_4_multi_loop =
-                          prob_coeff_4_ml + loop_align_score + part_func_sets.part_funcs_on_sa_4_ml.part_func + backward_term_4_align_4_ml;
+                          prob_coeff_4_ml + loop_align_score + part_func_sets.part_funcs_on_sa_4_ml.part_func + backward_term_4_align_4_ml + 2. * feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3424,7 +3390,7 @@ where
                         let loop_align_prob_4_multi_loop = prob_coeff_4_ml
                           + loop_align_score
                           + part_func_sets.part_funcs_4_first_bpas_on_mls.part_func
-                          + backward_term_4_align_4_bpas_on_mls;
+                          + backward_term_4_align_4_bpas_on_mls + 2. * feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3450,7 +3416,7 @@ where
                           );
                         }
                         let loop_align_prob_4_multi_loop =
-                          prob_coeff_4_ml + loop_align_score + part_func_sets.part_funcs_4_ml.part_func + backward_term_4_align_on_mls;
+                          prob_coeff_4_ml + loop_align_score + part_func_sets.part_funcs_4_ml.part_func + backward_term_4_align_on_mls + 2. * feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3583,7 +3549,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_on_sa_4_ml.part_func_4_align
-                          + backward_term_4_insert_4_ml;
+                          + backward_term_4_insert_4_ml + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3606,7 +3572,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.extending_gap_count
                           + part_func_sets.part_funcs_on_sa_4_ml.part_func_4_insert
-                          + backward_term_4_insert_4_ml;
+                          + backward_term_4_insert_4_ml + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3629,7 +3595,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_on_sa_4_ml.part_func_4_insert_2
-                          + backward_term_4_insert_4_ml;
+                          + backward_term_4_insert_4_ml + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3652,7 +3618,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_4_first_bpas_on_mls.part_func_4_align
-                          + backward_term_4_insert_4_bpas_on_mls;
+                          + backward_term_4_insert_4_bpas_on_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3675,7 +3641,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.extending_gap_count
                           + part_func_sets.part_funcs_4_first_bpas_on_mls.part_func_4_insert
-                          + backward_term_4_insert_4_bpas_on_mls;
+                          + backward_term_4_insert_4_bpas_on_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3698,7 +3664,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_4_first_bpas_on_mls.part_func_4_insert_2
-                          + backward_term_4_insert_4_bpas_on_mls;
+                          + backward_term_4_insert_4_bpas_on_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3721,7 +3687,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_4_ml.part_func_4_align
-                          + backward_term_4_insert_on_mls;
+                          + backward_term_4_insert_on_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3744,7 +3710,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.extending_gap_count
                           + part_func_sets.part_funcs_4_ml.part_func_4_insert
-                          + backward_term_4_insert_on_mls;
+                          + backward_term_4_insert_on_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3767,7 +3733,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_4_ml.part_func_4_insert_2
-                          + backward_term_4_insert_on_mls;
+                          + backward_term_4_insert_on_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.0[long_u],
@@ -3955,7 +3921,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_on_sa_4_ml.part_func_4_align
-                          + backward_term_4_insert_4_ml_2;
+                          + backward_term_4_insert_4_ml_2 + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.1[long_v],
@@ -3978,7 +3944,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_on_sa_4_ml.part_func_4_insert
-                          + backward_term_4_insert_4_ml_2;
+                          + backward_term_4_insert_4_ml_2 + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.1[long_v],
@@ -4001,7 +3967,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.extending_gap_count
                           + part_func_sets.part_funcs_on_sa_4_ml.part_func_4_insert_2
-                          + backward_term_4_insert_4_ml_2;
+                          + backward_term_4_insert_4_ml_2 + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.1[long_v],
@@ -4024,7 +3990,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_4_first_bpas_on_mls.part_func_4_align
-                          + backward_term_4_insert_4_bpas_on_mls_2;
+                          + backward_term_4_insert_4_bpas_on_mls_2 + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.1[long_v],
@@ -4047,7 +4013,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_4_first_bpas_on_mls.part_func_4_insert
-                          + backward_term_4_insert_4_bpas_on_mls_2;
+                          + backward_term_4_insert_4_bpas_on_mls_2 + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.1[long_v],
@@ -4070,7 +4036,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.extending_gap_count
                           + part_func_sets.part_funcs_4_first_bpas_on_mls.part_func_4_insert_2
-                          + backward_term_4_insert_4_bpas_on_mls_2;
+                          + backward_term_4_insert_4_bpas_on_mls_2 + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.1[long_v],
@@ -4093,7 +4059,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_4_ml.part_func_4_align
-                          + backward_term_4_insert_on_mls_2;
+                          + backward_term_4_insert_on_mls_2 + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.1[long_v],
@@ -4116,7 +4082,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.opening_gap_count
                           + part_func_sets.part_funcs_4_ml.part_func_4_insert
-                          + backward_term_4_insert_on_mls_2;
+                          + backward_term_4_insert_on_mls_2 + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.1[long_v],
@@ -4139,7 +4105,7 @@ where
                         let upp_4_ml = prob_coeff_4_ml
                           + feature_score_sets.extending_gap_count
                           + part_func_sets.part_funcs_4_ml.part_func_4_insert_2
-                          + backward_term_4_insert_on_mls_2;
+                          + backward_term_4_insert_on_mls_2 + feature_score_sets.multi_loop_accessible_baseunpairing_count;
                         if produces_access_probs {
                           sumormax(
                             &mut sta_prob_mats.upp_mat_pair_4_ml.1[long_v],
@@ -4558,12 +4524,6 @@ where
       }
     }
   }
-  /* for (&(i, j), &bpp) in &bpp_mats.bpp_mat {
-    let pos_pair = (i + T::one(), j + T::one());
-    if !pct_prob_mats.bpp_mat.contains_key(&pos_pair) {
-      pct_prob_mats.bpp_mat.insert(pos_pair, bpp);
-    }
-  } */
   if produces_access_probs {
     for (i, &upp) in pct_prob_mats.upp_mat_4_hl.iter().enumerate() {
       pct_prob_mats.max_upp_mat[i] = upp;
@@ -4586,24 +4546,6 @@ where
         pct_prob_mats.max_upp_mat[i] = upp;
       }
     }
-    /* for (&(i, j), &bpp) in &bpp_mats.access_bpp_mat_4_2l {
-      let pos_pair = (i + T::one(), j + T::one());
-      if !pct_prob_mats.access_bpp_mat_4_2l.contains_key(&pos_pair) {
-        pct_prob_mats.access_bpp_mat_4_2l.insert(pos_pair, bpp);
-      }
-    }
-    for (&(i, j), &bpp) in &bpp_mats.access_bpp_mat_4_ml {
-      let pos_pair = (i + T::one(), j + T::one());
-      if !pct_prob_mats.access_bpp_mat_4_ml.contains_key(&pos_pair) {
-        pct_prob_mats.access_bpp_mat_4_ml.insert(pos_pair, bpp);
-      }
-    }
-    for (&(i, j), &bpp) in &bpp_mats.bpp_mat_4_el {
-      let pos_pair = (i + T::one(), j + T::one());
-      if !pct_prob_mats.bpp_mat_4_el.contains_key(&pos_pair) {
-        pct_prob_mats.bpp_mat_4_el.insert(pos_pair, bpp);
-      }
-    } */
     for (pos_pair, &bpp) in pct_prob_mats.access_bpp_mat_4_2l.iter() {
       pct_prob_mats.max_bpp_mat.insert(*pos_pair, bpp);
     }
@@ -4970,8 +4912,6 @@ where
     )) {
       let seq_len = fasta_record.seq.len();
       scope.execute(move || {
-        /* let (obtained_bpp_mats, _) =
-          mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false); */
         *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false);
         *sparse_bpp_mat = remove_small_bpps_from_bpp_mat::<T>(bpp_mat, min_bpp);
         *max_bp_span = get_max_bp_span::<T>(sparse_bpp_mat);
@@ -5061,45 +5001,41 @@ where
     feature_score_sets.transfer();
   }
   let mut log_losses = Probs::new();
-  let mut rng = thread_rng();
   for _ in 0 .. num_of_epochs {
-    train_data.shuffle(&mut rng);
-    for minibatch in train_data.chunks_mut(MINIBATCH_SIZE) {
-      let ref ref_2_feature_score_sets = feature_score_sets;
-      thread_pool.scoped(|scope| {
-        for train_datum in minibatch.iter_mut() {
-          train_datum.expected_feature_count_sets = FeatureCountSets::new(NEG_INFINITY);
-          let seq_pair = (&train_datum.seq_pair.0[..], &train_datum.seq_pair.1[..]);
-          let seq_len_pair = (seq_pair.0.len(), seq_pair.1.len());
-          let max_gap_num = offset_4_max_gap_num
-            + T::from_usize(max(seq_len_pair.0, seq_len_pair.1) - min(seq_len_pair.0, seq_len_pair.1))
-              .unwrap();
-          let max_gap_num_4_il = max(
-            min(max_gap_num, T::from_usize(MAX_GAP_NUM_4_IL).unwrap()),
-            T::from_usize(MIN_GAP_NUM_4_IL).unwrap(),
-          );
-          let bpp_mat_pair = (&train_datum.bpp_mat_pair.0, &train_datum.bpp_mat_pair.1);
-          let ref max_bp_span_pair = train_datum.max_bp_span_pair;
-          let ref mut expected_feature_count_sets = train_datum.expected_feature_count_sets;
-          let ref mut part_func = train_datum.part_func;
-          scope.execute(move || {
-            *part_func = io_algo_4_prob_mats::<T>(
-              &seq_pair,
-              ref_2_feature_score_sets,
-              max_bp_span_pair,
-              max_gap_num,
-              max_gap_num_4_il,
-              &bpp_mat_pair,
-              false,
-              true,
-              expected_feature_count_sets,
-            ).1;
-          });
-        }
-      });
-      feature_score_sets.update(minibatch);
-    }
-    log_losses.push(feature_score_sets.get_log_loss(&train_data[..]) as FeatureCount);
+    let ref ref_2_feature_score_sets = feature_score_sets;
+    thread_pool.scoped(|scope| {
+      for train_datum in train_data.iter_mut() {
+        train_datum.expected_feature_count_sets = FeatureCountSets::new(NEG_INFINITY);
+        let seq_pair = (&train_datum.seq_pair.0[..], &train_datum.seq_pair.1[..]);
+        let seq_len_pair = (seq_pair.0.len(), seq_pair.1.len());
+        let max_gap_num = offset_4_max_gap_num
+          + T::from_usize(max(seq_len_pair.0, seq_len_pair.1) - min(seq_len_pair.0, seq_len_pair.1))
+            .unwrap();
+        let max_gap_num_4_il = max(
+          min(max_gap_num, T::from_usize(MAX_GAP_NUM_4_IL).unwrap()),
+          T::from_usize(MIN_GAP_NUM_4_IL).unwrap(),
+        );
+        let bpp_mat_pair = (&train_datum.bpp_mat_pair.0, &train_datum.bpp_mat_pair.1);
+        let ref max_bp_span_pair = train_datum.max_bp_span_pair;
+        let ref mut expected_feature_count_sets = train_datum.expected_feature_count_sets;
+        let ref mut part_func = train_datum.part_func;
+        scope.execute(move || {
+          *part_func = io_algo_4_prob_mats::<T>(
+            &seq_pair,
+            ref_2_feature_score_sets,
+            max_bp_span_pair,
+            max_gap_num,
+            max_gap_num_4_il,
+            &bpp_mat_pair,
+            false,
+            true,
+            expected_feature_count_sets,
+          ).1;
+        });
+      }
+    });
+    feature_score_sets.update(&train_data);
+    log_losses.push(feature_score_sets.get_log_loss(&train_data[..]));
   }
   write_feature_score_sets_trained(&feature_score_sets);
   write_log_losses(&log_losses, output_file_path);
@@ -5520,7 +5456,6 @@ pub fn convert_bfgs_feature_counts_2_feature_counts(feature_counts: &BfgsFeature
 
 pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets) {
   let mut writer_2_trained_feature_score_sets_file = BufWriter::new(File::create(TRAINED_FEATURE_SCORE_SETS_FILE_PATH).unwrap());
-  // let mut buf_4_writer_2_trained_feature_score_sets_file = String::from("use FeatureCountSets;\nuse Array;\nimpl FeatureCountSets {\npub fn load_trained_score_params() -> FeatureCountSets {\nFeatureCountSets {\nhairpin_loop_length_counts: ");
   let mut buf_4_writer_2_trained_feature_score_sets_file = String::from("use FeatureCountSets;\nimpl FeatureCountSets {\npub fn load_trained_score_params() -> FeatureCountSets {\nFeatureCountSets {\nhairpin_loop_length_counts: ");
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\nbulge_loop_length_counts: ", &feature_score_sets.hairpin_loop_length_counts));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts: ", &feature_score_sets.bulge_loop_length_counts));
@@ -5550,7 +5485,7 @@ pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets) {
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts_symm_cumulative: ", &feature_score_sets.interior_loop_length_counts_cumulative));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts_asymm_cumulative: ", &feature_score_sets.interior_loop_length_counts_symm_cumulative));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},", &feature_score_sets.interior_loop_length_counts_asymm_cumulative));
-  // buf_4_writer_2_trained_feature_score_sets_file.push_str(&String::from("\nmoment_vec: Array::from(Vec::new()),\nvelocity_vec: Array::from(Vec::new()),\ncurr_beta_1: 0.,\ncurr_beta_2: 0.,\n}\n}\n}"));
+  buf_4_writer_2_trained_feature_score_sets_file.push_str(&String::from("\n}\n}\n}"));
   let _ = writer_2_trained_feature_score_sets_file.write_all(buf_4_writer_2_trained_feature_score_sets_file.as_bytes());
 }
 
