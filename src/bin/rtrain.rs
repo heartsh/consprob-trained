@@ -39,22 +39,14 @@ fn main() {
   );
   opts.optopt(
     "",
-    "epoch",
+    "num_of_epochs",
     &format!(
-      "An epoch for training (Uses {} by default)",
-      DEFAULT_EPOCH,
+      "The number of epochs for training (Uses {} by default)",
+      DEFAULT_NUM_OF_EPOCHS,
     ),
     "UINT",
   );
-  opts.optopt(
-    "",
-    "learn_rate",
-    &format!(
-      "A learning rate (Uses {} by default)",
-      DEFAULT_LEARN_RATE,
-    ),
-    "FLOAT",
-  );
+  opts.optflag("d", "disables_transfer_learn", "Disables transfer learning to use pre-trained CONTRAfold parameters");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
@@ -88,24 +80,16 @@ fn main() {
   } else {
     DEFAULT_OFFSET_4_MAX_GAP_NUM
   } as u16;
-  let epoch = if matches.opt_present("epoch") {
+  let num_of_epochs = if matches.opt_present("num_of_epochs") {
     matches
-      .opt_str("epoch")
+      .opt_str("num_of_epochs")
       .unwrap()
       .parse()
       .unwrap()
   } else {
-    DEFAULT_EPOCH
+    DEFAULT_NUM_OF_EPOCHS
   };
-  let learn_rate = if matches.opt_present("learn_rate") {
-    matches
-      .opt_str("learn_rate")
-      .unwrap()
-      .parse()
-      .unwrap()
-  } else {
-    DEFAULT_LEARN_RATE
-  };
+  let disables_transfer_learn = matches.opt_present("d");
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
@@ -124,6 +108,5 @@ fn main() {
       });
     }
   });
-  // println!("Learning starts.");
-  rtrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, epoch, output_file_path, learn_rate);
+  rtrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, num_of_epochs, output_file_path, disables_transfer_learn);
 }
