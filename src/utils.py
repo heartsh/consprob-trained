@@ -4,6 +4,7 @@ import subprocess
 from Bio import AlignIO
 from statistics import mode
 import numpy
+from Bio import SeqIO
 
 def get_dir_paths():
   current_work_dir_path = os.getcwd()
@@ -140,3 +141,28 @@ def get_upp_mats(upp_mat_file_path, seq_lens):
       upp_mat[j] = upp
     upp_mats[rna_id] = upp_mat
   return upp_mats
+
+def get_ss_and_flat_ss(ss_string):
+  ss = {}
+  flat_ss = {}
+  stack = []
+  for (i, char) in enumerate(ss_string):
+    if char == "(":
+      stack.append(i)
+    elif char == ")":
+      pos = stack.pop()
+      ss[(pos, i)] = True
+      flat_ss[pos] = True
+      flat_ss[i] = True
+  return ss, flat_ss
+
+def get_ss_strings(ss_file_path):
+  ss_strings = [filter(rec.seq) for rec in SeqIO.parse(ss_file_path, "fasta")]
+  return ss_strings
+
+def filter(seq):
+  new_seq = str(seq).replace("A", "").replace("C", "").replace("G", "").replace("U", "")
+  return new_seq
+
+def get_sss_and_flat_sss(ss_strings):
+  return list(map(get_ss_and_flat_ss, ss_strings))
