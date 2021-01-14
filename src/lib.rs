@@ -38,6 +38,8 @@ pub use rand::seq::SliceRandom;
 pub use std::f32::INFINITY;
 pub use std::io::stdout;
 
+pub type Regularizers = Array1<Regularizer>;
+pub type Regularizer = FeatureCount;
 pub type BfgsFeatureCounts = Array1<BfgsFeatureCount>;
 pub type BfgsFeatureCount = f64;
 pub type FeatureCounts = Array1<FeatureCount>;
@@ -314,13 +316,629 @@ impl FeatureCountSets {
       + 1
   }
 
-  pub fn update<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&mut self, train_data: &[TrainDatum<T>])
+  pub fn get_regularizer_grad(&self, regularizers: &Regularizers) -> Regularizers {
+    let mut regularizer_grad = vec![0.; regularizers.len()];
+    let mut offset = 0;
+    let len = self.hairpin_loop_length_counts.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.hairpin_loop_length_counts[i];
+      squared_sum += count * count;
+    }
+    for i in 0 .. len {
+      let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.hairpin_loop_length_counts[i]);
+      regularizer_grad[offset + i] = regularizer_grad_comp;
+    }
+    offset += group_size;
+    let len = self.bulge_loop_length_counts.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.bulge_loop_length_counts[i];
+      squared_sum += count * count;
+    }
+    for i in 0 .. len {
+      let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.bulge_loop_length_counts[i]);
+      regularizer_grad[offset + i] = regularizer_grad_comp;
+    }
+    offset += group_size;
+    let len = self.interior_loop_length_counts.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.interior_loop_length_counts[i];
+      squared_sum += count * count;
+    }
+    for i in 0 .. len {
+      let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.interior_loop_length_counts[i]);
+      regularizer_grad[offset + i] = regularizer_grad_comp;
+    }
+    offset += group_size;
+    let len = self.interior_loop_length_counts_symm.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.interior_loop_length_counts_symm[i];
+      squared_sum += count * count;
+    }
+    for i in 0 .. len {
+      let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.interior_loop_length_counts_symm[i]);
+      regularizer_grad[offset + i] = regularizer_grad_comp;
+    }
+    offset += group_size;
+    let len = self.interior_loop_length_counts_asymm.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.interior_loop_length_counts_asymm[i];
+      squared_sum += count * count;
+    }
+    for i in 0 .. len {
+      let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.interior_loop_length_counts_asymm[i]);
+      regularizer_grad[offset + i] = regularizer_grad_comp;
+    }
+    offset += group_size;
+    let len = self.stack_count_mat.len();
+    let group_size = len.pow(4);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let count = self.stack_count_mat[i][j][k][l];
+            squared_sum += count * count;
+          }
+        }
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.stack_count_mat[i][j][k][l]);
+            regularizer_grad[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer_grad_comp;
+          }
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.terminal_mismatch_count_mat.len();
+    let group_size = len.pow(4);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            let count = self.terminal_mismatch_count_mat[i][j][k][l];
+            squared_sum += count * count;
+          }
+        }
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.terminal_mismatch_count_mat[i][j][k][l]);
+            regularizer_grad[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer_grad_comp;
+          }
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.left_dangle_count_mat.len();
+    let group_size = len.pow(3);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          let count = self.left_dangle_count_mat[i][j][k];
+          squared_sum += count * count;
+        }
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.left_dangle_count_mat[i][j][k]);
+          regularizer_grad[offset + i * len.pow(2) + j * len + k] = regularizer_grad_comp;
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.right_dangle_count_mat.len();
+    let group_size = len.pow(3);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. NUM_OF_BASES {
+          let count = self.right_dangle_count_mat[i][j][k];
+          squared_sum += count * count;
+        }
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.right_dangle_count_mat[i][j][k]);
+          regularizer_grad[offset + i * len.pow(2) + j * len + k] = regularizer_grad_comp;
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.helix_end_count_mat.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        let count = self.helix_end_count_mat[i][j];
+        squared_sum += count * count;
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.helix_end_count_mat[i][j]);
+        regularizer_grad[offset + i * len + j] = regularizer_grad_comp;
+      }
+    }
+    offset += group_size;
+    let len = self.base_pair_count_mat.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        let count = self.base_pair_count_mat[i][j];
+        squared_sum += count * count;
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.base_pair_count_mat[i][j]);
+        regularizer_grad[offset + i * len + j] = regularizer_grad_comp;
+      }
+    }
+    offset += group_size;
+    let len = self.interior_loop_length_count_mat_explicit.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let count = self.interior_loop_length_count_mat_explicit[i][j];
+        squared_sum += count * count;
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.interior_loop_length_count_mat_explicit[i][j]);
+        regularizer_grad[offset + i * len + j] = regularizer_grad_comp;
+      }
+    }
+    offset += group_size;
+    let len = self.bulge_loop_0x1_length_counts.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.bulge_loop_0x1_length_counts[i];
+      squared_sum += count * count;
+    }
+    for i in 0 .. len {
+      let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.bulge_loop_0x1_length_counts[i]);
+      regularizer_grad[offset + i] = regularizer_grad_comp;
+    }
+    offset += group_size;
+    let len = self.interior_loop_1x1_length_count_mat.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let count = self.interior_loop_1x1_length_count_mat[i][j];
+        squared_sum += count * count;
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.interior_loop_1x1_length_count_mat[i][j]);
+        regularizer_grad[offset + i * len + j] = regularizer_grad_comp;
+      }
+    }
+    offset += group_size;
+    let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.multi_loop_base_count * self.multi_loop_base_count, self.multi_loop_base_count);
+    regularizer_grad[offset] = regularizer_grad_comp;
+    offset += 1;
+    let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.multi_loop_basepairing_count * self.multi_loop_basepairing_count, self.multi_loop_basepairing_count);
+    regularizer_grad[offset] = regularizer_grad_comp;
+    offset += 1;
+    let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.multi_loop_accessible_baseunpairing_count * self.multi_loop_accessible_baseunpairing_count, self.multi_loop_accessible_baseunpairing_count);
+    regularizer_grad[offset] = regularizer_grad_comp;
+    offset += 1;
+    let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.external_loop_accessible_basepairing_count * self.external_loop_accessible_basepairing_count, self.external_loop_accessible_basepairing_count);
+    regularizer_grad[offset] = regularizer_grad_comp;
+    offset += 1;
+    let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.external_loop_accessible_baseunpairing_count * self.external_loop_accessible_baseunpairing_count, self.external_loop_accessible_baseunpairing_count);
+    regularizer_grad[offset] = regularizer_grad_comp;
+    offset += 1;
+    let len = self.basepair_align_count_mat.len();
+    let group_size = len.pow(4);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let count = self.basepair_align_count_mat[i][j][k][l];
+            squared_sum += count * count;
+          }
+        }
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.basepair_align_count_mat[i][j][k][l]);
+            regularizer_grad[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer_grad_comp;
+          }
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.loop_align_count_mat.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let count = self.loop_align_count_mat[i][j];
+        squared_sum += count * count;
+      }
+    }
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.loop_align_count_mat[i][j]);
+        regularizer_grad[offset + i * len + j] = regularizer_grad_comp;
+      }
+    }
+    offset += group_size;
+    let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.opening_gap_count * self.opening_gap_count, self.opening_gap_count);
+    regularizer_grad[offset] = regularizer_grad_comp;
+    offset += 1;
+    let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.extending_gap_count * self.extending_gap_count, self.extending_gap_count);
+    regularizer_grad[offset] = regularizer_grad_comp;
+    Array1::from_vec(regularizer_grad)
+  }
+
+  pub fn update_regularizers(&self, regularizers: &mut Regularizers) {
+    let mut regularizers_tmp = vec![0.; regularizers.len()];
+    let mut offset = 0;
+    let len = self.hairpin_loop_length_counts.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.hairpin_loop_length_counts[i];
+      squared_sum += count * count;
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      regularizers_tmp[offset + i] = regularizer;
+    }
+    offset += group_size;
+    let len = self.bulge_loop_length_counts.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.bulge_loop_length_counts[i];
+      squared_sum += count * count;
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      regularizers_tmp[offset + i] = regularizer;
+    }
+    offset += group_size;
+    let len = self.interior_loop_length_counts.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.interior_loop_length_counts[i];
+      squared_sum += count * count;
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      regularizers_tmp[offset + i] = regularizer;
+    }
+    offset += group_size;
+    let len = self.interior_loop_length_counts_symm.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.interior_loop_length_counts_symm[i];
+      squared_sum += count * count;
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      regularizers_tmp[offset + i] = regularizer;
+    }
+    offset += group_size;
+    let len = self.interior_loop_length_counts_asymm.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.interior_loop_length_counts_asymm[i];
+      squared_sum += count * count;
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      regularizers_tmp[offset + i] = regularizer;
+    }
+    offset += group_size;
+    let len = self.stack_count_mat.len();
+    let group_size = len.pow(4);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let count = self.stack_count_mat[i][j][k][l];
+            squared_sum += count * count;
+          }
+        }
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            regularizers_tmp[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer;
+          }
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.terminal_mismatch_count_mat.len();
+    let group_size = len.pow(4);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            let count = self.terminal_mismatch_count_mat[i][j][k][l];
+            squared_sum += count * count;
+          }
+        }
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            regularizers_tmp[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer;
+          }
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.left_dangle_count_mat.len();
+    let group_size = len.pow(3);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          let count = self.left_dangle_count_mat[i][j][k];
+          squared_sum += count * count;
+        }
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          regularizers_tmp[offset + i * len.pow(2) + j * len + k] = regularizer;
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.right_dangle_count_mat.len();
+    let group_size = len.pow(3);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. NUM_OF_BASES {
+          let count = self.right_dangle_count_mat[i][j][k];
+          squared_sum += count * count;
+        }
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          regularizers_tmp[offset + i * len.pow(2) + j * len + k] = regularizer;
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.helix_end_count_mat.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        let count = self.helix_end_count_mat[i][j];
+        squared_sum += count * count;
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        regularizers_tmp[offset + i * len + j] = regularizer;
+      }
+    }
+    offset += group_size;
+    let len = self.base_pair_count_mat.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        let count = self.base_pair_count_mat[i][j];
+        squared_sum += count * count;
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        regularizers_tmp[offset + i * len + j] = regularizer;
+      }
+    }
+    offset += group_size;
+    let len = self.interior_loop_length_count_mat_explicit.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let count = self.interior_loop_length_count_mat_explicit[i][j];
+        squared_sum += count * count;
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        regularizers_tmp[offset + i * len + j] = regularizer;
+      }
+    }
+    offset += group_size;
+    let len = self.bulge_loop_0x1_length_counts.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.bulge_loop_0x1_length_counts[i];
+      squared_sum += count * count;
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      regularizers_tmp[offset + i] = regularizer;
+    }
+    offset += group_size;
+    let len = self.interior_loop_1x1_length_count_mat.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let count = self.interior_loop_1x1_length_count_mat[i][j];
+        squared_sum += count * count;
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        regularizers_tmp[offset + i * len + j] = regularizer;
+      }
+    }
+    offset += group_size;
+    let regularizer = get_regularizer(1, self.multi_loop_base_count * self.multi_loop_base_count);
+    regularizers_tmp[offset] = regularizer;
+    offset += 1;
+    let regularizer = get_regularizer(1, self.multi_loop_basepairing_count * self.multi_loop_basepairing_count);
+    regularizers_tmp[offset] = regularizer;
+    offset += 1;
+    let regularizer = get_regularizer(1, self.multi_loop_accessible_baseunpairing_count * self.multi_loop_accessible_baseunpairing_count);
+    regularizers_tmp[offset] = regularizer;
+    offset += 1;
+    let regularizer = get_regularizer(1, self.external_loop_accessible_basepairing_count * self.external_loop_accessible_basepairing_count);
+    regularizers_tmp[offset] = regularizer;
+    offset += 1;
+    let regularizer = get_regularizer(1, self.external_loop_accessible_baseunpairing_count * self.external_loop_accessible_baseunpairing_count);
+    regularizers_tmp[offset] = regularizer;
+    offset += 1;
+    let len = self.basepair_align_count_mat.len();
+    let group_size = len.pow(4);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let count = self.basepair_align_count_mat[i][j][k][l];
+            squared_sum += count * count;
+          }
+        }
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            regularizers_tmp[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer;
+          }
+        }
+      }
+    }
+    offset += group_size;
+    let len = self.loop_align_count_mat.len();
+    let group_size = len.pow(2);
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let count = self.loop_align_count_mat[i][j];
+        squared_sum += count * count;
+      }
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        regularizers_tmp[offset + i * len + j] = regularizer;
+      }
+    }
+    offset += group_size;
+    let regularizer = get_regularizer(1, self.opening_gap_count * self.opening_gap_count);
+    regularizers_tmp[offset] = regularizer;
+    offset += 1;
+    let regularizer = get_regularizer(1, self.extending_gap_count * self.extending_gap_count);
+    regularizers_tmp[offset] = regularizer;
+    *regularizers = Array1::from_vec(regularizers_tmp);
+  }
+
+  pub fn update<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&mut self, train_data: &[TrainDatum<T>], regularizers: &mut Regularizers)
   {
     let f = |_: &BfgsFeatureCounts| {
-      self.get_log_loss(&train_data[..]) as BfgsFeatureCount
+      self.get_log_loss(&train_data[..], regularizers) as BfgsFeatureCount
     };
     let g = |_: &BfgsFeatureCounts| {
-      convert_feature_counts_2_bfgs_feature_counts(&self.get_grad(train_data))
+      convert_feature_counts_2_bfgs_feature_counts(&self.get_grad(train_data, regularizers))
     };
     match bfgs(convert_feature_counts_2_bfgs_feature_counts(&convert_struct_2_vec(self, false)), f, g) {
       Ok(solution) => {
@@ -329,6 +947,7 @@ impl FeatureCountSets {
         println!("BFGS failed");
       },
     };
+    self.update_regularizers(regularizers);
     self.accumulate();
   }
 
@@ -361,7 +980,7 @@ impl FeatureCountSets {
     }
   }
 
-  pub fn get_grad<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>]) -> FeatureCounts
+  pub fn get_grad<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCounts
   {
     let feature_scores = convert_struct_2_vec(self, false);
     let mut grad = FeatureCountSets::new(0.);
@@ -531,10 +1150,12 @@ impl FeatureCountSets {
       let expect_count = expect.extending_gap_count;
       grad.extending_gap_count -= obs_count - expect_count;
     }
-    convert_struct_2_vec(&grad, false) + feature_scores / GAUSS_PRIOR_VAR
+    let regularizer_grad = self.get_regularizer_grad(regularizers);
+    convert_struct_2_vec(&grad, false) + ((regularizer_grad * feature_scores.clone() + regularizers.clone()) * feature_scores.clone() + regularizers.clone() * feature_scores) / 2.
+    // convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
   }
 
-  pub fn get_log_loss<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>]) -> FeatureCount {
+  pub fn get_log_loss<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCount {
     let mut log_likelihood = 0.;
     let feature_scores_cumulative = convert_struct_2_vec(self, true);
     for train_datum in train_data {
@@ -543,7 +1164,8 @@ impl FeatureCountSets {
       log_likelihood -= train_datum.part_func;
     }
     let feature_scores = convert_struct_2_vec(self, false);
-    - (log_likelihood - feature_scores.dot(&feature_scores) / (2. * GAUSS_PRIOR_VAR))
+    let product = regularizers.clone() * feature_scores.clone();
+    - log_likelihood + product.dot(&feature_scores) / 2.
   }
 }
 
@@ -1005,7 +1627,9 @@ pub const CONSPROB_MIN_HAIRPIN_LOOP_SPAN: usize = CONSPROB_MIN_HAIRPIN_LOOP_LEN 
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_EXPLICIT: usize = 4;
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_SYMM: usize = CONSPROB_MAX_TWOLOOP_LEN / 2;
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM: usize = CONSPROB_MAX_TWOLOOP_LEN  - 2;
-pub const GAUSS_PRIOR_VAR: FeatureCount = 1.;
+// pub const GAUSS_PRIOR_VAR: FeatureCount = 1.;
+pub const GAMMA_DIST_ALPHA: FeatureCount = 0.;
+pub const GAMMA_DIST_BETA: FeatureCount = 1.;
 pub const BPP_MAT_FILE_NAME: &'static str = "bpp_mats.dat";
 pub const MAX_BPP_MAT_FILE_NAME: &'static str = "max_bpp_mats.dat";
 pub const ACCESS_BPP_MAT_ON_2L_FILE_NAME: &'static str = "access_bpp_mats_on_2l.dat";
@@ -5009,6 +5633,7 @@ where
   }
   let mut log_losses = Probs::new();
   let mut count = 0;
+  let mut regularizers = Regularizers::from_vec(vec![1.; feature_score_sets.get_len()]);
   loop {
     let ref ref_2_feature_score_sets = feature_score_sets;
     thread_pool.scoped(|scope| {
@@ -5042,8 +5667,8 @@ where
         });
       }
     });
-    feature_score_sets.update(&train_data);
-    let log_loss = feature_score_sets.get_log_loss(&train_data[..]);
+    feature_score_sets.update(&train_data, &mut regularizers);
+    let log_loss = feature_score_sets.get_log_loss(&train_data[..], &regularizers);
     if log_loss > old_log_loss {
       feature_score_sets = old_feature_score_sets.clone();
       break;
@@ -5051,7 +5676,8 @@ where
     log_losses.push(log_loss);
     old_feature_score_sets = feature_score_sets.clone();
     old_log_loss = log_loss;
-    print!("\rEpoch {} finished", count + 1);
+    // print!("\rEpoch {} finished", count + 1);
+    print!("\rEpoch {} finished: {}", count + 1, log_loss);
     stdout().flush().unwrap();
     count += 1;
   }
@@ -5470,6 +6096,15 @@ pub fn convert_feature_counts_2_bfgs_feature_counts(feature_counts: &FeatureCoun
 pub fn convert_bfgs_feature_counts_2_feature_counts(feature_counts: &BfgsFeatureCounts) -> FeatureCounts {
   let vec = feature_counts.to_vec().iter().map(|x| *x as FeatureCount).collect();
   FeatureCounts::from_vec(vec)
+}
+
+pub fn get_regularizer(group_size: usize, squared_sum: FeatureCount) -> Regularizer {
+  (group_size as FeatureCount / 2. + GAMMA_DIST_ALPHA) / (squared_sum / 2. + GAMMA_DIST_BETA)
+}
+
+pub fn get_regularizer_grad_comp(group_size: usize, squared_sum: FeatureCount, term: FeatureCount) -> Regularizer {
+  let denom = squared_sum / 2. + GAMMA_DIST_BETA;
+  - (group_size as FeatureCount / 2. + GAMMA_DIST_ALPHA) * 2. * term / (denom * denom)
 }
 
 pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets, disables_transfer_learn: bool) {

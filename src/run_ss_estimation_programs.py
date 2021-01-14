@@ -18,7 +18,6 @@ def main():
   temp_dir_path = "/tmp/run_ss_estimation_programs_%s" % datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H:%M:%S')
   if not os.path.isdir(temp_dir_path):
     os.mkdir(temp_dir_path)
-  gammas = [2. ** i for i in range(-7, 11)]
   centroid_estimator_params = []
   conshomfold_params_old = []
   conshomfold_params_new_transfer_on = []
