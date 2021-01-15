@@ -33,7 +33,7 @@ fn main() {
     "offset_4_max_gap_num",
     &format!(
       "An offset for maximum numbers of gaps (Uses {} by default)",
-      DEFAULT_OFFSET_4_MAX_GAP_NUM
+      DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN
     ),
     "UINT",
   );
@@ -69,7 +69,7 @@ fn main() {
       .parse()
       .unwrap()
   } else {
-    DEFAULT_MIN_BPP
+    DEFAULT_MIN_BPP_4_TRAIN
   };
   let offset_4_max_gap_num = if matches.opt_present("offset_4_max_gap_num") {
     matches
@@ -78,7 +78,7 @@ fn main() {
       .parse()
       .unwrap()
   } else {
-    DEFAULT_OFFSET_4_MAX_GAP_NUM
+    DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN
   } as u16;
   /* let num_of_epochs = if matches.opt_present("num_of_epochs") {
     matches
