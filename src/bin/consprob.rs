@@ -37,7 +37,6 @@ fn main() {
     ),
     "UINT",
   );
-  opts.optflag("d", "disables_transfer_learn", "Disables transfer learning to use pre-trained CONTRAfold parameters");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag(
     "a",
@@ -76,7 +75,6 @@ fn main() {
   } else {
     DEFAULT_OFFSET_4_MAX_GAP_NUM
   };
-  let disables_transfer_learn = matches.opt_present("d");
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
@@ -100,7 +98,6 @@ fn main() {
     fasta_records.push(FastaRecord::new(String::from(fasta_record.id()), seq));
   }
   let mut thread_pool = Pool::new(num_of_threads);
-  // let prob_mat_sets = consprob(&mut thread_pool, &fasta_records, min_bpp, offset_4_max_gap_num, is_posterior_model, produces_access_probs);
   if max_seq_len <= u8::MAX as usize {
     let prob_mat_sets = consprob::<u8>(
       &mut thread_pool,
@@ -108,7 +105,6 @@ fn main() {
       min_bpp,
       offset_4_max_gap_num as u8,
       produces_access_probs,
-      disables_transfer_learn,
     );
     write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs);
   } else {
@@ -118,7 +114,6 @@ fn main() {
       min_bpp,
       offset_4_max_gap_num as u16,
       produces_access_probs,
-      disables_transfer_learn,
     );
     write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs);
   }

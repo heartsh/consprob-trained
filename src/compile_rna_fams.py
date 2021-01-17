@@ -40,7 +40,7 @@ def main():
   test_data_num = num_of_stas - train_data_num
   train_data, test_data = train_test_split(stas, test_size = 0.5);
   for (i, train_datum) in enumerate(train_data):
-    cons_second_struct = convert_cons_second_struct(train_datum.column_annotations["secondary_structure"])
+    cons_second_struct = convert_css(train_datum.column_annotations["secondary_structure"])
     sampled_indexes = numpy.random.choice(range(0, len(train_datum)), 2, replace = False)
     seq_1 = train_datum[int(sampled_indexes[0])].seq
     seq_2 = train_datum[int(sampled_indexes[1])].seq
@@ -59,6 +59,7 @@ def main():
     test_datum_file = open(test_datum_file_path, "w")
     ref_ss_file = open(ref_ss_file_path, "w")
     css = convert_css(test_datum.column_annotations["secondary_structure"])
+    test_datum.column_annotations["secondary_structure"] = css
     for j, rec in enumerate(test_datum):
       seq_with_gaps = str(rec.seq)
       test_datum_file.write(">%d(%s)\n%s\n" % (j, rec.id, seq_with_gaps.replace("-", "")))
@@ -70,15 +71,6 @@ def is_valid(sta):
     if any(char in str(row.seq) for char in "RYWSMKHBVDN"):
       return False
   return True
-
-def convert_cons_second_struct(cons_second_struct):
-  new_cons_second_struct = cons_second_struct.replace("<", "(").replace("[", "(").replace("{", "(").replace(">", ")").replace("]", ")").replace("}", ")")
-  for i in range(len(new_cons_second_struct)):
-    char = new_cons_second_struct[i]
-    if char == "(" or char == ")":
-      continue
-    new_cons_second_struct = new_cons_second_struct[: i] + "." + new_cons_second_struct[i + 1 :]
-  return new_cons_second_struct
 
 def convert_css(css):
   converted_css = ""

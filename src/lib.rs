@@ -11,7 +11,6 @@ extern crate rand;
 
 pub mod utils;
 pub mod trained_feature_score_sets;
-pub mod trained_feature_score_sets_transfer_off;
 
 pub use self::scoped_threadpool::Pool;
 pub use bio::io::fasta::Reader;
@@ -239,54 +238,6 @@ impl FeatureCountSets {
       interior_loop_length_counts_cumulative: [init_val; CONSPROB_MAX_TWOLOOP_LEN - 1],
       interior_loop_length_counts_symm_cumulative: [init_val; CONSPROB_MAX_INTERIOR_LOOP_LEN_SYMM],
       interior_loop_length_counts_asymm_cumulative: [init_val; CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM],
-    }
-  }
-
-  pub fn transfer(&mut self) {
-    let offset = CONTRA_HL_LENGTH_FES_AT_LEAST[0] + CONTRA_HL_LENGTH_FES_AT_LEAST[1] + CONTRA_HL_LENGTH_FES_AT_LEAST[2];
-    for i in 0 .. self.hairpin_loop_length_counts.len() {
-      self.hairpin_loop_length_counts[i] = CONTRA_HL_LENGTH_FES_AT_LEAST[CONSPROB_MIN_HAIRPIN_LOOP_LEN + i] + if i == 0 {offset} else {0.};
-      self.hairpin_loop_length_counts_cumulative[i] = CONTRA_HL_LENGTH_FES[CONSPROB_MIN_HAIRPIN_LOOP_LEN + i];
-    }
-    self.bulge_loop_length_counts = CONTRA_BL_LENGTH_FES_AT_LEAST;
-    self.bulge_loop_length_counts_cumulative = CONTRA_BL_LENGTH_FES;
-    self.interior_loop_length_counts = CONTRA_IL_LENGTH_FES_AT_LEAST;
-    self.interior_loop_length_counts_cumulative = CONTRA_IL_LENGTH_FES;
-    self.interior_loop_length_counts_symm = CONTRA_IL_SYMM_LENGTH_FES_AT_LEAST;
-    self.interior_loop_length_counts_symm_cumulative = CONTRA_IL_SYMM_LENGTH_FES;
-    self.interior_loop_length_counts_asymm = CONTRA_IL_ASYMM_LENGTH_FES_AT_LEAST;
-    self.interior_loop_length_counts_asymm_cumulative = CONTRA_IL_ASYMM_LENGTH_FES;
-    self.stack_count_mat = CONTRA_STACK_FES;
-    self.terminal_mismatch_count_mat = CONTRA_TERMINAL_MISMATCH_FES;
-    self.left_dangle_count_mat = CONTRA_LEFT_DANGLE_FES;
-    self.right_dangle_count_mat = CONTRA_RIGHT_DANGLE_FES;
-    self.helix_end_count_mat = CONTRA_HELIX_CLOSING_FES;
-    self.base_pair_count_mat = CONTRA_BASE_PAIR_FES;
-    self.interior_loop_length_count_mat_explicit = CONTRA_IL_EXPLICIT_FES;
-    self.bulge_loop_0x1_length_counts = CONTRA_BL_0X1_FES;
-    self.interior_loop_1x1_length_count_mat = CONTRA_IL_1X1_FES;
-    self.multi_loop_base_count = CONTRA_ML_BASE_FE;
-    self.multi_loop_basepairing_count = CONTRA_ML_PAIRED_FE;
-    self.multi_loop_accessible_baseunpairing_count = CONTRA_ML_UNPAIRED_FE;
-    self.external_loop_accessible_basepairing_count = CONTRA_EL_PAIRED_FE;
-    self.external_loop_accessible_baseunpairing_count = CONTRA_EL_UNPAIRED_FE;
-    for (base_pair, loop_align_score) in [
-      (AA, 2.22), (AC, -1.86), (AG, -1.46), (AU, -1.39),
-      (CA, -1.86), (CC, 1.16), (CG, -2.48), (CU, -1.05),
-      (GA, -1.46), (GC, -2.48), (GG, 1.03), (GU, -1.74),
-      (UA, -1.39), (UC, -1.05), (UG, -1.74), (UU, 1.65),
-    ].iter() {
-      self.loop_align_count_mat[base_pair.0][base_pair.1] = *loop_align_score;
-    }
-    for ((base_pair, base_pair_2), basepair_align_score) in [
-      ((AU, AU), 4.49), ((AU, CG), 1.67), ((AU, GC), 2.70), ((AU, GU), 0.59), ((AU, UA), 1.61), ((AU, UG), -0.51),
-      ((CG, AU), 1.67), ((CG, CG), 5.36), ((CG, GC), 2.11), ((CG, GU), -0.27), ((CG, UA), 2.75), ((CG, UG), 1.32),
-      ((GC, AU), 2.70), ((GC, CG), 2.11), ((GC, GC), 5.62), ((GC, GU), 1.21), ((GC, UA), 1.6), ((GC, UG), -0.08),
-      ((GU, AU), 0.59), ((GU, CG), -0.27), ((GU, GC), 1.21), ((GU, GU), 3.47), ((GU, UA), -0.57), ((GU, UG), -2.09),
-      ((UA, AU), 1.61), ((UA, CG), 2.75), ((UA, GC), 1.6), ((UA, GU), -0.57), ((UA, UA), 4.97), ((UA, UG), 1.14),
-      ((UG, AU), -0.51), ((UG, CG), 1.32), ((UG, GC), -0.08), ((UG, GU), -2.09), ((UG, UA), 1.14), ((UG, UG), 3.36),
-    ].iter() {
-      self.basepair_align_count_mat[base_pair.0][base_pair.1][base_pair_2.0][base_pair_2.1] = *basepair_align_score;
     }
   }
 
@@ -1644,7 +1595,6 @@ pub const UPP_MAT_ON_2L_FILE_NAME: &'static str = "upp_mats_on_2l.dat";
 pub const UPP_MAT_ON_ML_FILE_NAME: &'static str = "upp_mats_on_ml.dat";
 pub const UPP_MAT_ON_EL_FILE_NAME: &'static str = "upp_mats_on_el.dat";
 pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH: &'static str = "./src/trained_feature_score_sets.rs";
-pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH_TRANSFER_OFF: &'static str = "./src/trained_feature_score_sets_transfer_off.rs";
 
 pub fn io_algo_4_prob_mats<T>(
   seq_pair: &SeqPair,
@@ -5492,7 +5442,6 @@ pub fn consprob<T>(
   min_bpp: Prob,
   offset_4_max_gap_num: T,
   produces_access_probs: bool,
-  disables_transfer_learn: bool,
 ) -> ProbMatSets<T>
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send,
@@ -5523,7 +5472,7 @@ where
       prob_mats_with_rna_id_pairs.insert(rna_id_pair, StaProbMats::<T>::origin());
     }
   }
-  let feature_score_sets = if disables_transfer_learn {FeatureCountSets::load_trained_score_params_transfer_off()} else {FeatureCountSets::load_trained_score_params()};
+  let feature_score_sets = FeatureCountSets::load_trained_score_params();
   thread_pool.scoped(|scope| {
     for (rna_id_pair, prob_mats) in prob_mats_with_rna_id_pairs.iter_mut() {
       let seq_pair = (
@@ -5588,7 +5537,6 @@ pub fn rtrain<'a, T>(
   train_data: &mut TrainData<T>,
   offset_4_max_gap_num: T,
   output_file_path: &Path,
-  disables_transfer_learn: bool,
 )
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send,
@@ -5596,9 +5544,6 @@ where
   let mut feature_score_sets = FeatureCountSets::new(0.);
   let mut old_feature_score_sets = feature_score_sets.clone();
   let mut old_log_loss = INFINITY;
-  if !disables_transfer_learn {
-    feature_score_sets.transfer();
-  }
   let mut log_losses = Probs::new();
   let mut count = 0;
   let mut regularizers = Regularizers::from_vec(vec![1.; feature_score_sets.get_len()]);
@@ -5648,7 +5593,7 @@ where
     stdout().flush().unwrap();
     count += 1;
   }
-  write_feature_score_sets_trained(&feature_score_sets, disables_transfer_learn);
+  write_feature_score_sets_trained(&feature_score_sets);
   write_log_losses(&log_losses, output_file_path);
 }
 
@@ -5659,16 +5604,20 @@ pub fn remove_gaps(seq: &Seq) -> Seq {
 pub fn convert_with_gaps<'a>(seq: &'a [u8]) -> Seq {
   let mut new_seq = Seq::new();
   for &c in seq {
-    let new_base = match c {
-      SMALL_A | BIG_A => A,
-      SMALL_C | BIG_C => C,
-      SMALL_G | BIG_G => G,
-      SMALL_U | BIG_U => U,
-      _ => {PSEUDO_BASE},
-    };
+    let new_base = convert_char(c);
     new_seq.push(new_base);
   }
   new_seq
+}
+
+pub fn convert_char(c: u8) -> Base {
+  match c {
+    SMALL_A | BIG_A => A,
+    SMALL_C | BIG_C => C,
+    SMALL_G | BIG_G => G,
+    SMALL_U | BIG_U => U,
+    _ => {PSEUDO_BASE},
+  }
 }
 
 pub fn get_mismatch_pair(seq: SeqSlice, pos_pair: &(usize, usize), is_closing: bool) -> (usize, usize) {
@@ -6074,9 +6023,9 @@ pub fn get_regularizer_grad_comp(group_size: usize, squared_sum: FeatureCount, t
   - (group_size as FeatureCount / 2. + GAMMA_DIST_ALPHA) * 2. * term / (denom * denom)
 }
 
-pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets, disables_transfer_learn: bool) {
-  let mut writer_2_trained_feature_score_sets_file = BufWriter::new(File::create(if disables_transfer_learn {TRAINED_FEATURE_SCORE_SETS_FILE_PATH_TRANSFER_OFF} else {TRAINED_FEATURE_SCORE_SETS_FILE_PATH}).unwrap());
-  let mut buf_4_writer_2_trained_feature_score_sets_file = format!("use FeatureCountSets;\nimpl FeatureCountSets {{\npub fn load_trained_score_params{}() -> FeatureCountSets {{\nFeatureCountSets {{\nhairpin_loop_length_counts: ", if disables_transfer_learn {"_transfer_off"} else {""});
+pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets) {
+  let mut writer_2_trained_feature_score_sets_file = BufWriter::new(File::create(TRAINED_FEATURE_SCORE_SETS_FILE_PATH).unwrap());
+  let mut buf_4_writer_2_trained_feature_score_sets_file = String::from("use FeatureCountSets;\nimpl FeatureCountSets {{\npub fn load_trained_score_params() -> FeatureCountSets {{\nFeatureCountSets {{\nhairpin_loop_length_counts: ");
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\nbulge_loop_length_counts: ", &feature_score_sets.hairpin_loop_length_counts));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts: ", &feature_score_sets.bulge_loop_length_counts));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts_symm: ", &feature_score_sets.interior_loop_length_counts));

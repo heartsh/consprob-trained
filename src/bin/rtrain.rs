@@ -37,16 +37,6 @@ fn main() {
     ),
     "UINT",
   );
-  /* opts.optopt(
-    "",
-    "num_of_epochs",
-    &format!(
-      "The number of epochs for training (Uses {} by default)",
-      DEFAULT_NUM_OF_EPOCHS,
-    ),
-    "UINT",
-  ); */
-  opts.optflag("d", "disables_transfer_learn", "Disables transfer learning to use pre-trained CONTRAfold parameters");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
@@ -80,16 +70,6 @@ fn main() {
   } else {
     DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN
   } as u16;
-  /* let num_of_epochs = if matches.opt_present("num_of_epochs") {
-    matches
-      .opt_str("num_of_epochs")
-      .unwrap()
-      .parse()
-      .unwrap()
-  } else {
-    DEFAULT_NUM_OF_EPOCHS
-  }; */
-  let disables_transfer_learn = matches.opt_present("d");
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
@@ -108,5 +88,5 @@ fn main() {
       });
     }
   });
-  rtrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, /* num_of_epochs, */ output_file_path, disables_transfer_learn);
+  rtrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, output_file_path);
 }
