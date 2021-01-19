@@ -41,7 +41,7 @@ def main():
     centroid_estimator_output_dir_path = os.path.join(centroid_estimator_dir_path, rna_family_name)
     conshomfold_output_dir_path_old = os.path.join(conshomfold_dir_path_old, rna_family_name)
     conshomfold_output_dir_path_new_transfer_on = os.path.join(conshomfold_dir_path_new_transfer_on, rna_family_name)
-    infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_family_name)
+    infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_family_name + "_infernal.dat")
     if os.path.isfile(infernal_black_list_file_path):
       continue
     if not os.path.isdir(centroid_estimator_output_dir_path):
