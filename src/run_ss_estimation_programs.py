@@ -24,6 +24,7 @@ def main():
   centroid_estimator_dir_path = asset_dir_path + "/centroid_estimator"
   conshomfold_dir_path_old = asset_dir_path + "/conshomfold_old"
   conshomfold_dir_path_new_transfer_on = asset_dir_path + "/conshomfold_new_transfer_on"
+  infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
   if not os.path.isdir(centroid_estimator_dir_path):
     os.mkdir(centroid_estimator_dir_path)
   if not os.path.isdir(conshomfold_dir_path_old):
@@ -40,6 +41,9 @@ def main():
     centroid_estimator_output_dir_path = os.path.join(centroid_estimator_dir_path, rna_family_name)
     conshomfold_output_dir_path_old = os.path.join(conshomfold_dir_path_old, rna_family_name)
     conshomfold_output_dir_path_new_transfer_on = os.path.join(conshomfold_dir_path_new_transfer_on, rna_family_name)
+    infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_family_name)
+    if os.path.isfile(infernal_black_list_file_path):
+      continue
     if not os.path.isdir(centroid_estimator_output_dir_path):
       os.mkdir(centroid_estimator_output_dir_path)
     if not os.path.isdir(conshomfold_output_dir_path_old):

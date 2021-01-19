@@ -1246,6 +1246,12 @@ impl<T: Hash + Clone> StaPartFuncMats<T> {
 }
 
 impl FastaRecord {
+  pub fn origin() -> FastaRecord {
+    FastaRecord {
+      fasta_id: FastaId::new(),
+      seq: Seq::new(),
+    }
+  }
   pub fn new(fasta_id: FastaId, seq: Seq) -> FastaRecord {
     FastaRecord {
       fasta_id: fasta_id,
@@ -1569,7 +1575,7 @@ pub const MIN_GAP_NUM_4_IL: usize = 2;
 pub const MAX_GAP_NUM_4_IL_TRAIN: usize = MAX_GAP_NUM_4_IL;
 pub const MIN_GAP_NUM_4_IL_TRAIN: usize = MIN_GAP_NUM_4_IL;
 pub const DEFAULT_MIN_BPP: Prob = 0.04;
-pub const DEFAULT_MIN_BPP_4_TRAIN: Prob = 0.005;
+pub const DEFAULT_MIN_BPP_4_TRAIN: Prob = 0.001;
 pub const DEFAULT_OFFSET_4_MAX_GAP_NUM: usize = 1;
 pub const DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN: usize = DEFAULT_OFFSET_4_MAX_GAP_NUM;
 pub const NUM_OF_BASES: usize = 4;
@@ -5277,7 +5283,7 @@ pub fn get_consprob_hairpin_loop_score(
   pos_pair: &(usize, usize),
 ) -> FeatureCount {
   let hairpin_loop_len = pos_pair.1 - pos_pair.0 - 1;
-  if hairpin_loop_len > CONSPROB_MAX_HAIRPIN_LOOP_LEN {
+  if hairpin_loop_len > CONSPROB_MAX_HAIRPIN_LOOP_LEN || hairpin_loop_len < CONSPROB_MIN_HAIRPIN_LOOP_LEN {
     NEG_INFINITY
   } else {
     let base_pair = (seq[pos_pair.0], seq[pos_pair.1]);
@@ -6025,7 +6031,7 @@ pub fn get_regularizer_grad_comp(group_size: usize, squared_sum: FeatureCount, t
 
 pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets) {
   let mut writer_2_trained_feature_score_sets_file = BufWriter::new(File::create(TRAINED_FEATURE_SCORE_SETS_FILE_PATH).unwrap());
-  let mut buf_4_writer_2_trained_feature_score_sets_file = String::from("use FeatureCountSets;\nimpl FeatureCountSets {{\npub fn load_trained_score_params() -> FeatureCountSets {{\nFeatureCountSets {{\nhairpin_loop_length_counts: ");
+  let mut buf_4_writer_2_trained_feature_score_sets_file = String::from("use FeatureCountSets;\nimpl FeatureCountSets {\npub fn load_trained_score_params() -> FeatureCountSets {\nFeatureCountSets {\nhairpin_loop_length_counts: ");
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\nbulge_loop_length_counts: ", &feature_score_sets.hairpin_loop_length_counts));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts: ", &feature_score_sets.bulge_loop_length_counts));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts_symm: ", &feature_score_sets.interior_loop_length_counts));
