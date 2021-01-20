@@ -21,6 +21,7 @@ white = "#F2F2F2"
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
   num_of_threads = multiprocessing.cpu_count()
+  infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
   mafft_plus_consalifold_ppvs = []
   mafft_plus_consalifold_senss = []
   mafft_plus_consalifold_fprs = []
@@ -107,10 +108,8 @@ def main():
   mafft_xinsi_plus_rnaalifold_ppv = mafft_xinsi_plus_rnaalifold_sens = mafft_xinsi_plus_rnaalifold_fpr = mafft_xinsi_plus_rnaalifold_f1_score = mafft_xinsi_plus_rnaalifold_mcc = 0.
   ref_sa_plus_rnaalifold_ppv = ref_sa_plus_rnaalifold_sens = ref_sa_plus_rnaalifold_fpr = ref_sa_plus_rnaalifold_f1_score = ref_sa_plus_rnaalifold_mcc = 0.
   gammas = [2. ** i for i in range(min_gamma, max_gamma + 1)]
-  rna_fam_dir_path = asset_dir_path + "/compiled_rna_fams"
-  # rna_fam_dir_path = asset_dir_path + "/compiled_rna_fams_4_micro_bench"
-  ref_sa_dir_path = asset_dir_path + "/ref_sas"
-  # ref_sa_dir_path = asset_dir_path + "/ref_sas_4_micro_bench"
+  rna_fam_dir_path = asset_dir_path + "/test_data"
+  ref_sa_dir_path = asset_dir_path + "/test_ref_sas"
   mafft_plus_consalifold_css_dir_path = asset_dir_path + "/mafft_plus_consalifold"
   probcons_plus_consalifold_css_dir_path = asset_dir_path + "/probcons_plus_consalifold"
   trained_probcons_plus_consalifold_css_dir_path = asset_dir_path + "/trained_probcons_plus_consalifold"
@@ -159,17 +158,19 @@ def main():
     for rna_fam_file in os.listdir(rna_fam_dir_path):
       if not rna_fam_file.endswith(".fa"):
         continue
+      (rna_fam_name, extension) = os.path.splitext(rna_fam_file)
+      infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_fam_name + "_infernal.dat")
+      if os.path.isfile(infernal_black_list_file_path):
+        continue
       rna_seq_file_path = os.path.join(rna_fam_dir_path, rna_fam_file)
       rna_seq_lens = [len(rna_seq.seq) for rna_seq in SeqIO.parse(rna_seq_file_path, "fasta")]
-      num_of_rnas = len(rna_seq_lens)
-      (rna_fam_name, extension) = os.path.splitext(rna_fam_file)
       ref_css_file_path = os.path.join(ref_sa_dir_path, rna_fam_name + ".sth")
       ref_css, ref_flat_css, ref_col_css, ref_flat_col_css, _, _, sta = utils.get_css_and_flat_css(ref_css_file_path)
       sta_len = len(sta[0])
       ref_csss_and_flat_csss = (ref_css, ref_flat_css, ref_col_css, ref_flat_col_css)
       mafft_plus_consalifold_estimated_css_dir_path = os.path.join(mafft_plus_consalifold_css_dir_path, rna_fam_name)
       probcons_plus_consalifold_estimated_css_dir_path = os.path.join(probcons_plus_consalifold_css_dir_path, rna_fam_name)
-      trainedor_probcons_plus_consalifold_estimated_css_dir_path = os.path.join(trained_probcons_plus_consalifold_css_dir_path, rna_fam_name)
+      trained_probcons_plus_consalifold_estimated_css_dir_path = os.path.join(trained_probcons_plus_consalifold_css_dir_path, rna_fam_name)
       clustalw_plus_consalifold_estimated_css_dir_path = os.path.join(clustalw_plus_consalifold_css_dir_path, rna_fam_name)
       mafft_xinsi_plus_consalifold_estimated_css_dir_path = os.path.join(mafft_xinsi_plus_consalifold_css_dir_path, rna_fam_name)
       ref_sa_plus_consalifold_estimated_css_dir_path = os.path.join(ref_sa_plus_consalifold_css_dir_path, rna_fam_name)

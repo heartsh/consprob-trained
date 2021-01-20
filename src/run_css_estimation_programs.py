@@ -181,19 +181,20 @@ def main():
     clustalw_plus_centroidalifold_params_4_bpp_mat.insert(0, clustalw_plus_centroidalifold_command)
     mafft_xinsi_plus_centroidalifold_params_4_bpp_mat.insert(0, mafft_xinsi_plus_centroidalifold_command)
     ref_sa_plus_centroidalifold_params_4_bpp_mat.insert(0, ref_sa_plus_centroidalifold_command)
-  pool = multiprocessing.Pool(num_of_threads)
-  pool.map(run_mafft, mafft_params)
-  pool.map(run_probcons, probcons_params)
-  pool.map(run_clustalw, clustalw_params)
-  pool.map(run_mafft_xinsi, mafft_xinsi_params)
-  pool.map(utils.run_command, mafft_plus_centroidalifold_params_4_bpp_mat)
-  begin = time.time()
-  pool.map(utils.run_command, probcons_plus_centroidalifold_params_4_bpp_mat)
-  elapsed_time = time.time() - begin
-  consalifold_elapsed_time += elapsed_time
-  pool.map(utils.run_command, clustalw_plus_centroidalifold_params_4_bpp_mat)
-  pool.map(utils.run_command, mafft_xinsi_plus_centroidalifold_params_4_bpp_mat)
-  pool.map(utils.run_command, ref_sa_plus_centroidalifold_params_4_bpp_mat)
+  if False:
+    pool = multiprocessing.Pool(num_of_threads)
+    pool.map(run_mafft, mafft_params)
+    pool.map(run_probcons, probcons_params)
+    pool.map(run_clustalw, clustalw_params)
+    pool.map(run_mafft_xinsi, mafft_xinsi_params)
+    pool.map(utils.run_command, mafft_plus_centroidalifold_params_4_bpp_mat)
+    begin = time.time()
+    pool.map(utils.run_command, probcons_plus_centroidalifold_params_4_bpp_mat)
+    elapsed_time = time.time() - begin
+    consalifold_elapsed_time += elapsed_time
+    pool.map(utils.run_command, clustalw_plus_centroidalifold_params_4_bpp_mat)
+    pool.map(utils.run_command, mafft_xinsi_plus_centroidalifold_params_4_bpp_mat)
+    pool.map(utils.run_command, ref_sa_plus_centroidalifold_params_4_bpp_mat)
   sub_thread_num = 4
   for rna_seq_file in os.listdir(rna_seq_dir_path):
     if not rna_seq_file.endswith(".fa"):
@@ -324,50 +325,53 @@ def main():
         petfold_params_4_elapsed_time.insert(0, (probcons_output_file_path_2, probcons_plus_petfold_output_file_path, petfold_gamma_str))
   # ConsAliFold's execution.
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
-  pool.map(utils.run_command, mafft_plus_consalifold_params)
-  pool.map(utils.run_command, probcons_plus_consalifold_params)
+  if False:
+    pool.map(utils.run_command, mafft_plus_consalifold_params)
+    pool.map(utils.run_command, probcons_plus_consalifold_params)
   pool.map(utils.run_command, trained_probcons_plus_consalifold_params)
-  pool.map(utils.run_command, clustalw_plus_consalifold_params)
-  pool.map(utils.run_command, mafft_xinsi_plus_consalifold_params)
-  pool.map(utils.run_command, ref_sa_plus_consalifold_params)
-  begin = time.time()
-  pool.map(utils.run_command, consalifold_params_4_elapsed_time)
-  consalifold_elapsed_time += time.time() - begin
-  begin = time.time()
-  pool.map(utils.run_command, trained_consalifold_params_4_elapsed_time)
-  trained_consalifold_elapsed_time += time.time() - begin
+  if False:
+    pool.map(utils.run_command, clustalw_plus_consalifold_params)
+    pool.map(utils.run_command, mafft_xinsi_plus_consalifold_params)
+    pool.map(utils.run_command, ref_sa_plus_consalifold_params)
+    begin = time.time()
+    pool.map(utils.run_command, consalifold_params_4_elapsed_time)
+    consalifold_elapsed_time += time.time() - begin
+    begin = time.time()
+    pool.map(utils.run_command, trained_consalifold_params_4_elapsed_time)
+    trained_consalifold_elapsed_time += time.time() - begin
   # CentroidAlifold's execution.
-  pool = multiprocessing.Pool(num_of_threads)
-  pool.map(run_centroidalifold, mafft_plus_centroidalifold_params)
-  pool.map(run_centroidalifold, probcons_plus_centroidalifold_params)
-  pool.map(run_centroidalifold, clustalw_plus_centroidalifold_params)
-  pool.map(run_centroidalifold, mafft_xinsi_plus_centroidalifold_params)
-  pool.map(run_centroidalifold, ref_sa_plus_centroidalifold_params)
-  begin = time.time()
-  pool.map(run_centroidalifold, centroidalifold_params_4_elapsed_time)
-  centroidalifold_elapsed_time = time.time() - begin
-  # PetFold's execution.
-  pool.map(run_petfold, mafft_plus_petfold_params)
-  pool.map(run_petfold, probcons_plus_petfold_params)
-  pool.map(run_petfold, clustalw_plus_petfold_params)
-  pool.map(run_petfold, mafft_xinsi_plus_petfold_params)
-  pool.map(run_petfold, ref_sa_plus_petfold_params)
-  begin = time.time()
-  pool.map(run_petfold, petfold_params_4_elapsed_time)
-  petfold_elapsed_time = time.time() - begin
-  # RNAalifold's execution.
-  pool.map(run_rnaalifold, mafft_plus_rnaalifold_params)
-  begin = time.time()
-  pool.map(run_rnaalifold, probcons_plus_rnaalifold_params)
-  rnaalifold_elapsed_time = time.time() - begin
-  pool.map(run_rnaalifold, clustalw_plus_rnaalifold_params)
-  pool.map(run_rnaalifold, mafft_xinsi_plus_rnaalifold_params)
-  pool.map(run_rnaalifold, ref_sa_plus_rnaalifold_params)
-  print("The elapsed time of ConsAlifold (old, chimera) = %f [s]." % consalifold_elapsed_time)
-  print("The elapsed time of CentroidAlifold = %f [s]." % centroidalifold_elapsed_time)
-  print("The elapsed time of RNAalifold = %f [s]." % rnaalifold_elapsed_time)
-  print("The elapsed time of PETfold = %f [s]." % petfold_elapsed_time)
-  print("The elapsed time of ConsAlifold (new, trained) = %f [s]." % trained_consalifold_elapsed_time)
+  if False:
+    pool = multiprocessing.Pool(num_of_threads)
+    pool.map(run_centroidalifold, mafft_plus_centroidalifold_params)
+    pool.map(run_centroidalifold, probcons_plus_centroidalifold_params)
+    pool.map(run_centroidalifold, clustalw_plus_centroidalifold_params)
+    pool.map(run_centroidalifold, mafft_xinsi_plus_centroidalifold_params)
+    pool.map(run_centroidalifold, ref_sa_plus_centroidalifold_params)
+    begin = time.time()
+    pool.map(run_centroidalifold, centroidalifold_params_4_elapsed_time)
+    centroidalifold_elapsed_time = time.time() - begin
+    # PetFold's execution.
+    pool.map(run_petfold, mafft_plus_petfold_params)
+    pool.map(run_petfold, probcons_plus_petfold_params)
+    pool.map(run_petfold, clustalw_plus_petfold_params)
+    pool.map(run_petfold, mafft_xinsi_plus_petfold_params)
+    pool.map(run_petfold, ref_sa_plus_petfold_params)
+    begin = time.time()
+    pool.map(run_petfold, petfold_params_4_elapsed_time)
+    petfold_elapsed_time = time.time() - begin
+    # RNAalifold's execution.
+    pool.map(run_rnaalifold, mafft_plus_rnaalifold_params)
+    begin = time.time()
+    pool.map(run_rnaalifold, probcons_plus_rnaalifold_params)
+    rnaalifold_elapsed_time = time.time() - begin
+    pool.map(run_rnaalifold, clustalw_plus_rnaalifold_params)
+    pool.map(run_rnaalifold, mafft_xinsi_plus_rnaalifold_params)
+    pool.map(run_rnaalifold, ref_sa_plus_rnaalifold_params)
+    print("The elapsed time of ConsAlifold (old, chimera) = %f [s]." % consalifold_elapsed_time)
+    print("The elapsed time of CentroidAlifold = %f [s]." % centroidalifold_elapsed_time)
+    print("The elapsed time of RNAalifold = %f [s]." % rnaalifold_elapsed_time)
+    print("The elapsed time of PETfold = %f [s]." % petfold_elapsed_time)
+    print("The elapsed time of ConsAlifold (new, trained) = %f [s]." % trained_consalifold_elapsed_time)
 
 def run_mafft(mafft_params):
   (rna_seq_file_path, mafft_output_file_path) = mafft_params
