@@ -37,6 +37,7 @@ fn main() {
     ),
     "UINT",
   );
+  opts.optflag("c", "trains_4_cons_second_struct_predict", "Train feature score parameters for consensus secondary structure predictions");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
@@ -70,6 +71,7 @@ fn main() {
   } else {
     DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN
   } as u16;
+  let trains_4_css_predict = matches.opt_present("c");
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
@@ -88,5 +90,5 @@ fn main() {
       });
     }
   });
-  rtrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, output_file_path);
+  rtrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, output_file_path, trains_4_css_predict);
 }

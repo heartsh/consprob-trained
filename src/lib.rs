@@ -11,6 +11,7 @@ extern crate rand;
 
 pub mod utils;
 pub mod trained_feature_score_sets;
+pub mod trained_feature_score_sets_4_css_predict;
 
 pub use self::scoped_threadpool::Pool;
 pub use bio::io::fasta::Reader;
@@ -267,7 +268,7 @@ impl FeatureCountSets {
       + 1
   }
 
-  pub fn get_regularizer_grad(&self, regularizers: &Regularizers) -> Regularizers {
+  pub fn get_regularizer_grad(&self, regularizers: &Regularizers, trains_4_css_predict: bool) -> Regularizers {
     let mut regularizer_grad = vec![0.; regularizers.len()];
     let mut offset = 0;
     let len = self.hairpin_loop_length_counts.len();
@@ -550,32 +551,34 @@ impl FeatureCountSets {
         }
       }
     }
-    offset += group_size;
-    let len = self.loop_align_count_mat.len();
-    let group_size = len.pow(2);
-    let mut squared_sum = 0.;
-    for i in 0 .. len {
-      for j in 0 .. len {
-        let count = self.loop_align_count_mat[i][j];
-        squared_sum += count * count;
+    if !trains_4_css_predict {
+      offset += group_size;
+      let len = self.loop_align_count_mat.len();
+      let group_size = len.pow(2);
+      let mut squared_sum = 0.;
+      for i in 0 .. len {
+        for j in 0 .. len {
+          let count = self.loop_align_count_mat[i][j];
+          squared_sum += count * count;
+        }
       }
-    }
-    for i in 0 .. len {
-      for j in 0 .. len {
-        let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.loop_align_count_mat[i][j]);
-        regularizer_grad[offset + i * len + j] = regularizer_grad_comp;
+      for i in 0 .. len {
+        for j in 0 .. len {
+          let regularizer_grad_comp = get_regularizer_grad_comp(group_size, squared_sum, self.loop_align_count_mat[i][j]);
+          regularizer_grad[offset + i * len + j] = regularizer_grad_comp;
+        }
       }
+      offset += group_size;
+      let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.opening_gap_count * self.opening_gap_count, self.opening_gap_count);
+      regularizer_grad[offset] = regularizer_grad_comp;
+      offset += 1;
+      let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.extending_gap_count * self.extending_gap_count, self.extending_gap_count);
+      regularizer_grad[offset] = regularizer_grad_comp;
     }
-    offset += group_size;
-    let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.opening_gap_count * self.opening_gap_count, self.opening_gap_count);
-    regularizer_grad[offset] = regularizer_grad_comp;
-    offset += 1;
-    let regularizer_grad_comp = get_regularizer_grad_comp(group_size, self.extending_gap_count * self.extending_gap_count, self.extending_gap_count);
-    regularizer_grad[offset] = regularizer_grad_comp;
     Array1::from_vec(regularizer_grad)
   }
 
-  pub fn update_regularizers(&self, regularizers: &mut Regularizers) {
+  pub fn update_regularizers(&self, regularizers: &mut Regularizers, trains_4_css_predict: bool) {
     let mut regularizers_tmp = vec![0.; regularizers.len()];
     let mut offset = 0;
     let len = self.hairpin_loop_length_counts.len();
@@ -858,38 +861,40 @@ impl FeatureCountSets {
         }
       }
     }
-    offset += group_size;
-    let len = self.loop_align_count_mat.len();
-    let group_size = len.pow(2);
-    let mut squared_sum = 0.;
-    for i in 0 .. len {
-      for j in 0 .. len {
-        let count = self.loop_align_count_mat[i][j];
-        squared_sum += count * count;
+    if !trains_4_css_predict {
+      offset += group_size;
+      let len = self.loop_align_count_mat.len();
+      let group_size = len.pow(2);
+      let mut squared_sum = 0.;
+      for i in 0 .. len {
+        for j in 0 .. len {
+          let count = self.loop_align_count_mat[i][j];
+          squared_sum += count * count;
+        }
       }
-    }
-    let regularizer = get_regularizer(group_size, squared_sum);
-    for i in 0 .. len {
-      for j in 0 .. len {
-        regularizers_tmp[offset + i * len + j] = regularizer;
+      let regularizer = get_regularizer(group_size, squared_sum);
+      for i in 0 .. len {
+        for j in 0 .. len {
+          regularizers_tmp[offset + i * len + j] = regularizer;
+        }
       }
+      offset += group_size;
+      let regularizer = get_regularizer(1, self.opening_gap_count * self.opening_gap_count);
+      regularizers_tmp[offset] = regularizer;
+      offset += 1;
+      let regularizer = get_regularizer(1, self.extending_gap_count * self.extending_gap_count);
+      regularizers_tmp[offset] = regularizer;
     }
-    offset += group_size;
-    let regularizer = get_regularizer(1, self.opening_gap_count * self.opening_gap_count);
-    regularizers_tmp[offset] = regularizer;
-    offset += 1;
-    let regularizer = get_regularizer(1, self.extending_gap_count * self.extending_gap_count);
-    regularizers_tmp[offset] = regularizer;
     *regularizers = Array1::from_vec(regularizers_tmp);
   }
 
-  pub fn update<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&mut self, train_data: &[TrainDatum<T>], regularizers: &mut Regularizers)
+  pub fn update<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&mut self, train_data: &[TrainDatum<T>], regularizers: &mut Regularizers, trains_4_css_predict: bool)
   {
     let f = |_: &BfgsFeatureCounts| {
-      self.get_log_loss(&train_data[..], regularizers) as BfgsFeatureCount
+      self.get_cost(&train_data[..], regularizers) as BfgsFeatureCount
     };
     let g = |_: &BfgsFeatureCounts| {
-      convert_feature_counts_2_bfgs_feature_counts(&self.get_grad(train_data, regularizers))
+      convert_feature_counts_2_bfgs_feature_counts(&self.get_grad(train_data, regularizers, trains_4_css_predict))
     };
     match bfgs(convert_feature_counts_2_bfgs_feature_counts(&convert_struct_2_vec(self, false)), f, g) {
       Ok(solution) => {
@@ -898,7 +903,7 @@ impl FeatureCountSets {
         println!("BFGS failed");
       },
     };
-    self.update_regularizers(regularizers);
+    self.update_regularizers(regularizers, trains_4_css_predict);
     self.accumulate();
   }
 
@@ -931,7 +936,7 @@ impl FeatureCountSets {
     }
   }
 
-  pub fn get_grad<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCounts
+  pub fn get_grad<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers, trains_4_css_predict: bool) -> FeatureCounts
   {
     let feature_scores = convert_struct_2_vec(self, false);
     let mut grad = FeatureCountSets::new(0.);
@@ -1086,26 +1091,28 @@ impl FeatureCountSets {
           }
         }
       }
-      for i in 0 .. NUM_OF_BASES {
-        for j in 0 .. NUM_OF_BASES {
-          let dict_min_loop_align = get_dict_min_loop_align(&(i, j));
-          let obs_count = obs.loop_align_count_mat[dict_min_loop_align.0][dict_min_loop_align.1];
-          let expect_count = expect.loop_align_count_mat[dict_min_loop_align.0][dict_min_loop_align.1];
-          grad.loop_align_count_mat[i][j] -= obs_count - expect_count;
+      if !trains_4_css_predict {
+        for i in 0 .. NUM_OF_BASES {
+          for j in 0 .. NUM_OF_BASES {
+            let dict_min_loop_align = get_dict_min_loop_align(&(i, j));
+            let obs_count = obs.loop_align_count_mat[dict_min_loop_align.0][dict_min_loop_align.1];
+            let expect_count = expect.loop_align_count_mat[dict_min_loop_align.0][dict_min_loop_align.1];
+            grad.loop_align_count_mat[i][j] -= obs_count - expect_count;
+          }
         }
+        let obs_count = obs.opening_gap_count;
+        let expect_count = expect.opening_gap_count;
+        grad.opening_gap_count -= obs_count - expect_count;
+        let obs_count = obs.extending_gap_count;
+        let expect_count = expect.extending_gap_count;
+        grad.extending_gap_count -= obs_count - expect_count;
       }
-      let obs_count = obs.opening_gap_count;
-      let expect_count = expect.opening_gap_count;
-      grad.opening_gap_count -= obs_count - expect_count;
-      let obs_count = obs.extending_gap_count;
-      let expect_count = expect.extending_gap_count;
-      grad.extending_gap_count -= obs_count - expect_count;
     }
-    let regularizer_grad = self.get_regularizer_grad(regularizers);
+    let regularizer_grad = self.get_regularizer_grad(regularizers, trains_4_css_predict);
     convert_struct_2_vec(&grad, false) + ((regularizer_grad * feature_scores.clone() + regularizers.clone()) * feature_scores.clone() + regularizers.clone() * feature_scores) / 2.
   }
 
-  pub fn get_log_loss<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCount {
+  pub fn get_cost<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCount {
     let mut log_likelihood = 0.;
     let feature_scores_cumulative = convert_struct_2_vec(self, true);
     for train_datum in train_data {
@@ -1601,6 +1608,7 @@ pub const UPP_MAT_ON_2L_FILE_NAME: &'static str = "upp_mats_on_2l.dat";
 pub const UPP_MAT_ON_ML_FILE_NAME: &'static str = "upp_mats_on_ml.dat";
 pub const UPP_MAT_ON_EL_FILE_NAME: &'static str = "upp_mats_on_el.dat";
 pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH: &'static str = "./src/trained_feature_score_sets.rs";
+pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH_4_CSS_PREDICT: &'static str = "./src/trained_feature_score_sets_4_css_predict.rs";
 
 pub fn io_algo_4_prob_mats<T>(
   seq_pair: &SeqPair,
@@ -5543,14 +5551,15 @@ pub fn rtrain<'a, T>(
   train_data: &mut TrainData<T>,
   offset_4_max_gap_num: T,
   output_file_path: &Path,
+  trains_4_css_predict: bool,
 )
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send,
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
   let mut old_feature_score_sets = feature_score_sets.clone();
-  let mut old_log_loss = INFINITY;
-  let mut log_losses = Probs::new();
+  let mut old_cost = INFINITY;
+  let mut costs = Probs::new();
   let mut count = 0;
   let mut regularizers = Regularizers::from_vec(vec![1.; feature_score_sets.get_len()]);
   loop {
@@ -5586,21 +5595,21 @@ where
         });
       }
     });
-    feature_score_sets.update(&train_data, &mut regularizers);
-    let log_loss = feature_score_sets.get_log_loss(&train_data[..], &regularizers);
-    if log_loss > old_log_loss {
+    feature_score_sets.update(&train_data, &mut regularizers, trains_4_css_predict);
+    let cost = feature_score_sets.get_cost(&train_data[..], &regularizers);
+    if cost > old_cost {
       feature_score_sets = old_feature_score_sets.clone();
       break;
     }
-    log_losses.push(log_loss);
+    costs.push(cost);
     old_feature_score_sets = feature_score_sets.clone();
-    old_log_loss = log_loss;
+    old_cost = cost;
     print!("\rEpoch {} finished", count + 1);
     stdout().flush().unwrap();
     count += 1;
   }
-  write_feature_score_sets_trained(&feature_score_sets);
-  write_log_losses(&log_losses, output_file_path);
+  write_feature_score_sets_trained(&feature_score_sets, trains_4_css_predict);
+  write_costs(&costs, output_file_path);
 }
 
 pub fn remove_gaps(seq: &Seq) -> Seq {
@@ -6029,9 +6038,9 @@ pub fn get_regularizer_grad_comp(group_size: usize, squared_sum: FeatureCount, t
   - (group_size as FeatureCount / 2. + GAMMA_DIST_ALPHA) * 2. * term / (denom * denom)
 }
 
-pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets) {
-  let mut writer_2_trained_feature_score_sets_file = BufWriter::new(File::create(TRAINED_FEATURE_SCORE_SETS_FILE_PATH).unwrap());
-  let mut buf_4_writer_2_trained_feature_score_sets_file = String::from("use FeatureCountSets;\nimpl FeatureCountSets {\npub fn load_trained_score_params() -> FeatureCountSets {\nFeatureCountSets {\nhairpin_loop_length_counts: ");
+pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets, trains_4_css_predict: bool) {
+  let mut writer_2_trained_feature_score_sets_file = BufWriter::new(File::create(if trains_4_css_predict {TRAINED_FEATURE_SCORE_SETS_FILE_PATH_4_CSS_PREDICT} else {TRAINED_FEATURE_SCORE_SETS_FILE_PATH}).unwrap());
+  let mut buf_4_writer_2_trained_feature_score_sets_file = format!("use FeatureCountSets;\nimpl FeatureCountSets {{\npub fn load_trained_score_params{}() -> FeatureCountSets {{\nFeatureCountSets {{\nhairpin_loop_length_counts: ", if trains_4_css_predict {"_4_css_predict"} else {""});
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\nbulge_loop_length_counts: ", &feature_score_sets.hairpin_loop_length_counts));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts: ", &feature_score_sets.bulge_loop_length_counts));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts_symm: ", &feature_score_sets.interior_loop_length_counts));
@@ -6064,11 +6073,11 @@ pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets) {
   let _ = writer_2_trained_feature_score_sets_file.write_all(buf_4_writer_2_trained_feature_score_sets_file.as_bytes());
 }
 
-pub fn write_log_losses(log_losses: &Probs, output_file_path: &Path) {
+pub fn write_costs(costs: &Probs, output_file_path: &Path) {
   let mut writer_2_output_file = BufWriter::new(File::create(output_file_path).unwrap());
   let mut buf_4_writer_2_output_file = String::new();
-  for log_loss in log_losses {
-    buf_4_writer_2_output_file.push_str(&format!("{}\n", log_loss));
+  for cost in costs {
+    buf_4_writer_2_output_file.push_str(&format!("{}\n", cost));
   }
   let _ = writer_2_output_file.write_all(buf_4_writer_2_output_file.as_bytes());
 }
