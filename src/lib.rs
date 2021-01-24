@@ -3938,7 +3938,6 @@ where
                     }
                     let prob_coeff_4_hl = prob_coeff + hairpin_loop_score + hairpin_loop_score_2 + hl_fe + hl_fe_2;
                     let prob_coeff_4_ml = prob_coeff
-                      // + 2. * feature_score_sets.multi_loop_base_count
                       + multi_loop_closing_basepairing_score
                       + multi_loop_closing_basepairing_score_2
                       + ml_closing_basepairing_fe
@@ -5518,7 +5517,6 @@ where
     )) {
       let seq_len = fasta_record.seq.len();
       scope.execute(move || {
-        // *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false);
         let mut mccaskill_output = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false);
         sparsify(&mut mccaskill_output.1, &mccaskill_output.0, min_bpp);
         *bpp_mat = mccaskill_output.0;
