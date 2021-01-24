@@ -37,8 +37,6 @@ pub use rand::seq::SliceRandom;
 pub use std::f32::INFINITY;
 pub use std::io::stdout;
 
-pub type RefFreeEnergyMatSetPair<'a, T> = (&'a SsFreeEnergyMats<T>, &'a SsFreeEnergyMats<T>);
-pub type FreeEnergyMatSetPair<T> = (SsFreeEnergyMats<T>, SsFreeEnergyMats<T>);
 pub type Regularizers = Array1<Regularizer>;
 pub type Regularizer = FeatureCount;
 pub type BfgsFeatureCounts = Array1<BfgsFeatureCount>;
@@ -69,12 +67,11 @@ pub type InteriorLoop1x1LengthCountMat = [[FeatureCount; NUM_OF_BASES]; NUM_OF_B
 pub type InteriorLoopLengthCountMat =
   [[FeatureCount; CONSPROB_MAX_TWOLOOP_LEN - 1]; CONSPROB_MAX_TWOLOOP_LEN - 1];
 #[derive(Clone)]
-pub struct TrainDatum<T: Hash> {
+pub struct TrainDatum<T> {
   pub seq_pair: RealSeqPair,
   pub observed_feature_count_sets: FeatureCountSets,
   pub expected_feature_count_sets: FeatureCountSets,
   pub bpp_mat_pair: SparseProbMatPair<T>,
-  pub free_energy_mat_set_pair: FreeEnergyMatSetPair<T>,
   pub max_bp_span_pair: (T, T),
   pub part_func: Prob,
 }
@@ -1270,7 +1267,6 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer> TrainDatum<
       observed_feature_count_sets: FeatureCountSets::new(0.),
       expected_feature_count_sets: FeatureCountSets::new(NEG_INFINITY),
       bpp_mat_pair: (SparseProbMat::<T>::default(), SparseProbMat::<T>::default()),
-      free_energy_mat_set_pair: (SsFreeEnergyMats::new(), SsFreeEnergyMats::new()),
       max_bp_span_pair: (T::zero(), T::zero()),
       part_func: NEG_INFINITY,
     }
@@ -1288,20 +1284,10 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer> TrainDatum<
       remove_gaps(&seq_pair.0),
       remove_gaps(&seq_pair.1),
       );
-    /* let bpp_mat_pair = (
+    let bpp_mat_pair = (
       remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.0[..], false), min_bpp),
       remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.1[..], false), min_bpp),
-    ); */
-    let mut mccaskill_output_pair = (
-      mccaskill_algo(&seq_pair_without_gaps.0[..], false),
-      mccaskill_algo(&seq_pair_without_gaps.1[..], false),
     );
-    let bpp_mat_pair = (
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_output_pair.0.0, min_bpp),
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_output_pair.1.0, min_bpp),
-    );
-    sparsify(&mut mccaskill_output_pair.0.1, &mccaskill_output_pair.0.0, min_bpp);
-    sparsify(&mut mccaskill_output_pair.1.1, &mccaskill_output_pair.1.0, min_bpp);
     let max_bp_span_pair = (
       get_max_bp_span::<T>(&bpp_mat_pair.0),
       get_max_bp_span::<T>(&bpp_mat_pair.1),
@@ -1311,7 +1297,6 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer> TrainDatum<
       observed_feature_count_sets: FeatureCountSets::new(0.),
       expected_feature_count_sets: FeatureCountSets::new(NEG_INFINITY),
       bpp_mat_pair: bpp_mat_pair.clone(),
-      free_energy_mat_set_pair: (mccaskill_output_pair.0.1.clone(), mccaskill_output_pair.1.1.clone()),
       max_bp_span_pair: max_bp_span_pair,
       part_func: NEG_INFINITY,
     };
@@ -1624,7 +1609,6 @@ pub fn io_algo_4_prob_mats<T>(
   max_gap_num: T,
   max_gap_num_4_il: T,
   bpp_mat_pair: &ProbMatPair<T>,
-  free_energy_mat_set_pair: &RefFreeEnergyMatSetPair<T>,
   produces_access_probs: bool,
   trains_score_params: bool,
   expected_feature_count_sets: &mut FeatureCountSets,
@@ -1639,7 +1623,6 @@ where
     max_gap_num,
     max_gap_num_4_il,
     bpp_mat_pair,
-    free_energy_mat_set_pair,
     false,
     produces_access_probs,
     trains_score_params,
@@ -1652,7 +1635,6 @@ where
     max_gap_num_4_il,
     &sta_part_func_mats,
     bpp_mat_pair,
-    free_energy_mat_set_pair,
     produces_access_probs,
     global_part_func,
     trains_score_params,
@@ -1667,7 +1649,6 @@ pub fn get_sta_inside_part_func_mats<T>(
   max_gap_num: T,
   max_gap_num_4_il: T,
   bpp_mat_pair: &ProbMatPair<T>,
-  free_energy_mat_set_pair: &RefFreeEnergyMatSetPair<T>,
   is_viterbi: bool,
   produces_access_probs: bool,
   trains_score_params: bool,
@@ -1720,9 +1701,6 @@ where
         );
       let hairpin_loop_score =
         get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &long_pos_pair);
-      let hl_fe = free_energy_mat_set_pair.0.hl_fe_mat[&(i, j)];
-      let ml_closing_basepairing_fe = get_ml_closing_basepairing_fe(seq_pair.0, &long_pos_pair);
-      let ml_or_el_accessible_basepairing_fe = get_ml_or_el_accessible_basepairing_fe(seq_pair.0, &long_pos_pair, true);
       for substr_len_2 in range_inclusive(
         T::from_usize(CONSPROB_MIN_HAIRPIN_LOOP_SPAN).unwrap(),
         max_bp_span_pair.1,
@@ -1743,10 +1721,6 @@ where
           if !bpp_mat_pair.1.contains_key(&(k, l)) {
             continue;
           }
-          let long_pos_pair_2 = (long_k, long_l);
-          let hl_fe_2 = free_energy_mat_set_pair.1.hl_fe_mat[&(k, l)];
-          let ml_closing_basepairing_fe_2 = get_ml_closing_basepairing_fe(seq_pair.1, &long_pos_pair_2);
-          let ml_or_el_accessible_basepairing_fe_2 = get_ml_or_el_accessible_basepairing_fe(seq_pair.1, &long_pos_pair_2, true);
           let pos_quadruple = (i, j, k, l);
           let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair.0]
             [base_pair.1][base_pair_2.0][base_pair_2.1];
@@ -1758,7 +1732,6 @@ where
               &pos_quadruple,
               &sta_part_func_mats,
               bpp_mat_pair,
-              free_energy_mat_set_pair,
               is_viterbi,
               true,
               produces_access_probs,
@@ -1771,17 +1744,17 @@ where
             &pos_quadruple,
             &sta_part_func_mats,
             bpp_mat_pair,
-            free_energy_mat_set_pair,
             is_viterbi,
             false,
             produces_access_probs,
             trains_score_params,
           );
           let mut sum = NEG_INFINITY;
+          let long_pos_pair_2 = (long_k, long_l);
           let hairpin_loop_score_2 =
             get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.1, &long_pos_pair_2);
           let score =
-            basepair_align_score + hairpin_loop_score + hairpin_loop_score_2 + hl_fe + hl_fe_2 + part_func_on_sa;
+            basepair_align_score + hairpin_loop_score + hairpin_loop_score_2 + part_func_on_sa;
           sumormax(&mut sum, score, is_viterbi);
           for m in range(i + T::one(), j) {
             let long_m = m.to_usize().unwrap();
@@ -1797,7 +1770,6 @@ where
               if long_m - long_i - 1 + long_j - long_n - 1 > CONSPROB_MAX_TWOLOOP_LEN {
                 continue;
               }
-              let twoloop_fe = free_energy_mat_set_pair.0.twoloop_fe_4d_mat[&(i, j, m, n)];
               let long_pos_pair_3 = (long_m, long_n);
               let twoloop_score = get_consprob_twoloop_score(
                 feature_score_sets,
@@ -1846,9 +1818,8 @@ where
                         &long_pos_pair_2,
                         &long_pos_pair_4,
                       );
-                      let twoloop_fe_2 = free_energy_mat_set_pair.1.twoloop_fe_4d_mat[&(k, l, o, p)];
                       let coefficient =
-                        basepair_align_score + twoloop_score + twoloop_score_2 + twoloop_fe + twoloop_fe_2 + part_func;
+                        basepair_align_score + twoloop_score + twoloop_score_2 + part_func;
                       sumormax(&mut sum, coefficient + part_func_4_2l, is_viterbi);
                     }
                     None => {}
@@ -1866,8 +1837,6 @@ where
           let score = basepair_align_score
             + multi_loop_closing_basepairing_score
             + multi_loop_closing_basepairing_score_2
-            + ml_closing_basepairing_fe
-            + ml_closing_basepairing_fe_2
             + part_func_4_ml;
           sumormax(&mut sum, score, is_viterbi);
           if sum > NEG_INFINITY {
@@ -1886,7 +1855,6 @@ where
                 seq_pair.1,
                 &long_pos_pair_2,
               );
-            sum += ml_or_el_accessible_basepairing_fe + ml_or_el_accessible_basepairing_fe_2;
             sta_part_func_mats
               .part_func_4d_mat_4_bpas_accessible_on_els
               .insert(
@@ -1901,8 +1869,7 @@ where
                 pos_quadruple,
                 sum
                   + multi_loop_accessible_basepairing_score
-                  + multi_loop_accessible_basepairing_score_2
-                  + 2. * COEFFICIENT_4_TERM_OF_NUM_OF_BRANCHING_HELICES_ON_INIT_ML_DELTA_FE,
+                  + multi_loop_accessible_basepairing_score_2,
               );
           }
           match sta_part_func_mats
@@ -2256,7 +2223,6 @@ pub fn get_tmp_part_func_set_mat<T>(
   pos_quadruple: &PosQuadruple<T>,
   sta_part_func_mats: &StaPartFuncMats<T>,
   bpp_mat_pair: &ProbMatPair<T>,
-  free_energy_mat_set_pair: &RefFreeEnergyMatSetPair<T>,
   is_viterbi: bool,
   is_forward: bool,
   produces_access_probs: bool,
@@ -2416,10 +2382,8 @@ where
                     &(long_k, long_l),
                     &(long_pos_quadruple_2.2, long_pos_quadruple_2.3),
                   );
-                  let twoloop_fe = free_energy_mat_set_pair.0.twoloop_fe_4d_mat[&(i, j, pos_quadruple_2.0, pos_quadruple_2.1)];
-                  let twoloop_fe_2 = free_energy_mat_set_pair.1.twoloop_fe_4d_mat[&(k, l, pos_quadruple_2.2, pos_quadruple_2.3)];
                   let ref part_funcs = part_func_sets.part_funcs_on_sa;
-                  let score = part_funcs.part_func + part_func + twoloop_score + twoloop_score_2 + twoloop_fe + twoloop_fe_2;
+                  let score = part_funcs.part_func + part_func + twoloop_score + twoloop_score_2;
                   sumormax(&mut sum_4_2loop, score, is_viterbi);
                 }
               }
@@ -3008,7 +2972,6 @@ pub fn get_sta_prob_mats<T>(
   max_gap_num_4_il: T,
   sta_part_func_mats: &StaPartFuncMats<T>,
   bpp_mat_pair: &ProbMatPair<T>,
-  free_energy_mat_set_pair: &RefFreeEnergyMatSetPair<T>,
   produces_access_probs: bool,
   global_part_func: PartFunc,
   trains_score_params: bool,
@@ -3182,7 +3145,6 @@ where
                     &(long_m, long_n),
                     &(long_i, long_j),
                   );
-                  let twoloop_fe = free_energy_mat_set_pair.0.twoloop_fe_4d_mat[&(m, n, i, j)];
                   for o in range(T::one(), k) {
                     if !is_min_gap_ok(&(m, o), &pseudo_pos_quadruple, max_gap_num_4_il) {
                       continue;
@@ -3237,8 +3199,7 @@ where
                               &(long_o, long_p),
                               &(long_k, long_l),
                             );
-                            let twoloop_fe_2 = free_energy_mat_set_pair.1.twoloop_fe_4d_mat[&(o, p, k, l)];
-                            let coefficient = basepair_align_score + twoloop_score + twoloop_score_2 + twoloop_fe + twoloop_fe_2 + part_func;
+                            let coefficient = basepair_align_score + twoloop_score + twoloop_score_2 + part_func;
                             let part_func_4_2l = coefficient + part_func_4_2l;
                             sumormax(&mut sum, part_func_4_2l, is_viterbi);
                             let bpap_4_2l = prob_coeff + part_func_4_2l;
@@ -3416,7 +3377,6 @@ where
                     seq_pair.0,
                     &(long_m, long_n),
                   );
-                  let ml_closing_basepairing_fe = get_ml_closing_basepairing_fe(seq_pair.0, &(long_m, long_n));
                   for o in range(T::one(), k) {
                     if !is_min_gap_ok(&(m, o), &pseudo_pos_quadruple, max_gap_num_4_il) {
                       continue;
@@ -3446,7 +3406,6 @@ where
                             seq_pair.1,
                             &(long_o, long_p),
                           );
-                          let ml_closing_basepairing_fe_2 = get_ml_closing_basepairing_fe(seq_pair.1, &(long_o, long_p));
                           let mut forward_term = NEG_INFINITY;
                           let mut forward_term_2 = forward_term;
                           let mut backward_term = forward_term;
@@ -3476,8 +3435,6 @@ where
                               + basepair_align_score
                               + multi_loop_closing_basepairing_score
                               + multi_loop_closing_basepairing_score_2
-                              + ml_closing_basepairing_fe
-                              + ml_closing_basepairing_fe_2
                               + part_func_4_bpa_2;
                             let part_func_4_ml = coefficient + part_func_4_ml;
                             sumormax(&mut sum, part_func_4_ml, is_viterbi);
@@ -3596,9 +3553,7 @@ where
                 .forward_tmp_part_func_set_mats_with_pos_pairs[&(i, k)][&(j - T::one(), l - T::one())].part_funcs_on_sa.part_func;
                   let hairpin_loop_score = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &(long_i, long_j));
                   let hairpin_loop_score_2 = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.1, &(long_k, long_l));
-                  let hl_fe = free_energy_mat_set_pair.0.hl_fe_mat[&(i, j)];
-                  let hl_fe_2 = free_energy_mat_set_pair.1.hl_fe_mat[&(k, l)];
-                  let bpap_4_hl = sum - global_part_func + part_func_on_sa + hairpin_loop_score + hairpin_loop_score_2 + hl_fe + hl_fe_2;
+                  let bpap_4_hl = sum - global_part_func + part_func_on_sa + hairpin_loop_score + hairpin_loop_score_2;
                   if bpap_4_hl > NEG_INFINITY {
                     sumormax(
                       &mut expected_feature_count_sets.hairpin_loop_length_counts[long_j - long_i - 1 - CONSPROB_MIN_HAIRPIN_LOOP_LEN],
@@ -3853,13 +3808,11 @@ where
               continue;
             }
             let hairpin_loop_score = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &(long_i, long_j));
-            let hl_fe = free_energy_mat_set_pair.0.hl_fe_mat[&(i, j)];
             let multi_loop_closing_basepairing_score = get_consprob_multi_loop_closing_basepairing_score(
               feature_score_sets,
               seq_pair.0,
               &(long_i, long_j),
             );
-            let ml_closing_basepairing_fe = get_ml_closing_basepairing_fe(seq_pair.0, &(long_i, long_j));
             for k in range(T::one(), v) {
               if !is_min_gap_ok(&(i, k), &pseudo_pos_quadruple, max_gap_num_4_il) {
                 continue;
@@ -3877,13 +3830,11 @@ where
                   continue;
                 }
                 let hairpin_loop_score_2 = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.1, &(long_k, long_l));
-                let hl_fe_2 = free_energy_mat_set_pair.1.hl_fe_mat[&(k, l)];
                 let multi_loop_closing_basepairing_score_2 = get_consprob_multi_loop_closing_basepairing_score(
                   feature_score_sets,
                   seq_pair.1,
                   &(long_k, long_l),
                 );
-                let ml_closing_basepairing_fe_2 = get_ml_closing_basepairing_fe(seq_pair.1, &(long_k, long_l));
                 let pos_quadruple = (i, j, k, l);
                 match sta_outside_part_func_4d_mat_4_bpas.get(&pos_quadruple) {
                   Some(&part_func_4_bpa) => {
@@ -3936,12 +3887,10 @@ where
                       }
                       None => {}
                     }
-                    let prob_coeff_4_hl = prob_coeff + hairpin_loop_score + hairpin_loop_score_2 + hl_fe + hl_fe_2;
+                    let prob_coeff_4_hl = prob_coeff + hairpin_loop_score + hairpin_loop_score_2;
                     let prob_coeff_4_ml = prob_coeff
                       + multi_loop_closing_basepairing_score
-                      + multi_loop_closing_basepairing_score_2
-                      + ml_closing_basepairing_fe
-                      + ml_closing_basepairing_fe_2;
+                      + multi_loop_closing_basepairing_score_2;
                     match forward_tmp_part_func_set_mat.get(&pos_pair_4_loop_align) {
                       Some(part_func_sets) => {
                         let loop_align_prob_4_hairpin_loop =
@@ -5504,23 +5453,18 @@ where
 {
   let num_of_fasta_records = fasta_records.len();
   let mut bpp_mats = vec![SparseProbMat::<T>::new(); num_of_fasta_records];
-  let mut free_energy_mat_sets = vec![SsFreeEnergyMats::new(); num_of_fasta_records];
   let mut sparse_bpp_mats = vec![SparseProbMat::<T>::new(); num_of_fasta_records];
   let mut max_bp_spans = vec![T::zero(); num_of_fasta_records];
   thread_pool.scoped(|scope| {
-    for (bpp_mat, free_energy_mats, sparse_bpp_mat, max_bp_span, fasta_record) in multizip((
+    for (bpp_mat, sparse_bpp_mat, max_bp_span, fasta_record) in multizip((
       bpp_mats.iter_mut(),
-      free_energy_mat_sets.iter_mut(),
       sparse_bpp_mats.iter_mut(),
       max_bp_spans.iter_mut(),
       fasta_records.iter(),
     )) {
       let seq_len = fasta_record.seq.len();
       scope.execute(move || {
-        let mut mccaskill_output = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false);
-        sparsify(&mut mccaskill_output.1, &mccaskill_output.0, min_bpp);
-        *bpp_mat = mccaskill_output.0;
-        *free_energy_mats = mccaskill_output.1;
+        *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false);
         *sparse_bpp_mat = remove_small_bpps_from_bpp_mat::<T>(bpp_mat, min_bpp);
         *max_bp_span = get_max_bp_span::<T>(sparse_bpp_mat);
       });
@@ -5553,10 +5497,6 @@ where
         &sparse_bpp_mats[rna_id_pair.0],
         &sparse_bpp_mats[rna_id_pair.1],
       );
-      let free_energy_mat_set_pair = (
-        &free_energy_mat_sets[rna_id_pair.0],
-        &free_energy_mat_sets[rna_id_pair.1],
-      );
       let ref ref_2_feature_score_sets = feature_score_sets;
       scope.execute(move || {
         *prob_mats = io_algo_4_prob_mats::<T>(
@@ -5566,7 +5506,6 @@ where
           max_gap_num,
           max_gap_num_4_il,
           &bpp_mat_pair,
-          &free_energy_mat_set_pair,
           produces_access_probs,
           false,
           &mut FeatureCountSets::new(NEG_INFINITY),
@@ -5628,7 +5567,6 @@ where
           T::from_usize(MIN_GAP_NUM_4_IL_TRAIN).unwrap(),
         );
         let bpp_mat_pair = (&train_datum.bpp_mat_pair.0, &train_datum.bpp_mat_pair.1);
-        let free_energy_mat_set_pair = (&train_datum.free_energy_mat_set_pair.0, &train_datum.free_energy_mat_set_pair.1);
         let ref max_bp_span_pair = train_datum.max_bp_span_pair;
         let ref mut expected_feature_count_sets = train_datum.expected_feature_count_sets;
         let ref mut part_func = train_datum.part_func;
@@ -5640,7 +5578,6 @@ where
             max_gap_num,
             max_gap_num_4_il,
             &bpp_mat_pair,
-            &free_energy_mat_set_pair,
             false,
             true,
             expected_feature_count_sets,
@@ -6303,33 +6240,4 @@ pub fn write_prob_mat_sets<T>(
     }
     let _ = writer_2_upp_mat_file.write_all(buf_4_writer_2_upp_mat_file.as_bytes());
   }
-}
-
-pub fn sparsify<T>(free_energy_mats: &mut SsFreeEnergyMats<T>, bpp_mat: &SparseProbMat<T>, min_bpp: Prob)
-where T: Unsigned + PrimInt + Hash + One,
-{
-  free_energy_mats.hl_fe_mat = free_energy_mats.hl_fe_mat.iter().filter(|(pos_pair, _)| {
-    match bpp_mat.get(&pos_pair) {
-      Some(&bpp) => {
-        bpp >= min_bpp
-      }, None => {
-        false
-      },
-    }
-  }).map(|(&(i, j), &free_energy)| {((i + T::one(), j + T::one()), free_energy)}).collect();
-  free_energy_mats.twoloop_fe_4d_mat = free_energy_mats.twoloop_fe_4d_mat.iter().filter(|(&(i, j, k, l), _)| {
-    match bpp_mat.get(&(i, j)) {
-      Some(&bpp) => {
-        match bpp_mat.get(&(k, l)) {
-          Some(&bpp_2) => {
-            bpp >= min_bpp && bpp_2 >= min_bpp
-          }, None => {
-            false
-          },
-        }
-      }, None => {
-        false
-      },
-    }
-  }).map(|(&(i, j, k, l), &free_energy)| {((i + T::one(), j + T::one(), k + T::one(), l + T::one()), free_energy)}).collect();
 }
