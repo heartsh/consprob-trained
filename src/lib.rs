@@ -1285,8 +1285,8 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer> TrainDatum<
       remove_gaps(&seq_pair.1),
       );
     let bpp_mat_pair = (
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.0[..], false), min_bpp),
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.1[..], false), min_bpp),
+      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.0[..], false).0, min_bpp),
+      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.1[..], false).0, min_bpp),
     );
     let max_bp_span_pair = (
       get_max_bp_span::<T>(&bpp_mat_pair.0),
@@ -5464,7 +5464,7 @@ where
     )) {
       let seq_len = fasta_record.seq.len();
       scope.execute(move || {
-        *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false);
+        *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false).0;
         *sparse_bpp_mat = remove_small_bpps_from_bpp_mat::<T>(bpp_mat, min_bpp);
         *max_bp_span = get_max_bp_span::<T>(sparse_bpp_mat);
       });
