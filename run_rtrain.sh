@@ -1,7 +1,6 @@
 #!/bin/sh
 #$ -S /bin/sh
 #$ -l medium -l s_vmem=64G -l mem_req=64G
-#$ -pe smp 128
 #$ -N run_rtrain
 #$ -V
 #$ -b y
