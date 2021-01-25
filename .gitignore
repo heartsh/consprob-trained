@@ -3,6 +3,7 @@
 target
 !*.rs
 !*.py
+!*.sh
 !*.tar.bz2
 !Cargo.toml
 !.gitignore

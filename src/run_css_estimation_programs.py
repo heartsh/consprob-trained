@@ -327,7 +327,7 @@ def main():
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
   if False:
     pool.map(utils.run_command, mafft_plus_consalifold_params)
-    pool.map(utils.run_command, probcons_plus_consalifold_params)
+  pool.map(utils.run_command, probcons_plus_consalifold_params)
   pool.map(utils.run_command, trained_probcons_plus_consalifold_params)
   if False:
     pool.map(utils.run_command, clustalw_plus_consalifold_params)
