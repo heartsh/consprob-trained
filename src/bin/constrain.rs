@@ -84,9 +84,9 @@ fn main() {
   thread_pool.scoped(|scope| {
     for (input_file_path, train_datum) in entries.iter().zip(train_data.iter_mut()) {
       scope.execute(move || {
-        *train_datum = TrainDatum::<u16>::new(&input_file_path.path(), min_bpp);
+        *train_datum = TrainDatum::<u16>::new(&input_file_path.path(), min_bpp, offset_4_max_gap_num);
       });
     }
   });
-  rtrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, output_file_path);
+  constrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, output_file_path);
 }
