@@ -1662,16 +1662,10 @@ where
     ) {
       for &(i, j, k, l) in pos_quadruple_mat {
         if j - i + T::one() != substr_len_1 || l - k + T::one() != substr_len_2 {continue;}
-        let (long_i, long_j) = (i.to_usize().unwrap(), j.to_usize().unwrap());
+        let (long_i, long_j, long_k, long_l) = (i.to_usize().unwrap(), j.to_usize().unwrap(), k.to_usize().unwrap(), l.to_usize().unwrap());
         let base_pair = (seq_pair.0[long_i], seq_pair.0[long_j]);
-        let long_pos_pair = (long_i, long_j);
-        let hairpin_loop_score =
-          get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &long_pos_pair);
-        let (long_k, long_l) = (k.to_usize().unwrap(), l.to_usize().unwrap());
         let base_pair_2 = (seq_pair.1[long_k], seq_pair.1[long_l]);
         let pos_quadruple = (i, j, k, l);
-        let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair.0]
-          [base_pair.1][base_pair_2.0][base_pair_2.1];
         let (forward_tmp_part_func_set_mat, part_func_on_sa, part_func_4_ml, forward_tmp_part_func_set_mat_4_2loop, _, _) =
           get_tmp_part_func_set_mat::<T>(
             &seq_pair,
@@ -1700,9 +1694,14 @@ where
           backward_pos_pair_mat_set,
         );
         let mut sum = NEG_INFINITY;
+        let long_pos_pair = (long_i, long_j);
         let long_pos_pair_2 = (long_k, long_l);
+        let hairpin_loop_score =
+          get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &long_pos_pair);
         let hairpin_loop_score_2 =
           get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.1, &long_pos_pair_2);
+        let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair.0]
+          [base_pair.1][base_pair_2.0][base_pair_2.1];
         let score =
           basepair_align_score + hairpin_loop_score + hairpin_loop_score_2 + part_func_on_sa;
         sumormax(&mut sum, score, is_viterbi);
@@ -2223,6 +2222,11 @@ where
   };
   let mut tmp_part_func_set_mat_4_2loop = PartFuncSetMat::<T>::default();
   let mut tmp_part_func_set_mat_4_2loop_decode = PartFuncSetMat::<T>::default();
+  let pos_pair_mat_set = if is_forward {
+    backward_pos_pair_mat_set
+  } else {
+    forward_pos_pair_mat_set
+  };
   for &u in iter.iter() {
     let long_u = u.to_usize().unwrap();
     let base = seq_pair.0[long_u];
@@ -2253,11 +2257,6 @@ where
       let mut sum_4_2loop = sum_on_sa;
       let mut tmp_sum = sum_on_sa;
       // For alignments.
-      let pos_pair_mat_set = if is_forward {
-        backward_pos_pair_mat_set
-      } else {
-        forward_pos_pair_mat_set
-      };
       match pos_pair_mat_set.get(&pos_pair) {
         Some(pos_pair_mat) => {
           for &(m, n) in pos_pair_mat {
@@ -2949,8 +2948,6 @@ where
             let base_pair_2 = (seq_pair.1[long_k], seq_pair.1[long_l]);
             let pos_pair = (i, j);
             let pos_pair_2 = (k, l);
-            let dict_min_base_pair = get_dict_min_base_pair(&base_pair);
-            let dict_min_base_pair_2 = get_dict_min_base_pair(&base_pair_2);
             let mismatch_pair = (seq_pair.0[long_j + 1], seq_pair.0[long_i - 1]);
             let mismatch_pair_2 = (seq_pair.1[long_l + 1], seq_pair.1[long_k - 1]);
             let prob_coeff = part_func_4_bpa - global_part_func;
@@ -3388,6 +3385,8 @@ where
               let bpap = prob_coeff + sum;
               if trains_score_params {
                 // Count base pairs.
+                let dict_min_base_pair = get_dict_min_base_pair(&base_pair);
+                let dict_min_base_pair_2 = get_dict_min_base_pair(&base_pair_2);
                 sumormax(&mut expected_feature_count_sets.base_pair_count_mat[dict_min_base_pair.0][dict_min_base_pair.1], bpap, is_viterbi);
                 sumormax(&mut expected_feature_count_sets.base_pair_count_mat[dict_min_base_pair_2.0][dict_min_base_pair_2.1], bpap, is_viterbi);
                 // Count a basepair alignment.
@@ -3668,25 +3667,24 @@ where
           if !(i < u && u < j) || !(k < v && v < l) {
             continue;
           }
-          let (long_i, long_j) = (i.to_usize().unwrap(), j.to_usize().unwrap());
-          let base_pair = (seq_pair.0[long_i], seq_pair.0[long_j]);
-          let hairpin_loop_score = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &(long_i, long_j));
-          let multi_loop_closing_basepairing_score = get_consprob_multi_loop_closing_basepairing_score(
-            feature_score_sets,
-            seq_pair.0,
-            &(long_i, long_j),
-          );
-          let (long_k, long_l) = (k.to_usize().unwrap(), l.to_usize().unwrap());
-          let base_pair_2 = (seq_pair.1[long_k], seq_pair.1[long_l]);
-          let hairpin_loop_score_2 = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.1, &(long_k, long_l));
-          let multi_loop_closing_basepairing_score_2 = get_consprob_multi_loop_closing_basepairing_score(
-            feature_score_sets,
-            seq_pair.1,
-            &(long_k, long_l),
-          );
           let pos_quadruple = (i, j, k, l);
           match sta_outside_part_func_4d_mat_4_bpas.get(&pos_quadruple) {
             Some(&part_func_4_bpa) => {
+              let (long_i, long_j, long_k, long_l) = (i.to_usize().unwrap(), j.to_usize().unwrap(), k.to_usize().unwrap(), l.to_usize().unwrap());
+              let base_pair = (seq_pair.0[long_i], seq_pair.0[long_j]);
+              let base_pair_2 = (seq_pair.1[long_k], seq_pair.1[long_l]);
+              let hairpin_loop_score = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &(long_i, long_j));
+              let hairpin_loop_score_2 = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.1, &(long_k, long_l));
+              let multi_loop_closing_basepairing_score = get_consprob_multi_loop_closing_basepairing_score(
+                feature_score_sets,
+                seq_pair.0,
+                &(long_i, long_j),
+              );
+              let multi_loop_closing_basepairing_score_2 = get_consprob_multi_loop_closing_basepairing_score(
+                feature_score_sets,
+                seq_pair.1,
+                &(long_k, long_l),
+              );
               let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair.0][base_pair.1][base_pair_2.0][base_pair_2.1];
               let prob_coeff = part_func_4_bpa - global_part_func + basepair_align_score;
               let ref forward_tmp_part_func_set_mat =
