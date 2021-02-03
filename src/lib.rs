@@ -1249,8 +1249,8 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       remove_gaps(&seq_pair.1),
       );
     let bpp_mat_pair = (
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.0[..], true).0, min_bpp),
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.1[..], true).0, min_bpp),
+      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.0[..], false).0, min_bpp),
+      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.1[..], false).0, min_bpp),
     );
     let seq_len_pair = (T::from_usize(seq_pair_without_gaps.0.len()).unwrap(), T::from_usize(seq_pair_without_gaps.1.len()).unwrap());
     let max_gap_num = offset_4_max_gap_num
@@ -1554,7 +1554,7 @@ pub const MIN_GAP_NUM_4_IL: usize = 2;
 pub const MAX_GAP_NUM_4_IL_TRAIN: usize = MAX_GAP_NUM_4_IL;
 pub const MIN_GAP_NUM_4_IL_TRAIN: usize = MIN_GAP_NUM_4_IL;
 pub const DEFAULT_MIN_BPP: Prob = 0.04;
-pub const DEFAULT_MIN_BPP_4_TRAIN: Prob = 0.005;
+pub const DEFAULT_MIN_BPP_4_TRAIN: Prob = 0.001;
 pub const DEFAULT_OFFSET_4_MAX_GAP_NUM: usize = 1;
 pub const DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN: usize = DEFAULT_OFFSET_4_MAX_GAP_NUM;
 pub const NUM_OF_BASES: usize = 4;
@@ -1564,7 +1564,7 @@ pub const CONSPROB_MIN_HAIRPIN_LOOP_LEN: usize = 3;
 pub const CONSPROB_MIN_HAIRPIN_LOOP_SPAN: usize = CONSPROB_MIN_HAIRPIN_LOOP_LEN + 2;
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_EXPLICIT: usize = 4;
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_SYMM: usize = CONSPROB_MAX_TWOLOOP_LEN / 2;
-pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM: usize = CONSPROB_MAX_TWOLOOP_LEN  - 2;
+pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM: usize = CONSPROB_MAX_TWOLOOP_LEN - 2;
 pub const GAMMA_DIST_ALPHA: FeatureCount = 0.;
 pub const GAMMA_DIST_BETA: FeatureCount = 1.;
 pub const BPP_MAT_FILE_NAME: &'static str = "bpp_mats.dat";
@@ -5339,7 +5339,7 @@ where
     )) {
       let seq_len = fasta_record.seq.len();
       scope.execute(move || {
-        *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], true).0;
+        *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false).0;
         *sparse_bpp_mat = remove_small_bpps_from_bpp_mat::<T>(bpp_mat, min_bpp);
         *max_bp_span = get_max_bp_span::<T>(sparse_bpp_mat);
       });
