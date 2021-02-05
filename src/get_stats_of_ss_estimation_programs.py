@@ -15,6 +15,7 @@ seaborn.set()
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
   num_of_threads = multiprocessing.cpu_count()
+  infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
   centroid_estimator_ppvs = []
   centroid_estimator_senss = []
   centroid_estimator_fprs = []
@@ -44,9 +45,12 @@ def main():
     for rna_fam_file in os.listdir(rna_fam_dir_path):
       if not rna_fam_file.endswith(".fa"):
         continue
+      (rna_fam_name, extension) = os.path.splitext(rna_fam_file)
+      infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_fam_name + "_infernal.dat")
+      if os.path.isfile(infernal_black_list_file_path):
+        continue
       rna_seq_file_path = os.path.join(rna_fam_dir_path, rna_fam_file)
       rna_seq_lens = [len(rna_seq.seq) for rna_seq in SeqIO.parse(rna_seq_file_path, "fasta")]
-      (rna_fam_name, extension) = os.path.splitext(rna_fam_file)
       ref_ss_file_path = os.path.join(rna_fam_dir_path, rna_fam_file)
       ref_sss_and_flat_sss = utils.get_sss_and_flat_sss(utils.get_ss_strings(ref_ss_file_path))
       centroid_estimator_estimated_ss_dir_path = os.path.join(centroid_estimator_ss_dir_path, rna_fam_name)

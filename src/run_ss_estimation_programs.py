@@ -58,18 +58,20 @@ def main():
     conshomfold_params_new_transfer_on.insert(0, conshomfold_command_new_transfer_on)
     conshomfold_params_new_transfer_on.insert(0, conshomfold_command_new_transfer_on)
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
-  begin = time.time()
-  pool.map(utils.run_command, centroid_estimator_params)
-  centroid_estimator_elapsed_time = time.time() - begin
-  begin = time.time()
-  pool.map(utils.run_command, conshomfold_params_old)
-  conshomfold_elapsed_time_old = time.time() - begin
+  if False:
+    begin = time.time()
+    pool.map(utils.run_command, centroid_estimator_params)
+    centroid_estimator_elapsed_time = time.time() - begin
+    begin = time.time()
+    pool.map(utils.run_command, conshomfold_params_old)
+    conshomfold_elapsed_time_old = time.time() - begin
   begin = time.time()
   pool.map(utils.run_command, conshomfold_params_new_transfer_on)
   conshomfold_elapsed_time_new_transfer_on = time.time() - begin
-  print("The elapsed time of centroid estimator = %f [s]." % centroid_estimator_elapsed_time)
-  print("The elapsed time of ConsHomfold (old) = %f [s]." % conshomfold_elapsed_time_old)
-  print("The elapsed time of ConsHomfold (new, transfer learning on) = %f [s]." % conshomfold_elapsed_time_new_transfer_on)
+  if False:
+    print("The elapsed time of centroid estimator = %f [s]." % centroid_estimator_elapsed_time)
+    print("The elapsed time of ConsHomfold (old) = %f [s]." % conshomfold_elapsed_time_old)
+    print("The elapsed time of ConsHomfold (new, transfer learning on) = %f [s]." % conshomfold_elapsed_time_new_transfer_on)
   shutil.rmtree(temp_dir_path)
 
 if __name__ == "__main__":

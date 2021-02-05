@@ -264,7 +264,7 @@ def main():
     if not os.path.isdir(ref_sa_plus_petfold_output_dir_path):
       os.mkdir(ref_sa_plus_petfold_output_dir_path)
     mafft_plus_consalifold_command = "consalifold_chimera -t " + str(sub_thread_num) + " -i " + rna_seq_file_path + " -a " + mafft_output_file_path + " -c " + mafft_plus_centroidalifold_bpp_mat_file_path + " -o " + mafft_plus_consalifold_output_dir_path
-    probcons_plus_consalifold_command = "consalifold_chimera -t " + str(sub_thread_num) + " -i " + rna_seq_file_path + " -a " + probcons_output_file_path + " -c " + probcons_plus_centroidalifold_bpp_mat_file_path + " -o " + probcons_plus_consalifold_output_dir_path
+    probcons_plus_consalifold_command = "consalifold_chimera --mix_weight 1 -t " + str(sub_thread_num) + " -i " + rna_seq_file_path + " -a " + probcons_output_file_path + " -c " + probcons_plus_centroidalifold_bpp_mat_file_path + " -o " + probcons_plus_consalifold_output_dir_path
     clustalw_plus_consalifold_command = "consalifold_chimera -t " + str(sub_thread_num) + " -i " + rna_seq_file_path + " -a " + clustalw_output_file_path + " -c " + clustalw_plus_centroidalifold_bpp_mat_file_path + " -o " + clustalw_plus_consalifold_output_dir_path
     mafft_xinsi_plus_consalifold_command = "consalifold_chimera -t " + str(sub_thread_num) + " -i " + rna_seq_file_path + " -a " + mafft_xinsi_output_file_path + " -c " + mafft_xinsi_plus_centroidalifold_bpp_mat_file_path + " -o " + mafft_xinsi_plus_consalifold_output_dir_path
     ref_sa_plus_consalifold_command = "consalifold_chimera -t " + str(sub_thread_num) + " -i " + rna_seq_file_path + " -a " + ref_sa_file_path + " -c " + ref_sa_plus_centroidalifold_bpp_mat_file_path + " -o " + ref_sa_plus_consalifold_output_dir_path
@@ -275,7 +275,7 @@ def main():
     ref_sa_plus_consalifold_params.insert(0, ref_sa_plus_consalifold_command)
     probcons_plus_consalifold_command = "consalifold_chimera -b -t " + str(sub_thread_num) + " -i " + rna_seq_file_path + " -a " + probcons_output_file_path + " -c " + probcons_plus_centroidalifold_bpp_mat_file_path + " -o " + probcons_plus_consalifold_output_dir_path
     consalifold_params_4_elapsed_time.insert(0, probcons_plus_consalifold_command)
-    trained_probcons_plus_consalifold_command = "consalifold_trained -t " + str(sub_thread_num) + " -i " + probcons_output_file_path + " -o " + trained_probcons_plus_consalifold_output_dir_path
+    trained_probcons_plus_consalifold_command = "consalifold_trained --mix_weight 1 -t " + str(sub_thread_num) + " -i " + probcons_output_file_path + " -o " + trained_probcons_plus_consalifold_output_dir_path
     trained_probcons_plus_consalifold_params.insert(0, trained_probcons_plus_consalifold_command)
     trained_probcons_plus_consalifold_command = "consalifold_trained -b -t " + str(sub_thread_num) + " -i " + probcons_output_file_path + " -o " + trained_probcons_plus_consalifold_output_dir_path
     trained_consalifold_params_4_elapsed_time.insert(0, trained_probcons_plus_consalifold_command)
@@ -327,7 +327,7 @@ def main():
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
   if False:
     pool.map(utils.run_command, mafft_plus_consalifold_params)
-    pool.map(utils.run_command, probcons_plus_consalifold_params)
+  pool.map(utils.run_command, probcons_plus_consalifold_params)
   pool.map(utils.run_command, trained_probcons_plus_consalifold_params)
   if False:
     pool.map(utils.run_command, clustalw_plus_consalifold_params)
