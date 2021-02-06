@@ -1062,8 +1062,7 @@ impl FeatureCountSets {
       let expect_count = expect.extending_gap_count;
       grad.extending_gap_count -= obs_count - expect_count;
     }
-    let regularizer_grad = self.get_regularizer_grad(regularizers);
-    convert_struct_2_vec(&grad, false) + ((regularizer_grad * feature_scores.clone() + regularizers.clone()) * feature_scores.clone() + regularizers.clone() * feature_scores) / 2.
+    convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
   }
 
   pub fn get_cost<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCount {
@@ -1554,7 +1553,7 @@ pub const MIN_GAP_NUM_4_IL: usize = 2;
 pub const MAX_GAP_NUM_4_IL_TRAIN: usize = MAX_GAP_NUM_4_IL;
 pub const MIN_GAP_NUM_4_IL_TRAIN: usize = MIN_GAP_NUM_4_IL;
 pub const DEFAULT_MIN_BPP: Prob = 0.04;
-pub const DEFAULT_MIN_BPP_4_TRAIN: Prob = 0.001;
+pub const DEFAULT_MIN_BPP_4_TRAIN: Prob = 0.005;
 pub const DEFAULT_OFFSET_4_MAX_GAP_NUM: usize = 1;
 pub const DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN: usize = DEFAULT_OFFSET_4_MAX_GAP_NUM;
 pub const NUM_OF_BASES: usize = 4;
@@ -5479,15 +5478,14 @@ where
     });
     feature_score_sets.update(&train_data, &mut regularizers);
     let cost = feature_score_sets.get_cost(&train_data[..], &regularizers);
-    if cost > old_cost {
+    if cost >= old_cost {
       feature_score_sets = old_feature_score_sets.clone();
       break;
     }
     costs.push(cost);
     old_feature_score_sets = feature_score_sets.clone();
     old_cost = cost;
-    print!("\rEpoch {} finished", count + 1);
-    stdout().flush().unwrap();
+    println!("Epoch {} finished (current cost = {})", count + 1, cost);
     count += 1;
   }
   write_feature_score_sets_trained(&feature_score_sets);

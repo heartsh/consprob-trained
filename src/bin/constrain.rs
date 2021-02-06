@@ -75,6 +75,7 @@ fn main() {
   } else {
     num_cpus::get() as NumOfThreads
   };
+  println!("# threads = {}", num_of_threads);
   let output_file_path = matches.opt_str("o").unwrap();
   let output_file_path = Path::new(&output_file_path);
   let entries: Vec<DirEntry> = read_dir(input_dir_path).unwrap().map(|x| x.unwrap()).collect();
