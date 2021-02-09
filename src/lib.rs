@@ -338,22 +338,27 @@ impl FeatureCountSets {
     offset += group_size;
     let len = self.stack_count_mat.len();
     let group_size = len.pow(4);
+    let effective_group_size = NUM_OF_BASEPAIRINGS * NUM_OF_BASEPAIRINGS;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         for k in 0 .. len {
           for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
             let count = self.stack_count_mat[i][j][k][l];
             squared_sum += count * count;
           }
         }
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         for k in 0 .. len {
           for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
             regularizers_tmp[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer;
           }
         }
@@ -362,9 +367,11 @@ impl FeatureCountSets {
     offset += group_size;
     let len = self.terminal_mismatch_count_mat.len();
     let group_size = len.pow(4);
+    let effective_group_size = NUM_OF_BASEPAIRINGS * len * len;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         for k in 0 .. len {
           for l in 0 .. len {
             let count = self.terminal_mismatch_count_mat[i][j][k][l];
@@ -373,9 +380,10 @@ impl FeatureCountSets {
         }
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         for k in 0 .. len {
           for l in 0 .. len {
             regularizers_tmp[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer;
@@ -386,18 +394,21 @@ impl FeatureCountSets {
     offset += group_size;
     let len = self.left_dangle_count_mat.len();
     let group_size = len.pow(3);
+    let effective_group_size = NUM_OF_BASEPAIRINGS * len;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         for k in 0 .. len {
           let count = self.left_dangle_count_mat[i][j][k];
           squared_sum += count * count;
         }
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         for k in 0 .. len {
           regularizers_tmp[offset + i * len.pow(2) + j * len + k] = regularizer;
         }
@@ -406,18 +417,21 @@ impl FeatureCountSets {
     offset += group_size;
     let len = self.right_dangle_count_mat.len();
     let group_size = len.pow(3);
+    let effective_group_size = NUM_OF_BASEPAIRINGS * len;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
-        for k in 0 .. NUM_OF_BASES {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
           let count = self.right_dangle_count_mat[i][j][k];
           squared_sum += count * count;
         }
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         for k in 0 .. len {
           regularizers_tmp[offset + i * len.pow(2) + j * len + k] = regularizer;
         }
@@ -426,32 +440,38 @@ impl FeatureCountSets {
     offset += group_size;
     let len = self.helix_end_count_mat.len();
     let group_size = len.pow(2);
+    let effective_group_size = NUM_OF_BASEPAIRINGS;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         let count = self.helix_end_count_mat[i][j];
         squared_sum += count * count;
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         regularizers_tmp[offset + i * len + j] = regularizer;
       }
     }
     offset += group_size;
     let len = self.base_pair_count_mat.len();
     let group_size = len.pow(2);
+    let effective_group_size = NUM_OF_BASEPAIRINGS;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         let count = self.base_pair_count_mat[i][j];
         squared_sum += count * count;
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         regularizers_tmp[offset + i * len + j] = regularizer;
       }
     }
@@ -517,22 +537,27 @@ impl FeatureCountSets {
     offset += 1;
     let len = self.basepair_align_count_mat.len();
     let group_size = len.pow(4);
+    let effective_group_size = NUM_OF_BASEPAIRINGS * NUM_OF_BASEPAIRINGS;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         for k in 0 .. len {
           for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
             let count = self.basepair_align_count_mat[i][j][k][l];
             squared_sum += count * count;
           }
         }
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
         for k in 0 .. len {
           for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
             regularizers_tmp[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer;
           }
         }
@@ -654,8 +679,10 @@ impl FeatureCountSets {
       }
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
+          if !is_canonical(&(i, j)) {continue;}
           for k in 0 .. NUM_OF_BASES {
             for l in 0 .. NUM_OF_BASES {
+              if !is_canonical(&(k, l)) {continue;}
               let dict_min_stack = get_dict_min_stack(&(i, j), &(k, l));
               let obs_count = obs.stack_count_mat[dict_min_stack.0.0][dict_min_stack.0.1][dict_min_stack.1.0][dict_min_stack.1.1];
               let expect_count = expect.stack_count_mat[dict_min_stack.0.0][dict_min_stack.0.1][dict_min_stack.1.0][dict_min_stack.1.1];
@@ -666,6 +693,7 @@ impl FeatureCountSets {
       }
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
+          if !is_canonical(&(i, j)) {continue;}
           for k in 0 .. NUM_OF_BASES {
             for l in 0 .. NUM_OF_BASES {
               let obs_count = obs.terminal_mismatch_count_mat[i][j][k][l];
@@ -677,6 +705,7 @@ impl FeatureCountSets {
       }
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
+          if !is_canonical(&(i, j)) {continue;}
           for k in 0 .. NUM_OF_BASES {
             let obs_count = obs.left_dangle_count_mat[i][j][k];
             let expect_count = expect.left_dangle_count_mat[i][j][k];
@@ -686,6 +715,7 @@ impl FeatureCountSets {
       }
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
+          if !is_canonical(&(i, j)) {continue;}
           for k in 0 .. NUM_OF_BASES {
             let obs_count = obs.right_dangle_count_mat[i][j][k];
             let expect_count = expect.right_dangle_count_mat[i][j][k];
@@ -695,6 +725,7 @@ impl FeatureCountSets {
       }
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
+          if !is_canonical(&(i, j)) {continue;}
           let obs_count = obs.helix_end_count_mat[i][j];
           let expect_count = expect.helix_end_count_mat[i][j];
           grad.helix_end_count_mat[i][j] -= obs_count - expect_count;
@@ -702,6 +733,7 @@ impl FeatureCountSets {
       }
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
+          if !is_canonical(&(i, j)) {continue;}
           let dict_min_base_pair = get_dict_min_base_pair(&(i, j));
           let obs_count = obs.base_pair_count_mat[dict_min_base_pair.0][dict_min_base_pair.1];
           let expect_count = expect.base_pair_count_mat[dict_min_base_pair.0][dict_min_base_pair.1];
@@ -747,8 +779,10 @@ impl FeatureCountSets {
       grad.external_loop_accessible_baseunpairing_count -= obs_count - expect_count;
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
+          if !is_canonical(&(i, j)) {continue;}
           for k in 0 .. NUM_OF_BASES {
             for l in 0 .. NUM_OF_BASES {
+              if !is_canonical(&(k, l)) {continue;}
               let dict_min_basepair_align = get_dict_min_basepair_align(&(i, j), &(k, l));
               let obs_count = obs.basepair_align_count_mat[dict_min_basepair_align.0.0][dict_min_basepair_align.0.1][dict_min_basepair_align.1.0][dict_min_basepair_align.1.1];
               let expect_count = expect.basepair_align_count_mat[dict_min_basepair_align.0.0][dict_min_basepair_align.0.1][dict_min_basepair_align.1.0][dict_min_basepair_align.1.1];
@@ -773,6 +807,7 @@ impl FeatureCountSets {
       grad.extending_gap_count -= obs_count - expect_count;
     }
     convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
+    // convert_struct_2_vec(&grad, false) + feature_scores
   }
 
   pub fn get_cost<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCount {
@@ -786,6 +821,7 @@ impl FeatureCountSets {
     let feature_scores = convert_struct_2_vec(self, false);
     let product = regularizers.clone() * feature_scores.clone();
     - log_likelihood + product.dot(&feature_scores) / 2.
+    // - log_likelihood + feature_scores.dot(&feature_scores) / 2.
   }
 }
 
@@ -1045,8 +1081,10 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
         let pos = stack.pop().unwrap();
         let base_pair_1 = (seq_pair.0[pos], seq_pair.0[i]);
         if base_pair_1.0 == PSEUDO_BASE || base_pair_1.1 == PSEUDO_BASE {continue;}
+        if !is_canonical(&base_pair_1) {continue;}
         let base_pair_2 = (seq_pair.1[pos], seq_pair.1[i]);
         if base_pair_2.0 == PSEUDO_BASE || base_pair_2.1 == PSEUDO_BASE {continue;}
+        if !is_canonical(&base_pair_2) {continue;}
         cons_second_struct.insert((pos, i));
         let dict_min_base_pair_1 = get_dict_min_base_pair(&base_pair_1);
         self.observed_feature_count_sets.base_pair_count_mat[dict_min_base_pair_1.0][dict_min_base_pair_1.1] += 1.;
@@ -1267,6 +1305,7 @@ pub const DEFAULT_MIN_BPP_4_TRAIN: Prob = 0.005;
 pub const DEFAULT_OFFSET_4_MAX_GAP_NUM: usize = 1;
 pub const DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN: usize = DEFAULT_OFFSET_4_MAX_GAP_NUM;
 pub const NUM_OF_BASES: usize = 4;
+pub const NUM_OF_BASEPAIRINGS: usize = 6;
 pub const CONSPROB_MAX_HAIRPIN_LOOP_LEN: usize = 30;
 pub const CONSPROB_MAX_TWOLOOP_LEN: usize = CONSPROB_MAX_HAIRPIN_LOOP_LEN;
 pub const CONSPROB_MIN_HAIRPIN_LOOP_LEN: usize = 3;
