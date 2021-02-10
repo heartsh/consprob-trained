@@ -807,7 +807,6 @@ impl FeatureCountSets {
       grad.extending_gap_count -= obs_count - expect_count;
     }
     convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
-    // convert_struct_2_vec(&grad, false) + feature_scores
   }
 
   pub fn get_cost<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCount {
@@ -821,7 +820,6 @@ impl FeatureCountSets {
     let feature_scores = convert_struct_2_vec(self, false);
     let product = regularizers.clone() * feature_scores.clone();
     - log_likelihood + product.dot(&feature_scores) / 2.
-    // - log_likelihood + feature_scores.dot(&feature_scores) / 2.
   }
 }
 
