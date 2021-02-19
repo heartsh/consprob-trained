@@ -1,6 +1,6 @@
-#!/bin/sh
-#$ -S /bin/sh
-#$ -l epyc -l s_vmem=64G -l mem_req=64G
+#!/bin/zsh
+#$ -S /bin/zsh
+#$ -l epyc -l s_vmem=32G -l mem_req=32G
 #$ -N run_constrain
 #$ -V
 #$ -b y
