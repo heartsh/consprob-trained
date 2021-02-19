@@ -17,12 +17,12 @@ from random import shuffle
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
-  train_data_dir_path = asset_dir_path + "/train_data_4_ss_train"
+  train_data_dir_path = asset_dir_path + "/train_data"
   train_data_file_paths = [os.path.join(train_data_dir_path, file) for file in os.listdir(train_data_dir_path) if file.endswith(".fa")]
-  contrafold_command = "contrafold train "
+  raf_command = "raf train "
   for train_data_file_path in train_data_file_paths:
-    contrafold_command += " " + train_data_file_path
-  utils.run_command(contrafold_command)
+    raf_command += " " + train_data_file_path
+  utils.run_command(raf_command)
 
 if __name__ == "__main__":
   main()
