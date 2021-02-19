@@ -5009,7 +5009,7 @@ where
     });
     feature_score_sets.update(&train_data, &mut regularizers);
     let cost = feature_score_sets.get_cost(&train_data[..], &regularizers);
-    if old_cost.is_finite() && (cost - old_cost) / num_of_data <= LEARNING_TOLERANCE {
+    if old_cost.is_finite() && (old_cost - cost) / num_of_data <= LEARNING_TOLERANCE {
       feature_score_sets = old_feature_score_sets.clone();
       break;
     }
