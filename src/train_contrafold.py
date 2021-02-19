@@ -24,27 +24,5 @@ def main():
     contrafold_command += " " + train_data_file_path
   utils.run_command(contrafold_command)
 
-def recover_ss(css, seq_with_gaps):
-  pos_map = {}
-  pos = 0
-  for (i, char) in enumerate(seq_with_gaps):
-    if char != "-":
-      pos_map[i] = pos
-      pos += 1
-  recovered_ss = "." * pos
-  stack = []
-  for (i, char) in enumerate(css):
-    if char == "(":
-      stack.append(i)
-    elif char == ")":
-      j = stack.pop()
-      if seq_with_gaps[j] == "-" or seq_with_gaps[i] == "-":
-        continue
-      mapped_j = pos_map[j]
-      mapped_i = pos_map[i]
-      recovered_ss = recovered_ss[: mapped_j] + "(" + recovered_ss[mapped_j + 1 :]
-      recovered_ss = recovered_ss[: mapped_i] + ")" + recovered_ss[mapped_i + 1 :]
-  return recovered_ss
-
 if __name__ == "__main__":
   main()
