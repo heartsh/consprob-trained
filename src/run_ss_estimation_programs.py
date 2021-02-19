@@ -21,13 +21,13 @@ def main():
   if not os.path.isdir(temp_dir_path):
     os.mkdir(temp_dir_path)
   conshomfold_params = []
-  # conshomfold_params_trained = []
+  conshomfold_params_trained = []
   centroidhomfold_params = []
   rnafold_params = []
   contrafold_params = []
   centroidfold_params = []
   conshomfold_dir_path = asset_dir_path + "/conshomfold"
-  # conshomfold_dir_path_trained = asset_dir_path + "/conshomfold_trained"
+  conshomfold_dir_path_trained = asset_dir_path + "/conshomfold_trained"
   centroidhomfold_dir_path = asset_dir_path + "/centroidhomfold"
   rnafold_dir_path = asset_dir_path + "/rnafold"
   contrafold_dir_path = asset_dir_path + "/contrafold"
@@ -35,8 +35,8 @@ def main():
   infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
   if not os.path.isdir(conshomfold_dir_path):
     os.mkdir(conshomfold_dir_path)
-  # if not os.path.isdir(conshomfold_dir_path_trained):
-  #   os.mkdir(conshomfold_dir_path_trained)
+  if not os.path.isdir(conshomfold_dir_path_trained):
+    os.mkdir(conshomfold_dir_path_trained)
   if not os.path.isdir(centroidhomfold_dir_path):
     os.mkdir(centroidhomfold_dir_path)
   if not os.path.isdir(rnafold_dir_path):
@@ -53,19 +53,19 @@ def main():
     rna_file_path = os.path.join(rna_dir_path, rna_file)
     (rna_family_name, extension) = os.path.splitext(rna_file)
     conshomfold_output_dir_path = os.path.join(conshomfold_dir_path, rna_family_name)
-    # conshomfold_output_dir_path_trained = os.path.join(conshomfold_dir_path_trained, rna_family_name)
+    conshomfold_output_dir_path_trained = os.path.join(conshomfold_dir_path_trained, rna_family_name)
     centroidhomfold_output_dir_path = os.path.join(centroidhomfold_dir_path, rna_family_name)
-    # rnafold_output_dir_path = os.path.join(rnafold_dir_path, rna_family_name)
     rnafold_output_file_path = os.path.join(rnafold_dir_path, rna_family_name + ".fa")
     contrafold_output_dir_path = os.path.join(contrafold_dir_path, rna_family_name)
     centroidfold_output_dir_path = os.path.join(centroidfold_dir_path, rna_family_name)
     infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_family_name + "_infernal.dat")
     if os.path.isfile(infernal_black_list_file_path):
       continue
+<<<<<<< HEAD
     if not os.path.isdir(conshomfold_output_dir_path):
       os.mkdir(conshomfold_output_dir_path)
-    # if not os.path.isdir(conshomfold_output_dir_path_trained):
-    #   os.mkdir(conshomfold_output_dir_path_trained)
+    if not os.path.isdir(conshomfold_output_dir_path_trained):
+      os.mkdir(conshomfold_output_dir_path_trained)
     if not os.path.isdir(centroidhomfold_output_dir_path):
       os.mkdir(centroidhomfold_output_dir_path)
     if not os.path.isdir(contrafold_output_dir_path):
@@ -74,8 +74,8 @@ def main():
       os.mkdir(centroidfold_output_dir_path)
     conshomfold_command = "conshomfold -t " + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path
     conshomfold_params.insert(0, conshomfold_command)
-    # conshomfold_command_trained = "conshomfold_trained -t " + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path_trained
-    # conshomfold_params_trained.insert(0, conshomfold_command_trained)
+    conshomfold_command_trained = "conshomfold_trained -t " + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path_trained
+    conshomfold_params_trained.insert(0, conshomfold_command_trained)
     rnafold_params.insert(0, (rna_file_path, rnafold_output_file_path))
     for gamma in gammas:
       gamma_str = str(gamma) if gamma < 1 else str(int(gamma))
@@ -86,12 +86,12 @@ def main():
       contrafold_params.insert(0, (rna_file_path, contrafold_output_file_path, gamma_str, temp_dir_path))
       centroidfold_output_file_path = os.path.join(centroidfold_output_dir_path, output_file)
       centroidfold_params.insert(0, (rna_file_path, centroidfold_output_file_path, gamma_str))
-  # pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
-  # pool.map(utils.run_command, conshomfold_params)
-  # pool.map(utils.run_command, conshomfold_params_trained)
+  pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
+  pool.map(utils.run_command, conshomfold_params)
+  pool.map(utils.run_command, conshomfold_params_trained)
   pool = multiprocessing.Pool(num_of_threads)
-  # pool.map(run_centroidhomfold, centroidhomfold_params)
-  # pool.map(run_rnafold, rnafold_params)
+  pool.map(run_centroidhomfold, centroidhomfold_params)
+  pool.map(run_rnafold, rnafold_params)
   pool.map(run_contrafold, contrafold_params)
   pool.map(run_centroidfold, centroidfold_params)
   shutil.rmtree(temp_dir_path)

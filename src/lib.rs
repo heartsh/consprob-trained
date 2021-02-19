@@ -1313,6 +1313,7 @@ pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_SYMM: usize = CONSPROB_MAX_TWOLOOP_LEN 
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM: usize = CONSPROB_MAX_TWOLOOP_LEN - 2;
 pub const GAMMA_DIST_ALPHA: FeatureCount = 0.;
 pub const GAMMA_DIST_BETA: FeatureCount = 1.;
+pub const LEARNING_TOLERANCE: FeatureCount = 0.01;
 pub const BPP_MAT_FILE_NAME: &'static str = "bpp_mats.dat";
 pub const MAX_BPP_MAT_FILE_NAME: &'static str = "max_bpp_mats.dat";
 pub const ACCESS_BPP_MAT_ON_2L_FILE_NAME: &'static str = "access_bpp_mats_on_2l.dat";
@@ -4968,6 +4969,7 @@ where
   let mut costs = Probs::new();
   let mut count = 0;
   let mut regularizers = Regularizers::from_vec(vec![1.; feature_score_sets.get_len()]);
+  let num_of_data = train_data.len() as FeatureCount;
   loop {
     let ref ref_2_feature_score_sets = feature_score_sets;
     thread_pool.scoped(|scope| {
@@ -5007,7 +5009,7 @@ where
     });
     feature_score_sets.update(&train_data, &mut regularizers);
     let cost = feature_score_sets.get_cost(&train_data[..], &regularizers);
-    if cost >= old_cost {
+    if old_cost.is_finite() && (old_cost - cost) / num_of_data <= LEARNING_TOLERANCE {
       feature_score_sets = old_feature_score_sets.clone();
       break;
     }

@@ -35,7 +35,7 @@ def main():
   max_sa_len = 500
   max_seq_num = 20
   stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) <= max_seq_num and is_valid(sta)]
-  stas = [sta for sta in stas if any(c in str(sta.column_annotations["secondary_structure"]) for c in ["(", "<", "[", "{"])]
+  # stas = [sta for sta in stas if any(c in str(sta.column_annotations["secondary_structure"]) for c in ["(", "<", "[", "{"])]
   num_of_stas = len(stas)
   print("# RNA families: %d" % num_of_stas)
   shuffle(stas)
@@ -43,7 +43,7 @@ def main():
   test_data_num = num_of_stas - train_data_num
   train_data, test_data = train_test_split(stas, test_size = 0.5);
   for (i, train_datum) in enumerate(train_data):
-    cons_second_struct = convert_css(train_datum.column_annotations["secondary_structure"])
+    cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
     sampled_indexes = numpy.random.choice(range(0, len(train_datum)), 2, replace = False)
     seq_1 = train_datum[int(sampled_indexes[0])].seq
     seq_2 = train_datum[int(sampled_indexes[1])].seq
@@ -74,6 +74,17 @@ def is_valid(sta):
     if any(char in str(row.seq) for char in "RYWSMKHBVDN"):
       return False
   return True
+
+def convert_css_without_pseudoknots(css):
+  converted_css = ""
+  for char in css:
+    if char == "(" or char == "<" or char == "[" or char == "{":
+      converted_css += "("
+    elif char == ")" or char == ">" or char == "]" or char == "}":
+      converted_css += ")"
+    else:
+      converted_css += "."
+  return converted_css
 
 def convert_css(css):
   converted_css = ""

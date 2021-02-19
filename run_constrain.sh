@@ -1,5 +1,5 @@
-#!/bin/sh
-#$ -S /bin/sh
+#!/bin/zsh
+#$ -S /bin/zsh
 #$ -l epyc -l s_vmem=32G -l mem_req=32G
 #$ -N run_constrain
 #$ -V
@@ -11,4 +11,4 @@
 #$ -M heartsh@heartsh.io
 #$ -cwd
 
-constrain -i assets/train_data -o assets/costs.dat
+time constrain -i assets/train_data -o assets/costs.dat
