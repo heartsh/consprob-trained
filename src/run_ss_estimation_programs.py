@@ -61,7 +61,6 @@ def main():
     infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_family_name + "_infernal.dat")
     if os.path.isfile(infernal_black_list_file_path):
       continue
-<<<<<<< HEAD
     if not os.path.isdir(conshomfold_output_dir_path):
       os.mkdir(conshomfold_output_dir_path)
     if not os.path.isdir(conshomfold_output_dir_path_trained):
@@ -74,7 +73,7 @@ def main():
       os.mkdir(centroidfold_output_dir_path)
     conshomfold_command = "conshomfold -t " + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path
     conshomfold_params.insert(0, conshomfold_command)
-    conshomfold_command_trained = "conshomfold_trained -t " + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path_trained
+    conshomfold_command_trained = "conshomfold-trained -t " + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path_trained
     conshomfold_params_trained.insert(0, conshomfold_command_trained)
     rnafold_params.insert(0, (rna_file_path, rnafold_output_file_path))
     for gamma in gammas:
@@ -110,7 +109,7 @@ def run_rnafold(rnafold_params):
 
 def run_centroidfold(centroidfold_params):
   (rna_file_path, centroidfold_output_file_path, gamma_str) = centroidfold_params
-  centroidfold_command = "centroid_fold --engine CONTRAfold " + rna_file_path + " -g " + gamma_str
+  centroidfold_command = "centroid_fold --engine CONTRAfold --params ../assets/contrafold_optimize.params.final " + rna_file_path + " -g " + gamma_str
   (output, _, _) = utils.run_command(centroidfold_command)
   lines = [line.split()[0] for (i, line) in enumerate(str(output).split("\\n")) if i % 3 == 2]
   centroidfold_output_file = open(centroidfold_output_file_path, "w+")
@@ -148,7 +147,7 @@ def run_centroidhomfold(centroidhomfold_params):
     SeqIO.write([rec], open(seq_file_path, "w"), "fasta")
     hom_recs = [rec for (j, rec) in enumerate(recs) if j != i]
     SeqIO.write(recs, open(hom_seq_file_path, "w"), "fasta")
-    centroidhomfold_command = "centroid_homfold " + seq_file_path + " -H " + hom_seq_file_path + " -g " + gamma_str
+    centroidhomfold_command = "centroid_homfold --engine_s CONTRAfold --params ../assets/contrafold_optimize.params.final " + seq_file_path + " -H " + hom_seq_file_path + " -g " + gamma_str
     (output, _, _) = utils.run_command(centroidhomfold_command)
     centroidhomfold_output_buf += ">%d\n%s\n\n" % (i, str(output).split("\\n")[2].split()[0])
   centroidhomfold_output_file.write(centroidhomfold_output_buf)
