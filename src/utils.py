@@ -6,6 +6,8 @@ from statistics import mode
 import numpy
 from Bio import SeqIO
 
+bracket_pairs = [("(", ")"), ("<", ">"), ("{", "}"), ("[", "]"), ("A", "a"), ("B", "b"), ("C", "c"), ("D", "d"), ("E", "e"), ]
+
 def get_dir_paths():
   current_work_dir_path = os.getcwd()
   (head, tail) = os.path.split(current_work_dir_path)
@@ -69,100 +71,39 @@ def run_command(command):
   returned_code = subproc.wait()
   return (output, error, returned_code)
 
-def get_avg_bpp_mat(bpp_mat_file_path, seq_lens, pos_map_sets, sta):
-  sta_len = len(sta[0])
-  bpp_mats = get_bpp_mats(bpp_mat_file_path, seq_lens)
-  avg_bpp_mat = numpy.zeros((sta_len, sta_len))
-  for i in range(sta_len):
-    for j in range(i + 1, sta_len):
-      avg_bpp = 0.
-      effect_num_of_rnas = 0
-      for k, pos_maps in enumerate(pos_map_sets):
-        if sta[k][i] == "-" or sta[k][j] == "-":
-          continue
-        effect_num_of_rnas += 1
-        bpp_mat = bpp_mats[k]
-        pos_pair = (pos_maps[i], pos_maps[j])
-        avg_bpp += bpp_mat[pos_pair]
-      if effect_num_of_rnas > 0:
-        avg_bpp /= effect_num_of_rnas
-      avg_bpp_mat[i, j] = avg_bpp
-  return avg_bpp_mat
+def get_sss(ss_file_path):
+  sss = []
+  if ss_file_path.endswith(".fa"):
+    ss_strings = []
+    ss_strings = [rec.seq for rec in SeqIO.parse(ss_file_path, "fasta")]
+    sss = []
+    for (i, ss_string) in enumerate(ss_strings):
+      sss.append({})
+      for (left, right) in bracket_pairs:
+        stack = []
+        for (j, char) in enumerate(ss_string):
+          if char == left:
+            stack.append(j)
+          elif char == right:
+            pos = stack.pop()
+            sss[i][(pos, j)] = True
+  else:
+    sss = read_bpseq_file(ss_file_path)
+  return sss
 
-def get_avg_upp_mat(upp_mat_file_path, seq_lens, pos_map_sets, sta):
-  sta_len = len(sta[0])
-  upp_mats = get_upp_mats(upp_mat_file_path, seq_lens)
-  avg_upp_mat = numpy.zeros(sta_len)
-  for i in range(sta_len):
-    avg_upp = 0.
-    effect_num_of_rnas = 0
-    for k, pos_maps in enumerate(pos_map_sets):
-      if sta[k][i] == "-":
+def read_bpseq_file(ss_file_path):
+  sss = []
+  idx = 0
+  with open(ss_file_path) as ss_file:
+    for line in ss_file.readlines():
+      line = line.strip()
+      if len(line) == 0 or line.startswith("#") or "accuracy=" in line:
         continue
-      effect_num_of_rnas += 1
-      upp_mat = upp_mats[k]
-      pos = pos_maps[i]
-      avg_upp += upp_mat[pos]
-    if effect_num_of_rnas > 0:
-      avg_upp /= effect_num_of_rnas
-    avg_upp_mat[i] = avg_upp
-  return avg_upp_mat
-
-def get_bpp_mats(bpp_mat_file_path, seq_lens):
-  bpp_mats = {}
-  bpp_mat_file = open(bpp_mat_file_path)
-  lines = bpp_mat_file.readlines()
-  lines = [line for line in lines if line[0].isdigit() or line[0].startswith(">")]
-  num_of_lines = len(lines)
-  for i in range(0, num_of_lines - 1, 2):
-    rna_id = int(lines[i][1 :])
-    seq_len = seq_lens[rna_id]
-    bpp_mat = numpy.zeros((seq_len, seq_len))
-    for string in lines[i + 1].strip().split(" "):
-      substrings = string.split(",")
-      (j, k, bpp) = (int(substrings[0]), int(substrings[1]), min(1, float(substrings[2])))
-      bpp_mat[j, k] = bpp
-    bpp_mats[rna_id] = bpp_mat
-  return bpp_mats
-
-def get_upp_mats(upp_mat_file_path, seq_lens):
-  upp_mats = {}
-  upp_mat_file = open(upp_mat_file_path)
-  lines = upp_mat_file.readlines()
-  lines = [line for line in lines if line[0].isdigit() or line[0].startswith(">")]
-  num_of_lines = len(lines)
-  for i in range(0, num_of_lines - 1, 2):
-    rna_id = int(lines[i][1 :])
-    seq_len = seq_lens[rna_id]
-    upp_mat = numpy.zeros(seq_len)
-    for string in lines[i + 1].strip().split(" "):
-      substrings = string.split(",")
-      (j, upp) = (int(substrings[0]), min(1, float(substrings[1])))
-      upp_mat[j] = upp
-    upp_mats[rna_id] = upp_mat
-  return upp_mats
-
-def get_ss_and_flat_ss(ss_string):
-  ss = {}
-  flat_ss = {}
-  stack = []
-  for (i, char) in enumerate(ss_string):
-    if char == "(":
-      stack.append(i)
-    elif char == ")":
-      pos = stack.pop()
-      ss[(pos, i)] = True
-      flat_ss[pos] = True
-      flat_ss[i] = True
-  return ss, flat_ss
-
-def get_ss_strings(ss_file_path):
-  ss_strings = [filter(rec.seq) for rec in SeqIO.parse(ss_file_path, "fasta")]
-  return ss_strings
-
-def filter(seq):
-  new_seq = str(seq).replace("A", "").replace("C", "").replace("G", "").replace("U", "")
-  return new_seq
-
-def get_sss_and_flat_sss(ss_strings):
-  return list(map(get_ss_and_flat_ss, ss_strings))
+      if line.startswith("1 "):
+        sss.append({})
+        if idx > 0:
+          idx += 1
+      splits = line.split()
+      (left_partner, right_partner) = (int(splits[0]), int(splits[2]))
+      sss[idx][(left_partner - 1, right_partner - 1)] = True
+  return sss
