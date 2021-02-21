@@ -101,9 +101,10 @@ def read_bpseq_file(ss_file_path):
         continue
       if line.startswith("1 "):
         sss.append({})
-        if idx > 0:
-          idx += 1
+        idx += 1
       splits = line.split()
       (left_partner, right_partner) = (int(splits[0]), int(splits[2]))
-      sss[idx][(left_partner - 1, right_partner - 1)] = True
+      if right_partner == 0:
+        continue
+      sss[idx - 1][(left_partner - 1, right_partner - 1)] = True
   return sss
