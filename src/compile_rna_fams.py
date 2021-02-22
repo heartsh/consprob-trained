@@ -37,7 +37,6 @@ def main():
   stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) >= min_seq_num and is_valid(sta)]
   struct_srcs = get_struct_srcs(rfam_seed_sta_file_path)
   stas = [sta for (i, sta) in enumerate(stas) if not struct_srcs[i]]
-  rfam_pdb_info_file_path = asset_dir_path + "/rfam_pdb_info_v14.3.sth"
   num_of_stas = len(stas)
   print("# RNA families: %d" % num_of_stas)
   train_data_num = int(0.5 * num_of_stas)
@@ -58,8 +57,8 @@ def main():
   for i, test_datum in enumerate(test_data):
     align_len = len(test_datum)
     indexes = [j for j in range(0, align_len)]
-    sampled_indexes = numpy.random.choice(indexes, min_seq_num, replace = False)
-    recs = [test_datum[j] for j in indexes]
+    sampled_indexes = numpy.random.choice(indexes, min_seq_num, replace = False).tolist()
+    recs = [test_datum[j] for j in sampled_indexes]
     sampled_sta = AlignIO.MultipleSeqAlignment(recs)
     css = convert_css(test_datum.column_annotations["secondary_structure"])
     sampled_sta.column_annotations["secondary_structure"] = css
