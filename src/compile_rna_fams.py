@@ -33,9 +33,8 @@ def main():
   if not os.path.isdir(test_ref_sa_dir_path):
     os.mkdir(test_ref_sa_dir_path)
   max_sa_len = 500
-  max_seq_num = 20
-  stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) <= max_seq_num and is_valid(sta)]
-  # stas = [sta for sta in stas if any(c in str(sta.column_annotations["secondary_structure"]) for c in ["(", "<", "[", "{"])]
+  min_seq_num = 10
+  stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) >= min_seq_num and is_valid(sta)]
   num_of_stas = len(stas)
   print("# RNA families: %d" % num_of_stas)
   shuffle(stas)
@@ -44,26 +43,31 @@ def main():
   train_data, test_data = train_test_split(stas, test_size = 0.5);
   for (i, train_datum) in enumerate(train_data):
     cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
-    sampled_indexes = numpy.random.choice(range(0, len(train_datum)), 2, replace = False)
-    seq_1 = train_datum[int(sampled_indexes[0])].seq
-    seq_2 = train_datum[int(sampled_indexes[1])].seq
-    train_datum_file_path = os.path.join(train_data_dir_path, "train_datum_%d.fa" % i)
-    train_datum_file = open(train_datum_file_path, "w")
-    train_datum_file.write(">seq_1\n%s\n\n>seq_2\n%s\n\n>cons_second_struct\n%s" % (seq_1, seq_2, cons_second_struct))
+    align_len = len(train_datum)
+    indexes = [j for j in range(0, align_len)]
+    sampled_indexes = numpy.random.choice(indexes, min_seq_num, replace = False).tolist()
+    sampled_index_pairs = [(idx_1, idx_2) for (j, idx_1) in enumerate(sampled_indexes) for idx_2 in sampled_indexes[j + 1:]]
+    for (j, sampled_index_pair) in enumerate(sampled_index_pairs):
+      seq_1 = train_datum[int(sampled_index_pair[0])].seq
+      seq_2 = train_datum[int(sampled_index_pair[1])].seq
+      train_datum_file_path = os.path.join(train_data_dir_path, "train_datum_%d_%d.fa" % (i, j))
+      train_datum_file = open(train_datum_file_path, "w")
+      train_datum_file.write(">seq_1\n%s\n\n>seq_2\n%s\n\n>cons_second_struct\n%s" % (seq_1, seq_2, cons_second_struct))
   for i, test_datum in enumerate(test_data):
+    align_len = len(test_datum)
+    indexes = [j for j in range(0, align_len)]
+    sampled_indexes = numpy.random.choice(indexes, min_seq_num, replace = False)
+    recs = [test_datum[j] for j in indexes]
+    sampled_sta = AlignIO.MultipleSeqAlignment(recs)
+    css = convert_css(test_datum.column_annotations["secondary_structure"])
+    sampled_sta.column_annotations["secondary_structure"] = css
     sa_file_path = os.path.join(test_ref_sa_dir_path, "rna_fam_%d.sth" % i)
-    AlignIO.write(test_datum, sa_file_path, "stockholm")
-    sa_file_path = os.path.join(test_ref_sa_dir_path, "rna_fam_%d.fa" % i)
-    AlignIO.write(test_datum, sa_file_path, "fasta")
-    sa_file_path = os.path.join(test_ref_sa_dir_path, "rna_fam_%d.aln" % i)
-    AlignIO.write(test_datum, sa_file_path, "clustal")
+    AlignIO.write(sampled_sta, sa_file_path, "stockholm")
     test_datum_file_path = os.path.join(test_data_dir_path, "rna_fam_%d.fa" % i)
     ref_ss_file_path = os.path.join(test_ref_ss_dir_path, "rna_fam_%d.fa" % i)
     test_datum_file = open(test_datum_file_path, "w")
     ref_ss_file = open(ref_ss_file_path, "w")
-    css = convert_css(test_datum.column_annotations["secondary_structure"])
-    test_datum.column_annotations["secondary_structure"] = css
-    for j, rec in enumerate(test_datum):
+    for j, rec in enumerate(sampled_sta):
       seq_with_gaps = str(rec.seq)
       test_datum_file.write(">%d(%s)\n%s\n" % (j, rec.id, seq_with_gaps.replace("-", "")))
       recovered_ss = recover_ss(css, seq_with_gaps)
