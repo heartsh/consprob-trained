@@ -21,22 +21,20 @@ def main():
   if not os.path.isdir(temp_dir_path):
     os.mkdir(temp_dir_path)
   conshomfold_params = []
-  conshomfold_params_trained = []
   centroidhomfold_params = []
   rnafold_params = []
   contrafold_params = []
   centroidfold_params = []
+  mxfold_params = []
   conshomfold_dir_path = asset_dir_path + "/conshomfold"
-  conshomfold_dir_path_trained = asset_dir_path + "/conshomfold_trained"
   centroidhomfold_dir_path = asset_dir_path + "/centroidhomfold"
   rnafold_dir_path = asset_dir_path + "/rnafold"
   contrafold_dir_path = asset_dir_path + "/contrafold"
   centroidfold_dir_path = asset_dir_path + "/centroidfold"
+  mxfold_dir_path = asset_dir_path + "/mxfold"
   infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
   if not os.path.isdir(conshomfold_dir_path):
     os.mkdir(conshomfold_dir_path)
-  if not os.path.isdir(conshomfold_dir_path_trained):
-    os.mkdir(conshomfold_dir_path_trained)
   if not os.path.isdir(centroidhomfold_dir_path):
     os.mkdir(centroidhomfold_dir_path)
   if not os.path.isdir(rnafold_dir_path):
@@ -45,6 +43,8 @@ def main():
     os.mkdir(contrafold_dir_path)
   if not os.path.isdir(centroidfold_dir_path):
     os.mkdir(centroidfold_dir_path)
+  if not os.path.isdir(mxfold_dir_path):
+    os.mkdir(mxfold_dir_path)
   rna_dir_path = asset_dir_path + "/test_data"
   sub_thread_num = 4
   for rna_file in os.listdir(rna_dir_path):
@@ -53,18 +53,16 @@ def main():
     rna_file_path = os.path.join(rna_dir_path, rna_file)
     (rna_family_name, extension) = os.path.splitext(rna_file)
     conshomfold_output_dir_path = os.path.join(conshomfold_dir_path, rna_family_name)
-    conshomfold_output_dir_path_trained = os.path.join(conshomfold_dir_path_trained, rna_family_name)
     centroidhomfold_output_dir_path = os.path.join(centroidhomfold_dir_path, rna_family_name)
     rnafold_output_file_path = os.path.join(rnafold_dir_path, rna_family_name + ".fa")
     contrafold_output_dir_path = os.path.join(contrafold_dir_path, rna_family_name)
     centroidfold_output_dir_path = os.path.join(centroidfold_dir_path, rna_family_name)
+    mxfold_output_file_path = os.path.join(mxfold_dir_path, rna_family_name + ".fa")
     infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_family_name + "_infernal.dat")
     if os.path.isfile(infernal_black_list_file_path):
       continue
     if not os.path.isdir(conshomfold_output_dir_path):
       os.mkdir(conshomfold_output_dir_path)
-    if not os.path.isdir(conshomfold_output_dir_path_trained):
-      os.mkdir(conshomfold_output_dir_path_trained)
     if not os.path.isdir(centroidhomfold_output_dir_path):
       os.mkdir(centroidhomfold_output_dir_path)
     if not os.path.isdir(contrafold_output_dir_path):
@@ -73,9 +71,8 @@ def main():
       os.mkdir(centroidfold_output_dir_path)
     conshomfold_command = "conshomfold -t " + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path
     conshomfold_params.insert(0, conshomfold_command)
-    conshomfold_command_trained = "conshomfold-trained -t " + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path_trained
-    conshomfold_params_trained.insert(0, conshomfold_command_trained)
     rnafold_params.insert(0, (rna_file_path, rnafold_output_file_path))
+    mxfold_params.insert(0, (rna_file_path, mxfold_output_file_path))
     for gamma in gammas:
       gamma_str = str(gamma) if gamma < 1 else str(int(gamma))
       output_file = "gamma=" + gamma_str + ".fa"
@@ -87,12 +84,12 @@ def main():
       centroidfold_params.insert(0, (rna_file_path, centroidfold_output_file_path, gamma_str))
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
   pool.map(utils.run_command, conshomfold_params)
-  pool.map(utils.run_command, conshomfold_params_trained)
   pool = multiprocessing.Pool(num_of_threads)
   pool.map(run_centroidhomfold, centroidhomfold_params)
   pool.map(run_rnafold, rnafold_params)
   pool.map(run_contrafold, contrafold_params)
   pool.map(run_centroidfold, centroidfold_params)
+  pool.map(run_mxfold, mxfold_params)
   shutil.rmtree(temp_dir_path)
 
 def run_rnafold(rnafold_params):
@@ -109,7 +106,7 @@ def run_rnafold(rnafold_params):
 
 def run_centroidfold(centroidfold_params):
   (rna_file_path, centroidfold_output_file_path, gamma_str) = centroidfold_params
-  centroidfold_command = "centroid_fold --engine CONTRAfold --params ../assets/contrafold_optimize.params.final " + rna_file_path + " -g " + gamma_str
+  centroidfold_command = "centroid_fold " + rna_file_path + " -g " + gamma_str
   (output, _, _) = utils.run_command(centroidfold_command)
   lines = [line.split()[0] for (i, line) in enumerate(str(output).split("\\n")) if i % 3 == 2]
   centroidfold_output_file = open(centroidfold_output_file_path, "w+")
@@ -128,7 +125,7 @@ def run_contrafold(contrafold_params):
   recs = [rec for rec in SeqIO.parse(rna_file_path, "fasta")]
   for (i, rec) in enumerate(recs):
     SeqIO.write([rec], open(seq_file_path, "w"), "fasta")
-    contrafold_command = "contrafold predict --params ../assets/contrafold_optimize.params.final " + seq_file_path + " --gamma " + gamma_str
+    contrafold_command = "contrafold predict " + seq_file_path + " --gamma " + gamma_str
     (output, _, _) = utils.run_command(contrafold_command)
     contrafold_output_buf += ">%d\n%s\n\n" % (i, str(output).strip().split("\\n")[3])
   contrafold_output_file.write(contrafold_output_buf)
@@ -147,11 +144,23 @@ def run_centroidhomfold(centroidhomfold_params):
     SeqIO.write([rec], open(seq_file_path, "w"), "fasta")
     hom_recs = [rec for (j, rec) in enumerate(recs) if j != i]
     SeqIO.write(recs, open(hom_seq_file_path, "w"), "fasta")
-    centroidhomfold_command = "centroid_homfold --engine_s CONTRAfold --params ../assets/contrafold_optimize.params.final " + seq_file_path + " -H " + hom_seq_file_path + " -g " + gamma_str
+    centroidhomfold_command = "centroid_homfold " + seq_file_path + " -H " + hom_seq_file_path + " -g " + gamma_str
     (output, _, _) = utils.run_command(centroidhomfold_command)
     centroidhomfold_output_buf += ">%d\n%s\n\n" % (i, str(output).split("\\n")[2].split()[0])
   centroidhomfold_output_file.write(centroidhomfold_output_buf)
   centroidhomfold_output_file.close()
+
+def run_mxfold(mxfold_params):
+  (rna_file_path, mxfold_output_file_path) = mxfold_params
+  mxfold_command = "mxfold2 predict " + rna_file_path
+  (output, _, _) = utils.run_command(mxfold_command)
+  lines = [line.split()[0] for (i, line) in enumerate(str(output).split("\\n")) if i % 3 == 2]
+  mxfold_output_file = open(mxfold_output_file_path, "w+")
+  mxfold_output_buf = ""
+  for (i, line) in enumerate(lines):
+    mxfold_output_buf += ">%d\n%s\n\n" % (i, line)
+  mxfold_output_file.write(mxfold_output_buf)
+  mxfold_output_file.close()
 
 if __name__ == "__main__":
   main()
