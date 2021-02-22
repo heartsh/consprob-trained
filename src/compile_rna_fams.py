@@ -19,7 +19,7 @@ bracket_pairs = [("(", ")"), ("A", "a"), ("B", "b"), ("C", "c"), ("D", "d"), ("E
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
-  rfam_seed_sta_file_path = asset_dir_path + "/rfam_seed_stas_v14.3.sth"
+  rfam_seed_sta_file_path = asset_dir_path + "/rfam_seed_stas_v14.4.sth"
   train_data_dir_path = asset_dir_path + "/train_data"
   test_data_dir_path = asset_dir_path + "/test_data"
   test_ref_ss_dir_path = asset_dir_path + "/test_ref_sss"
@@ -33,14 +33,16 @@ def main():
   if not os.path.isdir(test_ref_sa_dir_path):
     os.mkdir(test_ref_sa_dir_path)
   max_sa_len = 500
-  min_seq_num = 10
+  min_seq_num = 5
   stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) >= min_seq_num and is_valid(sta)]
+  struct_srcs = get_struct_srcs(rfam_seed_sta_file_path)
+  stas = [sta for (i, sta) in enumerate(stas) if not struct_srcs[i]]
+  rfam_pdb_info_file_path = asset_dir_path + "/rfam_pdb_info_v14.3.sth"
   num_of_stas = len(stas)
   print("# RNA families: %d" % num_of_stas)
-  shuffle(stas)
   train_data_num = int(0.5 * num_of_stas)
   test_data_num = num_of_stas - train_data_num
-  train_data, test_data = train_test_split(stas, test_size = 0.5);
+  train_data, test_data = train_test_split(stas, test_size = 0.5)
   for (i, train_datum) in enumerate(train_data):
     cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
     align_len = len(train_datum)
@@ -72,6 +74,15 @@ def main():
       test_datum_file.write(">%d(%s)\n%s\n" % (j, rec.id, seq_with_gaps.replace("-", "")))
       recovered_ss = recover_ss(css, seq_with_gaps)
       ref_ss_file.write(">%d(%s)\n%s\n" % (j, rec.id, recovered_ss))
+
+def get_struct_srcs(rfam_file_path):
+  struct_srcs = []
+  with open(rfam_file_path, "r") as f:
+    for line in f.readlines():
+      if line.startswith("#=GF SS "):
+        struct_srcs.append("Predicted; " in line)
+  return struct_srcs
+          
 
 def is_valid(sta):
   for row in sta:
