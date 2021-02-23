@@ -18,9 +18,9 @@ bio = "0.20"
 num_cpus = "1.0"
 itertools = "0.7"
 hashbrown = "0.3"
-bfgs = "0.1"
-ndarray = "0.11"
-rand = "0.6"
+bfgs = {git = "https://github.com/heartsh/bfgs"}
+ndarray = "0.14"
+ndarray-rand = "0.13"
 
 [lib]
 path = "src/lib.rs"

@@ -7,7 +7,7 @@ extern crate num_cpus;
 extern crate scoped_threadpool;
 extern crate bfgs;
 extern crate ndarray;
-extern crate rand;
+extern crate ndarray_rand;
 
 pub mod utils;
 pub mod trained_feature_score_sets;
@@ -32,10 +32,11 @@ pub use bio::utils::*;
 pub use std::fs::{read_dir, DirEntry};
 pub use bfgs::bfgs;
 pub use ndarray::prelude::*;
-pub use rand::thread_rng;
-pub use rand::seq::SliceRandom;
 pub use std::f32::INFINITY;
 pub use std::io::stdout;
+pub use ndarray::Array;
+pub use ndarray_rand::RandomExt;
+pub use ndarray_rand::rand_distr::Normal;
 
 pub type PosQuadrupleMat<T> = HashSet<PosQuadruple<T>>;
 pub type PosPairMatSet<T> = HashMap<PosPair<T>, PosPairMat<T>>;
@@ -4964,6 +4965,10 @@ where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send,
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
+  let len = feature_score_sets.get_len();
+  let std_deviation = 1. / (len as FeatureCount).sqrt();
+  let normal_dist = Normal::new(0., std_deviation).unwrap();
+  feature_score_sets = convert_vec_2_struct(&Array1::random(len, normal_dist), false);
   let mut old_feature_score_sets = feature_score_sets.clone();
   let mut old_cost = INFINITY;
   let mut costs = Probs::new();
