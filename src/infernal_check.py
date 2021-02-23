@@ -57,7 +57,7 @@ def main():
     (sa_file_name, extension) = os.path.splitext(sa_file)
     sa_file_path = os.path.join(test_ref_sa_dir_path, sa_file)
     infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, sa_file)
-    infernal_search_command = "cmsearch -E 0.001 " + sa_file_path + " " + temp_seq_file_path
+    infernal_search_command = "cmsearch -E 0.01 " + sa_file_path + " " + temp_seq_file_path
     (output, _, _) = utils.run_command(infernal_search_command)
     if "No hits detected" not in str(output):
       shutil.copyfile(sa_file_path, infernal_black_list_file_path)
