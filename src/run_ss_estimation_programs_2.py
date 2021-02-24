@@ -20,31 +20,27 @@ def main():
   temp_dir_path = "/tmp/run_ss_estimation_programs_%s" % datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H:%M:%S')
   if not os.path.isdir(temp_dir_path):
     os.mkdir(temp_dir_path)
+  mxfold_params = []
+  linearfold_params = []
+  probknot_params = []
   ipknot_params = []
-  knotty_params = []
   spot_rna_params = []
-  raf_params = []
-  locarna_params = []
-  turbofold_params = []
+  linearfold_dir_path = asset_dir_path + "/linearfold"
+  mxfold_dir_path = asset_dir_path + "/mxfold"
+  probknot_dir_path = asset_dir_path + "/probknot"
   ipknot_dir_path = asset_dir_path + "/ipknot"
-  knotty_dir_path = asset_dir_path + "/knotty"
   spot_rna_dir_path = asset_dir_path + "/spot_rna"
-  raf_dir_path = asset_dir_path + "/raf"
-  locarna_dir_path = asset_dir_path + "/locarna"
-  turbofold_dir_path = asset_dir_path + "/turbofold"
   infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
+  if not os.path.isdir(mxfold_dir_path):
+    os.mkdir(mxfold_dir_path)
+  if not os.path.isdir(linearfold_dir_path):
+    os.mkdir(linearfold_dir_path)
+  if not os.path.isdir(probknot_dir_path):
+    os.mkdir(probknot_dir_path)
   if not os.path.isdir(ipknot_dir_path):
     os.mkdir(ipknot_dir_path)
-  if not os.path.isdir(knotty_dir_path):
-    os.mkdir(knotty_dir_path)
   if not os.path.isdir(spot_rna_dir_path):
     os.mkdir(spot_rna_dir_path)
-  if not os.path.isdir(raf_dir_path):
-    os.mkdir(raf_dir_path)
-  if not os.path.isdir(locarna_dir_path):
-    os.mkdir(locarna_dir_path)
-  if not os.path.isdir(turbofold_dir_path):
-    os.mkdir(turbofold_dir_path)
   rna_dir_path = asset_dir_path + "/test_data"
   sub_thread_num = 4
   for rna_file in os.listdir(rna_dir_path):
@@ -52,44 +48,81 @@ def main():
       continue
     rna_file_path = os.path.join(rna_dir_path, rna_file)
     (rna_family_name, extension) = os.path.splitext(rna_file)
-    ipknot_output_dir_path = os.path.join(ipknot_dir_path, rna_family_name)
-    knotty_output_file_path = os.path.join(knotty_dir_path, rna_family_name + ".fa")
-    spot_rna_output_file_path = os.path.join(spot_rna_dir_path, rna_family_name + ".fa")
-    raf_output_file_path = os.path.join(raf_dir_path, rna_family_name + ".fa")
-    locarna_output_file_path = os.path.join(locarna_dir_path, rna_family_name + ".sth")
-    turbofold_output_dir_path = os.path.join(turbofold_dir_path, rna_family_name)
+    linearfold_output_file_path = os.path.join(linearfold_dir_path, rna_family_name + ".fa")
+    mxfold_output_file_path = os.path.join(mxfold_dir_path, rna_family_name + ".fa")
+    ipknot_output_file_path = os.path.join(ipknot_dir_path, rna_family_name + ".fa")
+    probknot_output_file_path = os.path.join(probknot_dir_path, rna_family_name + ".bpseq")
+    spot_rna_output_file_path = os.path.join(spot_rna_dir_path, rna_family_name + ".bpseq")
     infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_family_name + "_infernal.dat")
     if os.path.isfile(infernal_black_list_file_path):
       continue
-    if not os.path.isdir(ipknot_output_dir_path):
-      os.mkdir(ipknot_output_dir_path)
-    if not os.path.isdir(turbofold_output_dir_path):
-      os.mkdir(turbofold_output_dir_path)
-    knotty_params.insert(0, (rna_file_path, knotty_output_file_path))
-    spot_rna_params.insert(0, (rna_file_path, spot_rna_output_file_path))
-    raf_params.insert(0, (rna_file_path, raf_output_file_path))
-    locarna_params.insert(0, (rna_file_path, locarna_output_file_path))
-    for gamma in gammas:
-      gamma_str = str(gamma) if gamma < 1 else str(int(gamma))
-      output_file = "gamma=" + gamma_str + ".fa"
-      ipknot_output_file_path = os.path.join(ipknot_output_dir_path, output_file)
-      ipknot_params.insert(0, (rna_file_path, ipknot_output_file_path, gamma_str))
-      turbofold_output_file_path = os.path.join(turbofold_output_dir_path, output_file)
-      turbofold_params.insert(0, (rna_file_path, turbofold_output_file_path, gamma, temp_dir_path, rna_family_name))
-  pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
+    linearfold_params.insert(0, (rna_file_path, linearfold_output_file_path))
+    mxfold_params.insert(0, (rna_file_path, mxfold_output_file_path))
+    probknot_params.insert(0, (rna_file_path, probknot_output_file_path, temp_dir_path))
+    spot_rna_params.insert(0, (rna_file_path, spot_rna_output_file_path, temp_dir_path))
+    ipknot_params.insert(0, (rna_file_path, ipknot_output_file_path))
   pool = multiprocessing.Pool(num_of_threads)
+  # pool.map(run_linearfold, linearfold_params)
+  # pool.map(run_mxfold, mxfold_params)
+  # pool.map(run_probknot, probknot_params)
   # pool.map(run_ipknot, ipknot_params)
-  # pool.map(run_knotty, knotty_params)
   # pool.map(run_spot_rna, spot_rna_params)
-  # pool.map(run_raf, raf_params)
-  # pool.map(run_locarna, locarna_params)
-  pool.map(run_turbofold, turbofold_params)
   shutil.rmtree(temp_dir_path)
+
+def run_linearfold(linearfold_params):
+  (rna_file_path, linearfold_output_file_path) = linearfold_params
+  linearfold_command = "cat " + rna_file_path + " | linearfold"
+  (output, _, _) = utils.run_command(linearfold_command)
+  lines = [str(line).split()[0] for (i, line) in enumerate(str(output).strip().split("\\n")) if (i + 1) % 3 == 0]
+  buf = ""
+  for i, line in enumerate(lines):
+    buf += ">%d\n%s\n" % (i, line)
+  linearfold_output_file = open(linearfold_output_file_path, "w")
+  linearfold_output_file.write(buf)
+  linearfold_output_file.close()
+
+def run_mxfold(mxfold_params):
+  (rna_file_path, mxfold_output_file_path) = mxfold_params
+  mxfold_command = "mxfold2 predict " + rna_file_path
+  (output, _, _) = utils.run_command(mxfold_command)
+  lines = [line.split()[0] for (i, line) in enumerate(str(output).split("\\n")) if i % 3 == 2]
+  mxfold_output_file = open(mxfold_output_file_path, "w+")
+  mxfold_output_buf = ""
+  for (i, line) in enumerate(lines):
+    mxfold_output_buf += ">%d\n%s\n\n" % (i, line)
+  mxfold_output_file.write(mxfold_output_buf)
+  mxfold_output_file.close()
+
+def run_probknot(probknot_params):
+  (rna_file_path, probknot_output_file_path, temp_dir_path) = probknot_params
+  basename = os.path.basename(rna_file_path)
+  (rna_family_name, extension) = os.path.splitext(basename)
+  recs = [rec for rec in SeqIO.parse(rna_file_path, "fasta")]
+  output_buf = ""
+  seq_file_path = os.path.join(temp_dir_path, "seqs_4_%s.fa" % rna_family_name)
+  for rec in recs:
+    with open(seq_file_path, "w") as f:
+      SeqIO.write(rec, f, "fasta")
+    probknot_command = "ProbKnot " + seq_file_path + " " + probknot_output_file_path + " --sequence"
+    (_, _, _) = utils.run_command(probknot_command)
+    with open(probknot_output_file_path) as f:
+      for line in f.readlines():
+        line = line.strip()
+        if len(line) == 0:
+          continue
+        split = line.split()
+        split_len = len(split)
+        if split_len == 2:
+          output_buf += "# " + line + "\n"
+        else:
+          output_buf += "%s %s %s\n" % (split[0], split[1], split[4])
+  with open(probknot_output_file_path, "w") as f:
+    f.write(output_buf)
 
 def run_ipknot(ipknot_params):
   (rna_file_path, ipknot_output_file_path) = ipknot_params
   ipknot_command = "ipknot " + rna_file_path
-  (output, _, _) = utils.run_command(rnafold_command)
+  (output, _, _) = utils.run_command(ipknot_command)
   lines = [line.split()[0] for (i, line) in enumerate(str(output).split("\\n")) if i % 3 == 2]
   ipknot_output_file = open(ipknot_output_file_path, "w+")
   ipknot_output_buf = ""
@@ -98,94 +131,31 @@ def run_ipknot(ipknot_params):
   ipknot_output_file.write(ipknot_output_buf)
   ipknot_output_file.close()
 
-def run_locarna(locarna_params):
-  (rna_file_path, locarna_output_file_path) = ipknot_params
-  locarna_command = "mlocarna " + rna_file_path + " --keep-sequence-order"
-  (output, _, _) = utils.run_command(mlocarna_command)
-  lines = [line.strip() for (i, line) in enumerate(str(output).split("\\n")) if i > 7]
-  locarna_output_file = open(locarna_output_file_path, "w+")
-  locarna_output_buf = "# STOCKHOLM 1.0\n\n"
-  for line in lines:
-    if line.startswith("alifold "):
-      locarna_output_buf += "#=GC SS_cons %s//" % lines.split()[1]
-    else:
-      locarna_output_buf += line + "\n"
-  locarna_output_file.write(locarna_output_buf)
-  locarna_output_file.close()
-
-def run_turbofold(turbofold_params):
-  (rna_file_path, turbofold_output_file_path, gamma, temp_dir_path, rna_family_name) = turbofold_params
+def run_spot_rna(spot_rna_params):
+  (rna_file_path, spot_rna_output_file_path, temp_dir_path) = spot_rna_params
+  basename = os.path.basename(rna_file_path)
+  (rna_family_name, extension) = os.path.splitext(basename)
   recs = [rec for rec in SeqIO.parse(rna_file_path, "fasta")]
-  rec_lens = [len(rec) for rec in recs]
-  rec_seq_len = len(recs)
-  turbofold_temp_dir_path = "%s/%s_gamma=%d" % (temp_dir_path, rna_family_name, gamma)
-  if not os.path.isdir(turbofold_temp_dir_path):
-    os.mkdir(turbofold_temp_dir_path)
-  turbofold_config_file_contents = "InSeq = {"
-  for i in range(rec_seq_len):
-    turbofold_config_file_contents += "%s/%d.fasta;" % (turbofold_temp_dir_path, i)
-  turbofold_config_file_contents += "}\nOutCT = {"
-  for i in range(rec_seq_len):
-    turbofold_config_file_contents += "%s/%d.ct;" % (turbofold_temp_dir_path, i)
-  turbofold_config_file_contents += "}\nIterations = 3\nMode = MEA\nMeaGamma = %f" % gamma
-  turbofold_config_file_path = os.path.join(turbofold_temp_dir_path, "turbofold_config.dat")
-  turbofold_config_file = open(turbofold_config_file_path, "w")
-  turbofold_config_file.write(turbofold_config_file_contents)
-  turbofold_config_file.close()
   for (i, rec) in enumerate(recs):
-    SeqIO.write([rec], open(os.path.join(turbofold_temp_dir_path, "%d.fasta" % i), "w"), "fasta")
-  turbofold_command = "TurboFold " + turbofold_config_file_path
-  utils.run_command(turbofold_command)
-  turbofold_output_file_contents = ""
-  all_files_exist = True
-  for i in range(rec_seq_len):
-    ct_file_path = os.path.join(turbofold_temp_dir_path, "%d.ct" % i)
-    if path.exists(ct_file_path):
-      ss_string = read_ct_file(ct_file_path)
-      turbofold_output_file_contents += ">%d\n%s\n\n" % (i, ss_string)
-    else:
-      all_files_exist = False
-      turbofold_output_file_contents = ""
-      break
-  if not all_files_exist:
-    print("Some output files are empty. TurboFold is retried with # iterations = 1.")
-    turbofold_config_file_contents = "InSeq = {"
-    for i in range(rec_seq_len):
-      turbofold_config_file_contents += "%s/%d.fasta;" % (turbofold_temp_dir_path, i)
-    turbofold_config_file_contents += "}\nOutCT = {"
-    for i in range(rec_seq_len):
-      turbofold_config_file_contents += "%s/%d.ct;" % (turbofold_temp_dir_path, i)
-    turbofold_config_file_contents += "}\nIterations = 1\nMode = MEA\nMeaGamma = %f" % gamma
-    turbofold_config_file_path = os.path.join(turbofold_temp_dir_path, "turbofold_config.dat")
-    turbofold_config_file = open(turbofold_config_file_path, "w")
-    turbofold_config_file.write(turbofold_config_file_contents)
-    turbofold_config_file.close()
-    utils.run_command(turbofold_command)
-    for i in range(rec_seq_len):
-      ct_file_path = os.path.join(turbofold_temp_dir_path, "%d.ct" % i)
-      ss_string = read_ct_file(ct_file_path)
-      turbofold_output_file_contents += ">%d\n%s\n\n" % (i, ss_string)
-  turbofold_output_file = open(turbofold_output_file_path, "w")
-  turbofold_output_file.write(turbofold_output_file_contents)
-  turbofold_output_file.close()
-
-def read_ct_file(ct_file_path):
-  ct_file = open(ct_file_path, "r")
-  lines = ct_file.readlines()
-  seq_len = int(lines[0].split()[0])
-  ss_string = ["." for i in range(seq_len)]
-  num_of_lines = len(lines)
-  for line in lines[1 : num_of_lines]:
-    if "ENERGY" in line:
-      break
-    substrings = line.split()
-    index_1 = int(substrings[0])
-    index_2 = int(substrings[4])
-    if index_2 == 0 or index_1 >= index_2:
-      continue
-    ss_string[index_1 - 1] = "("
-    ss_string[index_2 - 1] = ")"
-  return "".join(ss_string)
+    new_rec = rec
+    new_rec.id = str(i)
+    new_rec.name = str(i)
+    new_rec.description = str(i)
+    recs[i] = new_rec
+  spot_rna_temp_dir_path = temp_dir_path + "/" + rna_family_name
+  if not os.path.isdir(spot_rna_temp_dir_path):
+    os.mkdir(spot_rna_temp_dir_path)
+  seq_file_path = os.path.join(temp_dir_path, "seqs_4_%s.fa" % rna_family_name)
+  SeqIO.write(recs, open(seq_file_path, "w"), "fasta")
+  spot_rna_command = "python3 $(which SPOT-RNA.py) --inputs " + seq_file_path + " --outputs " + spot_rna_temp_dir_path + " --cpu 1"
+  (_, _, _) = utils.run_command(spot_rna_command)
+  output_buf = ""
+  for i, rec in enumerate(recs):
+    with open(spot_rna_temp_dir_path + "/" + rec.id + ".bpseq") as f:
+      for line in f.readlines():
+        output_buf += line
+  with open(spot_rna_output_file_path, "w") as f:
+    f.write(output_buf)
 
 if __name__ == "__main__":
   main()

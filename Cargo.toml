@@ -21,6 +21,7 @@ hashbrown = "0.3"
 bfgs = {git = "https://github.com/heartsh/bfgs"}
 ndarray = "0.14"
 ndarray-rand = "0.13"
+rand = "0.8"
 
 [lib]
 path = "src/lib.rs"

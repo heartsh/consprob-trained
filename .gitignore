@@ -11,5 +11,4 @@ target
 !trna.fa
 !sampled_trnas.fa
 !rfam_seed_stas_v14.4.sth
-!contrafold_optimize.params.final
 !costs.dat

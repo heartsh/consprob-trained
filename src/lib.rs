@@ -8,6 +8,7 @@ extern crate scoped_threadpool;
 extern crate bfgs;
 extern crate ndarray;
 extern crate ndarray_rand;
+extern crate rand;
 
 pub mod utils;
 pub mod trained_feature_score_sets;
@@ -36,7 +37,8 @@ pub use std::f32::INFINITY;
 pub use std::io::stdout;
 pub use ndarray::Array;
 pub use ndarray_rand::RandomExt;
-pub use ndarray_rand::rand_distr::Normal;
+pub use ndarray_rand::rand_distr::{Normal, Distribution};
+pub use rand::thread_rng;
 
 pub type PosQuadrupleMat<T> = HashSet<PosQuadruple<T>>;
 pub type PosPairMatSet<T> = HashMap<PosPair<T>, PosPairMat<T>>;
@@ -586,7 +588,7 @@ impl FeatureCountSets {
     offset += 1;
     let regularizer = get_regularizer(1, self.extending_gap_count * self.extending_gap_count);
     regularizers_tmp[offset] = regularizer;
-    *regularizers = Array1::from_vec(regularizers_tmp);
+    *regularizers = Array1::from(regularizers_tmp);
   }
 
   pub fn update<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&mut self, train_data: &[TrainDatum<T>], regularizers: &mut Regularizers)
@@ -821,6 +823,164 @@ impl FeatureCountSets {
     let feature_scores = convert_struct_2_vec(self, false);
     let product = regularizers.clone() * feature_scores.clone();
     - log_likelihood + product.dot(&feature_scores) / 2.
+  }
+
+  pub fn rand_init(&mut self) {
+    let len = self.get_len();
+    let std_deviation = 1. / (len as FeatureCount).sqrt();
+    let normal = Normal::new(0., std_deviation).unwrap();
+    let mut thread_rng = thread_rng();
+    for v in self.hairpin_loop_length_counts.iter_mut() {
+      *v = normal.sample(&mut thread_rng);
+    }
+    for v in self.bulge_loop_length_counts.iter_mut() {
+      *v = normal.sample(&mut thread_rng);
+    }
+    for v in self.interior_loop_length_counts.iter_mut() {
+      *v = normal.sample(&mut thread_rng);
+    }
+    for v in self.interior_loop_length_counts_symm.iter_mut() {
+      *v = normal.sample(&mut thread_rng);
+    }
+    for v in self.interior_loop_length_counts_asymm.iter_mut() {
+      *v = normal.sample(&mut thread_rng);
+    }
+    let len = self.stack_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let v = normal.sample(&mut thread_rng);
+            if self.stack_count_mat[i][j][k][l] == 0. {
+              self.stack_count_mat[i][j][k][l] = v;
+            }
+            if self.stack_count_mat[l][k][j][i] == 0. {
+              self.stack_count_mat[l][k][j][i] = v;
+            }
+          }
+        }
+      }
+    }
+    let len = self.terminal_mismatch_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            let v = normal.sample(&mut thread_rng);
+            self.terminal_mismatch_count_mat[i][j][k][l] = v;
+          }
+        }
+      }
+    }
+    let len = self.left_dangle_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          let v = normal.sample(&mut thread_rng);
+          self.left_dangle_count_mat[i][j][k] = v;
+        }
+      }
+    }
+    let len = self.right_dangle_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          let v = normal.sample(&mut thread_rng);
+          self.right_dangle_count_mat[i][j][k] = v;
+        }
+      }
+    }
+    let len = self.helix_end_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        let v = normal.sample(&mut thread_rng);
+        self.helix_end_count_mat[i][j] = v;
+      }
+    }
+    let len = self.base_pair_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        let v = normal.sample(&mut thread_rng);
+        if self.base_pair_count_mat[i][j] == 0. {
+          self.base_pair_count_mat[i][j] = v;
+        }
+        if self.base_pair_count_mat[j][i] == 0. {
+          self.base_pair_count_mat[j][i] = v;
+        }
+      }
+    }
+    let len = self.interior_loop_length_count_mat_explicit.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let v = normal.sample(&mut thread_rng);
+        if self.interior_loop_length_count_mat_explicit[i][j] == 0. {
+          self.interior_loop_length_count_mat_explicit[i][j] = v;
+        }
+        if self.interior_loop_length_count_mat_explicit[j][i] == 0. {
+          self.interior_loop_length_count_mat_explicit[j][i] = v;
+        }
+      }
+    }
+    for v in &mut self.bulge_loop_0x1_length_counts {
+      *v = normal.sample(&mut thread_rng);
+    }
+    let len = self.interior_loop_1x1_length_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let v = normal.sample(&mut thread_rng);
+        if self.interior_loop_1x1_length_count_mat[i][j] == 0. {
+          self.interior_loop_1x1_length_count_mat[i][j] = v;
+        }
+        if self.interior_loop_1x1_length_count_mat[j][i] == 0. {
+          self.interior_loop_1x1_length_count_mat[j][i] = v;
+        }
+      }
+    }
+    self.multi_loop_base_count = normal.sample(&mut thread_rng);
+    self.multi_loop_basepairing_count = normal.sample(&mut thread_rng);
+    self.multi_loop_accessible_baseunpairing_count = normal.sample(&mut thread_rng);
+    self.external_loop_accessible_basepairing_count = normal.sample(&mut thread_rng);
+    self.external_loop_accessible_baseunpairing_count = normal.sample(&mut thread_rng);
+    let len = self.basepair_align_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let v = normal.sample(&mut thread_rng);
+            if self.basepair_align_count_mat[i][j][k][l] == 0. {
+              self.basepair_align_count_mat[i][j][k][l] = v;
+            }
+            if self.basepair_align_count_mat[k][l][i][j] == 0. {
+              self.basepair_align_count_mat[k][l][i][j] = v;
+            }
+          }
+        }
+      }
+    }
+    let len = self.loop_align_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let v = normal.sample(&mut thread_rng);
+        if self.loop_align_count_mat[i][j] == 0. {
+          self.loop_align_count_mat[i][j] = v;
+        }
+        if self.loop_align_count_mat[j][i] == 0. {
+          self.loop_align_count_mat[j][i] = v;
+        }
+      }
+    }
+    self.opening_gap_count = normal.sample(&mut thread_rng);
+    self.extending_gap_count = normal.sample(&mut thread_rng);
+    self.accumulate();
   }
 }
 
@@ -4965,15 +5125,12 @@ where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send,
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
-  let len = feature_score_sets.get_len();
-  let std_deviation = 1. / (len as FeatureCount).sqrt();
-  let normal_dist = Normal::new(0., std_deviation).unwrap();
-  feature_score_sets = convert_vec_2_struct(&Array1::random(len, normal_dist), false);
+  feature_score_sets.rand_init();
   let mut old_feature_score_sets = feature_score_sets.clone();
   let mut old_cost = INFINITY;
   let mut costs = Probs::new();
   let mut count = 0;
-  let mut regularizers = Regularizers::from_vec(vec![1.; feature_score_sets.get_len()]);
+  let mut regularizers = Regularizers::from(vec![1.; feature_score_sets.get_len()]);
   let num_of_data = train_data.len() as FeatureCount;
   loop {
     let ref ref_2_feature_score_sets = feature_score_sets;
@@ -5436,13 +5593,13 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
 }
 
 pub fn convert_feature_counts_2_bfgs_feature_counts(feature_counts: &FeatureCounts) -> BfgsFeatureCounts {
-  let vec = feature_counts.to_vec().iter().map(|x| *x as BfgsFeatureCount).collect();
-  BfgsFeatureCounts::from_vec(vec)
+  let vec: Vec<BfgsFeatureCount> = feature_counts.to_vec().iter().map(|x| *x as BfgsFeatureCount).collect();
+  BfgsFeatureCounts::from(vec)
 }
 
 pub fn convert_bfgs_feature_counts_2_feature_counts(feature_counts: &BfgsFeatureCounts) -> FeatureCounts {
-  let vec = feature_counts.to_vec().iter().map(|x| *x as FeatureCount).collect();
-  FeatureCounts::from_vec(vec)
+  let vec: Vec<FeatureCount> = feature_counts.to_vec().iter().map(|x| *x as FeatureCount).collect();
+  FeatureCounts::from(vec)
 }
 
 pub fn get_regularizer(group_size: usize, squared_sum: FeatureCount) -> Regularizer {
