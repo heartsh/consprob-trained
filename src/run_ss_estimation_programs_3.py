@@ -86,7 +86,7 @@ def main():
   sparse_elapsed_time = time.time() - begin
   # pool.map(run_turbofold, turbofold_params)
   begin = time.time()
-  pool.map(run_turbofold, turbofold_params_4_elapsed_time)
+  pool.map(run_turbofold, turbofold_params_4_running_time)
   turbofold_elapsed_time = time.time() - begin
   print("The elapsed time of RAF = %f [s]." % raf_elapsed_time)
   print("The elapsed time of LocARNA = %f [s]." % locarna_elapsed_time)
