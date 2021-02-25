@@ -26,6 +26,7 @@ def main():
   dafs_params = []
   sparse_params = []
   turbofold_params = []
+  turbofold_params_4_running_time = []
   raf_dir_path = asset_dir_path + "/raf"
   locarna_dir_path = asset_dir_path + "/locarna"
   dafs_dir_path = asset_dir_path + "/dafs"
@@ -68,13 +69,30 @@ def main():
       output_file = "gamma=" + gamma_str + ".fa"
       turbofold_output_file_path = os.path.join(turbofold_output_dir_path, output_file)
       turbofold_params.insert(0, (rna_file_path, turbofold_output_file_path, gamma, temp_dir_path, rna_family_name))
-  pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
+      if gamma == 1.:
+        turbofold_params_4_running_time.insert(0, (rna_file_path, turbofold_output_file_path, gamma, temp_dir_path, rna_family_name))
   pool = multiprocessing.Pool(num_of_threads)
-  # pool.map(run_raf, raf_params)
+  begin = time.time()
+  pool.map(run_raf, raf_params)
+  raf_elapsed_time = time.time() - begin
+  begin = time.time()
   pool.map(run_locarna, locarna_params)
-  # pool.map(run_dafs, dafs_params)
+  locarna_elapsed_time = time.time() - begin
+  begin = time.time()
+  pool.map(run_dafs, dafs_params)
+  dafs_elapsed_time = time.time() - begin
+  begin = time.time()
   pool.map(run_locarna, sparse_params)
+  sparse_elapsed_time = time.time() - begin
   # pool.map(run_turbofold, turbofold_params)
+  begin = time.time()
+  pool.map(run_turbofold, turbofold_params_4_elapsed_time)
+  turbofold_elapsed_time = time.time() - begin
+  print("The elapsed time of RAF = %f [s]." % raf_elapsed_time)
+  print("The elapsed time of LocARNA = %f [s]." % locarna_elapsed_time)
+  print("The elapsed time of DAFS = %f [s]." % dafs_elapsed_time)
+  print("The elapsed time of SPARSE = %f [s]." % sparse_elapsed_time)
+  print("The elapsed time of TurboFold = %f [s]." % turbofold_elapsed_time)
   shutil.rmtree(temp_dir_path)
 
 def run_raf(raf_params):

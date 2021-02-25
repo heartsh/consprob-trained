@@ -62,11 +62,26 @@ def main():
     spot_rna_params.insert(0, (rna_file_path, spot_rna_output_file_path, temp_dir_path))
     ipknot_params.insert(0, (rna_file_path, ipknot_output_file_path))
   pool = multiprocessing.Pool(num_of_threads)
-  # pool.map(run_linearfold, linearfold_params)
-  # pool.map(run_mxfold, mxfold_params)
-  # pool.map(run_probknot, probknot_params)
-  # pool.map(run_ipknot, ipknot_params)
-  # pool.map(run_spot_rna, spot_rna_params)
+  begin = time.time()
+  pool.map(run_linearfold, linearfold_params)
+  linearfold_elapsed_time = time.time() - begin
+  begin = time.time()
+  pool.map(run_mxfold, mxfold_params)
+  mxfold_elapsed_time = time.time() - begin
+  begin = time.time()
+  pool.map(run_probknot, probknot_params)
+  probknot_elapsed_time = time.time() - begin
+  begin = time.time()
+  pool.map(run_ipknot, ipknot_params)
+  ipknot_elapsed_time = time.time() - begin
+  begin = time.time()
+  pool.map(run_spot_rna, spot_rna_params)
+  spot_rna_elapsed_time = time.time() - begin
+  print("The elapsed time of LinearFold = %f [s]." % linearfold_elapsed_time)
+  print("The elapsed time of MXfold2 = %f [s]." % mxfold_elapsed_time)
+  print("The elapsed time of ProbKnot = %f [s]." % probknot_elapsed_time)
+  print("The elapsed time of IPknot = %f [s]." % ipknot_elapsed_time)
+  print("The elapsed time of SPOT-RNA = %f [s]." % spot_rna_elapsed_time)
   shutil.rmtree(temp_dir_path)
 
 def run_linearfold(linearfold_params):
