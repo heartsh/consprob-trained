@@ -24,7 +24,7 @@ def main():
   if not os.path.isdir(all_data_dir_path):
     os.mkdir(all_data_dir_path)
   max_sa_len = 500
-  max_seq_num = 50
+  max_seq_num = 100
   stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) <= max_seq_num and is_valid(sta)]
   num_of_stas = len(stas)
   print("# RNA families: %d" % num_of_stas)
