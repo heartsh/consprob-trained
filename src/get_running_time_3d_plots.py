@@ -13,6 +13,11 @@ import shutil
 from os import path
 from mpl_toolkits.mplot3d import Axes3D
 from Bio import AlignIO
+import random
+
+running_time_ratio_thres = 90
+color_palette = seaborn.color_palette()
+color = color_palette[3]
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
@@ -60,7 +65,7 @@ def main():
     raf_params.insert(0, (max_seq_len, seq_num, rna_file_path, raf_output_file_path))
   pool = multiprocessing.Pool(num_of_threads)
   results = pool.map(run_conshomfold, conshomfold_params)
-  output_file_path  = asset_dir_path + "/conshomfold_running_time_3d_plot.dat"
+  output_file_path = asset_dir_path + "/conshomfold_running_time_3d_plot.dat"
   buf = ""
   for result in results:
     buf += "%d,%d,%f\n" % (result[0], result[1], result[2])
@@ -69,27 +74,39 @@ def main():
   max_seq_lens = []
   seq_nums = []
   running_times = []
+  max_seq_lens_4_conshomfold = []
+  seq_nums_4_conshomfold = []
+  running_times_4_conshomfold = []
   with open(output_file_path) as f:
     for line in f.readlines():
       split = line.strip().split(",")
-      max_seq_lens.append(int(split[0]))
-      seq_nums.append(int(split[1]))
-      running_times.append(float(split[2]))
-  y = numpy.random.rand(len(max_seq_lens)) * 2 - 1
+      (max_seq_len, seq_num, running_time) = (int(split[0]), int(split[1]), float(split[2]))
+      if seq_num >= running_time_ratio_thres:
+        max_seq_lens_4_conshomfold.append(max_seq_len)
+        seq_nums_4_conshomfold.append(seq_num)
+        running_times_4_conshomfold.append(running_time)
+      else:
+        max_seq_lens.append(max_seq_len)
+        seq_nums.append(seq_num)
+        running_times.append(running_time)
+  # y = numpy.random.rand(len(max_seq_lens)) * 2 - 1
+  y = numpy.random.rand(len(max_seq_lens), 3) 
   fig = pyplot.figure()
   ax = fig.add_subplot(111, projection="3d")
   plot = ax.scatter(max_seq_lens, seq_nums, running_times, zdir = 'z', s = 50, c = y, cmap = pyplot.cm.jet)
+  plot_2 = ax.scatter(max_seq_lens_4_conshomfold, seq_nums_4_conshomfold, running_times_4_conshomfold, zdir = 'z', s = 50, facecolor = color, edgecolor = "black", linestyle = "solid", label = "# RNA homologs $\geq$ %d" % running_time_ratio_thres, marker = "s")
   ax.set_xlabel("Maximum sequence length")
   ax.set_ylabel("# RNA homologs")
-  ax.set_zlabel("Running time")
+  ax.set_zlabel("Running time (sec)")
   image_dir_path = asset_dir_path + "/images"
   if not os.path.exists(image_dir_path):
     os.mkdir(image_dir_path)
+  pyplot.legend(loc = "upper left")
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/conshomfold_running_time_3d_plot.eps", bbox_inches = "tight")
   pyplot.clf()
   results = pool.map(run_contrafold, contrafold_params)
-  output_file_path  = asset_dir_path + "/contrafold_running_time_3d_plot.dat"
+  output_file_path = asset_dir_path + "/contrafold_running_time_3d_plot.dat"
   buf = ""
   for result in results:
     buf += "%d,%d,%f\n" % (result[0], result[1], result[2])
@@ -98,24 +115,36 @@ def main():
   max_seq_lens = []
   seq_nums = []
   running_times = []
+  max_seq_lens_4_contrafold = []
+  seq_nums_4_contrafold = []
+  running_times_4_contrafold = []
   with open(output_file_path) as f:
     for line in f.readlines():
       split = line.strip().split(",")
-      max_seq_lens.append(int(split[0]))
-      seq_nums.append(int(split[1]))
-      running_times.append(float(split[2]))
-  y = numpy.random.rand(len(max_seq_lens)) * 2 - 1
+      (max_seq_len, seq_num, running_time) = (int(split[0]), int(split[1]), float(split[2]))
+      if seq_num >= running_time_ratio_thres:
+        max_seq_lens_4_contrafold.append(max_seq_len)
+        seq_nums_4_contrafold.append(seq_num)
+        running_times_4_contrafold.append(running_time)
+      else:
+        max_seq_lens.append(max_seq_len)
+        seq_nums.append(seq_num)
+        running_times.append(running_time)
   fig = pyplot.figure()
   ax = fig.add_subplot(111, projection="3d")
   plot = ax.scatter(max_seq_lens, seq_nums, running_times, zdir = 'z', s = 50, c = y, cmap = pyplot.cm.jet)
+  itr_len = len(running_times_4_contrafold)
+  speedup_ratio = round(sum(map(get_ratio, zip(running_times_4_conshomfold, running_times_4_contrafold))) / itr_len)
+  plot_2 = ax.scatter(max_seq_lens_4_contrafold, seq_nums_4_contrafold, running_times_4_contrafold, zdir = 'z', s = 50, facecolor = color, edgecolor = "black", linestyle = "solid", label = "On average, CONTRAfold is %d-fold faster than ConsHomfold" % speedup_ratio, marker = "s")
   ax.set_xlabel("Maximum sequence length")
   ax.set_ylabel("# RNA homologs")
-  ax.set_zlabel("Running time")
+  ax.set_zlabel("Running time (sec)")
+  pyplot.legend(loc = "upper left")
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/contrafold_running_time_3d_plot.eps", bbox_inches = "tight")
   pyplot.clf()
   results = pool.map(run_raf, raf_params)
-  output_file_path  = asset_dir_path + "/raf_running_time_3d_plot.dat"
+  output_file_path = asset_dir_path + "/raf_running_time_3d_plot.dat"
   buf = ""
   for result in results:
     buf += "%d,%d,%f\n" % (result[0], result[1], result[2])
@@ -124,23 +153,37 @@ def main():
   max_seq_lens = []
   seq_nums = []
   running_times = []
+  max_seq_lens_4_raf = []
+  seq_nums_4_raf = []
+  running_times_4_raf = []
   with open(output_file_path) as f:
     for line in f.readlines():
       split = line.strip().split(",")
-      max_seq_lens.append(int(split[0]))
-      seq_nums.append(int(split[1]))
-      running_times.append(float(split[2]))
-  y = numpy.random.rand(len(max_seq_lens)) * 2 - 1
+      (max_seq_len, seq_num, running_time) = (int(split[0]), int(split[1]), float(split[2]))
+      if seq_num >= running_time_ratio_thres:
+        max_seq_lens_4_raf.append(max_seq_len)
+        seq_nums_4_raf.append(seq_num)
+        running_times_4_raf.append(running_time)
+      else:
+        max_seq_lens.append(max_seq_len)
+        seq_nums.append(seq_num)
+        running_times.append(running_time)
   fig = pyplot.figure()
   ax = fig.add_subplot(111, projection="3d")
   plot = ax.scatter(max_seq_lens, seq_nums, running_times, zdir = 'z', s = 50, c = y, cmap = pyplot.cm.jet)
+  speedup_ratio = round(sum(map(get_ratio, zip(running_times_4_raf, running_times_4_conshomfold))) / itr_len)
+  plot_2 = ax.scatter(max_seq_lens_4_raf, seq_nums_4_raf, running_times_4_raf, zdir = 'z', s = 50, facecolor = color, edgecolor = "black", linestyle = "solid", label = "On average, ConsHomfold is %d-fold faster than RAF" % speedup_ratio, marker = "s")
   ax.set_xlabel("Maximum sequence length")
   ax.set_ylabel("# RNA homologs")
-  ax.set_zlabel("Running time")
+  ax.set_zlabel("Running time (sec)")
+  pyplot.legend(loc = "upper left")
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/raf_running_time_3d_plot.eps", bbox_inches = "tight")
   pyplot.clf()
   shutil.rmtree(temp_dir_path)
+
+def get_ratio(pair):
+  return pair[0] / pair[1]
 
 def run_conshomfold(conshomfold_params):
   (max_seq_len, seq_num, params) = conshomfold_params

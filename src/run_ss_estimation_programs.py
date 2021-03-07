@@ -95,35 +95,40 @@ def main():
       if gamma == 1.:
         centroidfold_params_4_running_time.insert(0, (rna_file_path, centroidfold_output_file_path, gamma_str))
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
-  # pool.map(utils.run_command, conshomfold_params)
-  begin = time.time()
-  pool.map(utils.run_command, conshomfold_params_4_running_time)
-  conshomfold_elapsed_time = time.time() - begin
+  pool.map(utils.run_command, conshomfold_params)
+  if False:
+    begin = time.time()
+    pool.map(utils.run_command, conshomfold_params_4_running_time)
+    conshomfold_elapsed_time = time.time() - begin
   pool = multiprocessing.Pool(num_of_threads)
-  # pool.map(run_centroidhomfold, centroidhomfold_params)
-  begin = time.time()
-  pool.map(run_centroidhomfold, centroidhomfold_params_4_running_time)
-  centroidhomfold_elapsed_time = time.time() - begin
+  pool.map(run_centroidhomfold, centroidhomfold_params)
+  if False:
+    begin = time.time()
+    pool.map(run_centroidhomfold, centroidhomfold_params_4_running_time)
+    centroidhomfold_elapsed_time = time.time() - begin
   begin = time.time()
   pool.map(run_rnafold, rnafold_params)
   rnafold_elapsed_time = time.time() - begin
-  # pool.map(run_contrafold, contrafold_params)
-  begin = time.time()
-  pool.map(run_contrafold, contrafold_params_4_running_time)
-  contrafold_elapsed_time = time.time() - begin
-  # pool.map(run_centroidfold, centroidfold_params)
-  begin = time.time()
-  pool.map(run_centroidfold, centroidfold_params_4_running_time)
-  centroidfold_elapsed_time = time.time() - begin
+  pool.map(run_contrafold, contrafold_params)
+  if False:
+    begin = time.time()
+    pool.map(run_contrafold, contrafold_params_4_running_time)
+    contrafold_elapsed_time = time.time() - begin
+  pool.map(run_centroidfold, centroidfold_params)
+  if False:
+    begin = time.time()
+    pool.map(run_centroidfold, centroidfold_params_4_running_time)
+    centroidfold_elapsed_time = time.time() - begin
   begin = time.time()
   pool.map(run_contextfold, contextfold_params)
   contextfold_elapsed_time = time.time() - begin
-  print("The elapsed time of ConsHomfold = %f [s]." % conshomfold_elapsed_time)
-  print("The elapsed time of CentroidHomfold = %f [s]." % centroidhomfold_elapsed_time)
-  print("The elapsed time of RNAfold = %f [s]." % rnafold_elapsed_time)
-  print("The elapsed time of CONTRAfold = %f [s]." % contrafold_elapsed_time)
-  print("The elapsed time of CentroidFold = %f [s]." % centroidfold_elapsed_time)
-  print("The elapsed time of Contextfold = %f [s]." % contextfold_elapsed_time)
+  if False:
+    print("The elapsed time of ConsHomfold = %f [s]." % conshomfold_elapsed_time)
+    print("The elapsed time of CentroidHomfold = %f [s]." % centroidhomfold_elapsed_time)
+    print("The elapsed time of RNAfold = %f [s]." % rnafold_elapsed_time)
+    print("The elapsed time of CONTRAfold = %f [s]." % contrafold_elapsed_time)
+    print("The elapsed time of CentroidFold = %f [s]." % centroidfold_elapsed_time)
+    print("The elapsed time of Contextfold = %f [s]." % contextfold_elapsed_time)
   shutil.rmtree(temp_dir_path)
 
 def run_rnafold(rnafold_params):
