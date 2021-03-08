@@ -40,6 +40,10 @@ pub use ndarray_rand::RandomExt;
 pub use ndarray_rand::rand_distr::{Normal, Distribution};
 pub use rand::thread_rng;
 
+pub type RealBpScoreParamSetPair<T> = (BpScoreParamSets<T>, BpScoreParamSets<T>);
+pub type BpScoreParamSetPair<'a, T> = (&'a BpScoreParamSets<T>, &'a BpScoreParamSets<T>);
+pub type BpScores<T> = HashMap<PosPair<T>, FeatureCount>;
+pub type TwoloopScores<T> = HashMap<PosQuadruple<T>, FeatureCount>;
 pub type PosQuadrupleMat<T> = HashSet<PosQuadruple<T>>;
 pub type PosPairMatSet<T> = HashMap<PosPair<T>, PosPairMat<T>>;
 pub type PosPairMat<T> = HashSet<PosPair<T>>;
@@ -73,6 +77,14 @@ pub type InteriorLoop1x1LengthCountMat = [[FeatureCount; NUM_OF_BASES]; NUM_OF_B
 pub type InteriorLoopLengthCountMat =
   [[FeatureCount; CONSPROB_MAX_TWOLOOP_LEN - 1]; CONSPROB_MAX_TWOLOOP_LEN - 1];
 #[derive(Clone)]
+pub struct BpScoreParamSets<T> {
+  pub hairpin_loop_scores: BpScores<T>,
+  pub twoloop_scores: TwoloopScores<T>,
+  pub multi_loop_closing_bp_scores: BpScores<T>,
+  pub multi_loop_accessible_bp_scores: BpScores<T>,
+  pub external_loop_accessible_bp_scores: BpScores<T>,
+}
+#[derive(Clone)]
 pub struct TrainDatum<T> {
   pub seq_pair: RealSeqPair,
   pub observed_feature_count_sets: FeatureCountSets,
@@ -83,6 +95,7 @@ pub struct TrainDatum<T> {
   pub forward_pos_pair_mat_set: PosPairMatSet<T>,
   pub backward_pos_pair_mat_set: PosPairMatSet<T>,
   pub pos_quadruple_mat: PosQuadrupleMat<T>,
+  pub bp_score_param_set_pair: RealBpScoreParamSetPair<T>,
 }
 #[derive(Clone, Debug)]
 pub struct FeatureCountSets {
@@ -212,6 +225,64 @@ pub type TmpPartFuncSetMatsWithPosPairs<T> = HashMap<PosPair<T>, TmpPartFuncSetM
 pub type TmpPartFuncSetMatsWithPosQuadruples<T> = HashMap<PosQuadruple<T>, PartFuncSetMat<T>>;
 pub type PartFuncSetMat<T> = HashMap<PosPair<T>, TmpPartFuncs>;
 pub type RealSeqPair = (Seq, Seq);
+
+impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamSets<T> {
+  pub fn new() -> BpScoreParamSets<T> {
+    BpScoreParamSets {
+      hairpin_loop_scores: BpScores::<T>::default(),
+      twoloop_scores: TwoloopScores::<T>::default(),
+      multi_loop_closing_bp_scores: BpScores::<T>::default(),
+      multi_loop_accessible_bp_scores: BpScores::<T>::default(),
+      external_loop_accessible_bp_scores: BpScores::<T>::default(),
+    }
+  }
+  pub fn set_curr_params(feature_score_sets: &FeatureCountSets, seq: SeqSlice, bpp_mat: &SparseProbMat<T>) -> BpScoreParamSets<T> {
+    let mut bp_score_param_sets = BpScoreParamSets::<T>::new();
+    for pos_pair in bpp_mat.keys() {
+      let long_pos_pair = (pos_pair.0.to_usize().unwrap(), pos_pair.1.to_usize().unwrap());
+      let hairpin_loop_score =
+        get_consprob_hairpin_loop_score(feature_score_sets, seq, &long_pos_pair);
+      if hairpin_loop_score > NEG_INFINITY {
+        bp_score_param_sets.hairpin_loop_scores.insert(*pos_pair, hairpin_loop_score);
+      }
+      let multi_loop_closing_basepairing_score = get_consprob_multi_loop_closing_basepairing_score(
+        feature_score_sets,
+        seq,
+        &long_pos_pair,
+      );
+      bp_score_param_sets.multi_loop_closing_bp_scores.insert(*pos_pair, multi_loop_closing_basepairing_score);
+      let multi_loop_accessible_basepairing_score =
+        get_consprob_multi_loop_accessible_basepairing_score(
+          feature_score_sets,
+          seq,
+          &long_pos_pair,
+        );
+      bp_score_param_sets.multi_loop_accessible_bp_scores.insert(*pos_pair, multi_loop_accessible_basepairing_score);
+      let external_loop_accessible_basepairing_score =
+        get_consprob_external_loop_accessible_basepairing_score(
+          feature_score_sets,
+          seq,
+          &long_pos_pair,
+        );
+      bp_score_param_sets.external_loop_accessible_bp_scores.insert(*pos_pair, external_loop_accessible_basepairing_score);
+      for pos_pair_2 in bpp_mat.keys() {
+        if !(pos_pair.0 < pos_pair_2.0 && pos_pair_2.1 < pos_pair.1) {continue;}
+        let long_pos_pair_2 = (pos_pair_2.0.to_usize().unwrap(), pos_pair_2.1.to_usize().unwrap());
+        if long_pos_pair_2.0 - long_pos_pair.0 - 1 + long_pos_pair.1 - long_pos_pair_2.1 - 1 > CONSPROB_MAX_TWOLOOP_LEN {
+          continue;
+        }
+        let twoloop_score = get_consprob_twoloop_score(
+          feature_score_sets,
+          seq,
+          &long_pos_pair,
+          &long_pos_pair_2,
+        );
+        bp_score_param_sets.twoloop_scores.insert((pos_pair.0, pos_pair.1, pos_pair_2.0, pos_pair_2.1), twoloop_score);
+      }
+    }
+    bp_score_param_sets
+  }
+}
 
 impl FeatureCountSets {
   pub fn new(init_val: FeatureCount) -> FeatureCountSets {
@@ -1137,6 +1208,7 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       forward_pos_pair_mat_set: PosPairMatSet::<T>::default(),
       backward_pos_pair_mat_set: PosPairMatSet::<T>::default(),
       pos_quadruple_mat: PosQuadrupleMat::<T>::default(),
+      bp_score_param_set_pair: (BpScoreParamSets::<T>::new(), BpScoreParamSets::<T>::new()),
     }
   }
 
@@ -1184,6 +1256,7 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       forward_pos_pair_mat_set: forward_pos_pair_mat_set,
       backward_pos_pair_mat_set: backward_pos_pair_mat_set,
       pos_quadruple_mat: pos_quadruple_mat,
+      bp_score_param_set_pair: (BpScoreParamSets::<T>::new(), BpScoreParamSets::<T>::new()),
     };
     train_datum.convert(&seq_pair, cons_second_struct);
     train_datum.seq_pair.0.insert(0, PSEUDO_BASE);
@@ -1453,6 +1526,11 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       self.observed_feature_count_sets.helix_end_count_mat[base_pair_2.1][base_pair_2.0] += 1.;
     }
   }
+
+  pub fn set_curr_params(&mut self, feature_score_sets: &FeatureCountSets) {
+    self.bp_score_param_set_pair.0 = BpScoreParamSets::<T>::set_curr_params(feature_score_sets, &self.seq_pair.0, &self.bpp_mat_pair.0);
+    self.bp_score_param_set_pair.1 = BpScoreParamSets::<T>::set_curr_params(feature_score_sets, &self.seq_pair.1, &self.bpp_mat_pair.1);
+  }
 }
 
 pub const MAX_GAP_NUM_4_IL: usize = 15;
@@ -1501,6 +1579,7 @@ pub fn io_algo_4_prob_mats<T>(
   forward_pos_pair_mat_set: &PosPairMatSet<T>,
   backward_pos_pair_mat_set: &PosPairMatSet<T>,
   pos_quadruple_mat: &PosQuadrupleMat<T>,
+  bp_score_param_set_pair: &BpScoreParamSetPair<T>,
 ) -> (StaProbMats<T>, Prob)
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
@@ -1516,6 +1595,7 @@ where
     forward_pos_pair_mat_set,
     backward_pos_pair_mat_set,
     pos_quadruple_mat,
+    bp_score_param_set_pair,
   );
   (get_sta_prob_mats::<T>(
     seq_pair,
@@ -1529,6 +1609,7 @@ where
     trains_score_params,
     expected_feature_count_sets,
     pos_quadruple_mat,
+    bp_score_param_set_pair,
   ), global_part_func)
 }
 
@@ -1543,6 +1624,7 @@ pub fn get_sta_inside_part_func_mats<T>(
   forward_pos_pair_mat_set: &PosPairMatSet<T>,
   backward_pos_pair_mat_set: &PosPairMatSet<T>,
   pos_quadruple_mat: &PosQuadrupleMat<T>,
+  bp_score_param_set_pair: &BpScoreParamSetPair<T>,
 ) -> (StaPartFuncMats<T>, PartFunc)
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
@@ -1584,6 +1666,7 @@ where
             trains_score_params,
             forward_pos_pair_mat_set,
             backward_pos_pair_mat_set,
+            bp_score_param_set_pair,
           );
         let (backward_tmp_part_func_set_mat, _, _, backward_tmp_part_func_set_mat_4_2loop, backward_tmp_part_func_set_mat_4_decode, backward_tmp_part_func_set_mat_4_2loop_decode) = get_tmp_part_func_set_mat::<T>(
           &seq_pair,
@@ -1596,28 +1679,26 @@ where
           trains_score_params,
           forward_pos_pair_mat_set,
           backward_pos_pair_mat_set,
+          bp_score_param_set_pair,
         );
         let mut sum = NEG_INFINITY;
-        let long_pos_pair = (long_i, long_j);
-        let long_pos_pair_2 = (long_k, long_l);
-        let hairpin_loop_score =
-          get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &long_pos_pair);
-        let hairpin_loop_score_2 =
-          get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.1, &long_pos_pair_2);
         let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair.0]
           [base_pair.1][base_pair_2.0][base_pair_2.1];
-        let score =
-          basepair_align_score + hairpin_loop_score + hairpin_loop_score_2 + part_func_on_sa;
-        logsumexp(&mut sum, score);
+        if substr_len_1.to_usize().unwrap() - 2 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN && substr_len_2.to_usize().unwrap() - 2 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN {
+          let hairpin_loop_score = bp_score_param_set_pair.0.hairpin_loop_scores[&(i, j)];
+          let hairpin_loop_score_2 = bp_score_param_set_pair.1.hairpin_loop_scores[&(k, l)];
+          let score =
+            basepair_align_score + hairpin_loop_score + hairpin_loop_score_2 + part_func_on_sa;
+          logsumexp(&mut sum, score);
+        }
         for &(m, n, o, p) in pos_quadruple_mat {
           if !(i < m && n < j) || !(k < o && p < l) {
             continue;
           }
-          let (long_m, long_n, long_o, long_p) = (m.to_usize().unwrap(), n.to_usize().unwrap(), o.to_usize().unwrap(), p.to_usize().unwrap());
-          if long_m - long_i - 1 + long_j - long_n - 1 > CONSPROB_MAX_TWOLOOP_LEN {
+          if m - i - T::one() + j - n - T::one() > T::from_usize(CONSPROB_MAX_TWOLOOP_LEN).unwrap() {
             continue;
           }
-          if long_o - long_k - 1 + long_l - long_p - 1 > CONSPROB_MAX_TWOLOOP_LEN {
+          if o - k - T::one() + l - p - T::one() > T::from_usize(CONSPROB_MAX_TWOLOOP_LEN).unwrap() {
             continue;
           }
           let pos_quadruple_2 = (m, n, o, p);
@@ -1637,20 +1718,8 @@ where
                   None => NEG_INFINITY,
                 };
               let part_func_4_2l = forward_term + backward_term;
-              let long_pos_pair_3 = (long_m, long_n);
-              let long_pos_pair_4 = (long_o, long_p);
-              let twoloop_score = get_consprob_twoloop_score(
-                feature_score_sets,
-                seq_pair.0,
-                &long_pos_pair,
-                &long_pos_pair_3,
-              );
-              let twoloop_score_2 = get_consprob_twoloop_score(
-                feature_score_sets,
-                seq_pair.1,
-                &long_pos_pair_2,
-                &long_pos_pair_4,
-              );
+              let twoloop_score = bp_score_param_set_pair.0.twoloop_scores[&(i, j, m, n)];
+              let twoloop_score_2 = bp_score_param_set_pair.1.twoloop_scores[&(k, l, o, p)];
               let coefficient =
                 basepair_align_score + twoloop_score + twoloop_score_2 + part_func;
               logsumexp(&mut sum, coefficient + part_func_4_2l);
@@ -1658,17 +1727,8 @@ where
             None => {}
           }
         }
-        let multi_loop_closing_basepairing_score = get_consprob_multi_loop_closing_basepairing_score(
-          feature_score_sets,
-          seq_pair.0,
-          &long_pos_pair,
-        );
-        let multi_loop_closing_basepairing_score_2 =
-          get_consprob_multi_loop_closing_basepairing_score(
-            feature_score_sets,
-            seq_pair.1,
-            &long_pos_pair_2,
-          );
+        let multi_loop_closing_basepairing_score = bp_score_param_set_pair.0.multi_loop_closing_bp_scores[&(i, j)];
+        let multi_loop_closing_basepairing_score_2 = bp_score_param_set_pair.1.multi_loop_closing_bp_scores[&(k, l)];
         let score = basepair_align_score
           + multi_loop_closing_basepairing_score
           + multi_loop_closing_basepairing_score_2
@@ -1678,30 +1738,10 @@ where
           sta_part_func_mats
             .part_func_4d_mat_4_bpas
             .insert(pos_quadruple, sum);
-          let multi_loop_accessible_basepairing_score =
-            get_consprob_multi_loop_accessible_basepairing_score(
-              feature_score_sets,
-              seq_pair.0,
-              &long_pos_pair,
-            );
-          let multi_loop_accessible_basepairing_score_2 =
-            get_consprob_multi_loop_accessible_basepairing_score(
-              feature_score_sets,
-              seq_pair.1,
-              &long_pos_pair_2,
-            );
-          let external_loop_accessible_basepairing_score =
-            get_consprob_external_loop_accessible_basepairing_score(
-              feature_score_sets,
-              seq_pair.0,
-              &long_pos_pair,
-            );
-          let external_loop_accessible_basepairing_score_2 =
-            get_consprob_external_loop_accessible_basepairing_score(
-              feature_score_sets,
-              seq_pair.1,
-              &long_pos_pair_2,
-            );
+          let multi_loop_accessible_basepairing_score = bp_score_param_set_pair.0.multi_loop_accessible_bp_scores[&(i, j)];
+          let multi_loop_accessible_basepairing_score_2 = bp_score_param_set_pair.1.multi_loop_accessible_bp_scores[&(k, l)];
+          let external_loop_accessible_basepairing_score = bp_score_param_set_pair.0.external_loop_accessible_bp_scores[&(i, j)];
+          let external_loop_accessible_basepairing_score_2 = bp_score_param_set_pair.1.external_loop_accessible_bp_scores[&(k, l)];
           sta_part_func_mats
             .part_func_4d_mat_4_bpas_accessible_on_els
             .insert(
@@ -2061,6 +2101,7 @@ pub fn get_tmp_part_func_set_mat<T>(
   trains_score_params: bool,
   forward_pos_pair_mat_set: &PosPairMatSet<T>,
   backward_pos_pair_mat_set: &PosPairMatSet<T>,
+  bp_score_param_set_pair: &BpScoreParamSetPair<T>,
 ) -> (TmpPartFuncSetMat<T>, PartFunc, PartFunc, PartFuncSetMat<T>, TmpPartFuncSetMat<T>, PartFuncSetMat<T>)
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
@@ -2087,7 +2128,6 @@ where
   } else {
     (j, l)
   };
-  let (long_i, long_j, long_k, long_l) = (i.to_usize().unwrap(), j.to_usize().unwrap(), k.to_usize().unwrap(), l.to_usize().unwrap(), );
   let tmp_part_func_set_mats_with_pos_pairs = if is_forward {
     &sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs
   } else {
@@ -2197,19 +2237,8 @@ where
                     }
                     let part_func = sta_part_func_mats
                       .part_func_4d_mat_4_bpas[&pos_quadruple_2];
-                    let long_pos_quadruple_2 = (pos_quadruple_2.0.to_usize().unwrap(), pos_quadruple_2.1.to_usize().unwrap(), pos_quadruple_2.2.to_usize().unwrap(), pos_quadruple_2.3.to_usize().unwrap(), );
-                    let twoloop_score = get_consprob_twoloop_score(
-                      feature_score_sets,
-                      seq_pair.0,
-                      &(long_i, long_j),
-                      &(long_pos_quadruple_2.0, long_pos_quadruple_2.1),
-                    );
-                    let twoloop_score_2 = get_consprob_twoloop_score(
-                      feature_score_sets,
-                      seq_pair.1,
-                      &(long_k, long_l),
-                      &(long_pos_quadruple_2.2, long_pos_quadruple_2.3),
-                    );
+                    let twoloop_score = bp_score_param_set_pair.0.twoloop_scores[&(i, j, pos_quadruple_2.0, pos_quadruple_2.1)];
+                    let twoloop_score_2 = bp_score_param_set_pair.1.twoloop_scores[&(k, l, pos_quadruple_2.2, pos_quadruple_2.3)];
                     let ref part_funcs = part_func_sets.part_funcs_on_sa;
                     let score = part_funcs.part_func + part_func + twoloop_score + twoloop_score_2;
                     logsumexp(&mut sum_4_2loop, score);
@@ -2756,6 +2785,7 @@ pub fn get_sta_prob_mats<T>(
   trains_score_params: bool,
   expected_feature_count_sets: &mut FeatureCountSets,
   pos_quadruple_mat: &PosQuadrupleMat<T>,
+  bp_score_param_set_pair: &BpScoreParamSetPair<T>,
 ) -> StaProbMats<T>
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
@@ -2895,12 +2925,6 @@ where
               let is_stack = loop_len_pair.0 == 0 && loop_len_pair.1 == 0;
               let is_bulge_loop = (loop_len_pair.0 == 0 || loop_len_pair.1 == 0) && !is_stack;
               let mismatch_pair_3 = (seq_pair.0[long_m + 1], seq_pair.0[long_n - 1]);
-              let twoloop_score = get_consprob_twoloop_score(
-                feature_score_sets,
-                seq_pair.0,
-                &(long_m, long_n),
-                &(long_i, long_j),
-              );
               let pos_quadruple_2 = (m, n, o, p);
               match sta_outside_part_func_4d_mat_4_bpas.get(&pos_quadruple_2) {
                 Some(&part_func) => {
@@ -2931,12 +2955,8 @@ where
                   let part_func_4_2l = forward_term + backward_term;
                   if part_func_4_2l > NEG_INFINITY {
                     let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair_3.0][base_pair_3.1][base_pair_4.0][base_pair_4.1];
-                    let twoloop_score_2 = get_consprob_twoloop_score(
-                      feature_score_sets,
-                      seq_pair.1,
-                      &(long_o, long_p),
-                      &(long_k, long_l),
-                    );
+                    let twoloop_score = bp_score_param_set_pair.0.twoloop_scores[&(m, n, i, j)];
+                    let twoloop_score_2 = bp_score_param_set_pair.1.twoloop_scores[&(o, p, k, l)];
                     let coefficient = basepair_align_score + twoloop_score + twoloop_score_2 + part_func;
                     let part_func_4_2l = coefficient + part_func_4_2l;
                     logsumexp(&mut sum, part_func_4_2l);
@@ -3100,11 +3120,6 @@ where
               let base_pair_3 = (seq_pair.0[long_m], seq_pair.0[long_n]);
               let mismatch_pair_3 = (seq_pair.0[long_m + 1], seq_pair.0[long_n - 1]);
               let base_pair = (seq_pair.0[long_m], seq_pair.0[long_n]);
-              let multi_loop_closing_basepairing_score = get_consprob_multi_loop_closing_basepairing_score(
-                feature_score_sets,
-                seq_pair.0,
-                &(long_m, long_n),
-              );
               let long_o = o.to_usize().unwrap();
               let long_p = p.to_usize().unwrap();
               let base_pair_4 = (seq_pair.1[long_o], seq_pair.1[long_p]);
@@ -3118,11 +3133,8 @@ where
                   let ref backward_tmp_part_func_set_mat = sta_part_func_mats
                     .backward_tmp_part_func_set_mats_with_pos_pairs[&(n, p)];
                   let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair_3.0][base_pair_3.1][base_pair_4.0][base_pair_4.1];
-                  let multi_loop_closing_basepairing_score_2 = get_consprob_multi_loop_closing_basepairing_score(
-                    feature_score_sets,
-                    seq_pair.1,
-                    &(long_o, long_p),
-                  );
+                  let multi_loop_closing_basepairing_score = bp_score_param_set_pair.0.multi_loop_closing_bp_scores[&(m, n)];
+                  let multi_loop_closing_basepairing_score_2 = bp_score_param_set_pair.1.multi_loop_closing_bp_scores[&(o, p)];
                   let mut forward_term = NEG_INFINITY;
                   let mut forward_term_2 = forward_term;
                   let mut backward_term = forward_term;
@@ -3263,11 +3275,11 @@ where
               sta_prob_mats.upp_mat_pair.0[long_j] -= bpap;
               sta_prob_mats.upp_mat_pair.1[long_k] -= bpap;
               sta_prob_mats.upp_mat_pair.1[long_l] -= bpap;
-              if trains_score_params {
+              if trains_score_params && substr_len_1.to_usize().unwrap() - 2 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN && substr_len_2.to_usize().unwrap() - 2 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN {
                 let part_func_on_sa = sta_part_func_mats
               .forward_tmp_part_func_set_mats_with_pos_pairs[&(i, k)][&(j - T::one(), l - T::one())].part_funcs_on_sa.part_func;
-                let hairpin_loop_score = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &(long_i, long_j));
-                let hairpin_loop_score_2 = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.1, &(long_k, long_l));
+                let hairpin_loop_score = bp_score_param_set_pair.0.hairpin_loop_scores[&(i, j)];
+                let hairpin_loop_score_2 = bp_score_param_set_pair.1.hairpin_loop_scores[&(k, l)];
                 let bpap_4_hl = sum - global_part_func + part_func_on_sa + hairpin_loop_score + hairpin_loop_score_2;
                 if bpap_4_hl > NEG_INFINITY {
                   logsumexp(
@@ -3497,18 +3509,10 @@ where
               let (long_i, long_j, long_k, long_l) = (i.to_usize().unwrap(), j.to_usize().unwrap(), k.to_usize().unwrap(), l.to_usize().unwrap());
               let base_pair = (seq_pair.0[long_i], seq_pair.0[long_j]);
               let base_pair_2 = (seq_pair.1[long_k], seq_pair.1[long_l]);
-              let hairpin_loop_score = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.0, &(long_i, long_j));
-              let hairpin_loop_score_2 = get_consprob_hairpin_loop_score(feature_score_sets, seq_pair.1, &(long_k, long_l));
-              let multi_loop_closing_basepairing_score = get_consprob_multi_loop_closing_basepairing_score(
-                feature_score_sets,
-                seq_pair.0,
-                &(long_i, long_j),
-              );
-              let multi_loop_closing_basepairing_score_2 = get_consprob_multi_loop_closing_basepairing_score(
-                feature_score_sets,
-                seq_pair.1,
-                &(long_k, long_l),
-              );
+              let hairpin_loop_score = if j - i - T::one() <= T::from_usize(CONSPROB_MAX_HAIRPIN_LOOP_LEN).unwrap() {bp_score_param_set_pair.0.hairpin_loop_scores[&(i, j)]} else {NEG_INFINITY};
+              let hairpin_loop_score_2 = if l - k - T::one() <= T::from_usize(CONSPROB_MAX_HAIRPIN_LOOP_LEN).unwrap() {bp_score_param_set_pair.1.hairpin_loop_scores[&(k, l)]} else {NEG_INFINITY};
+              let multi_loop_closing_basepairing_score = bp_score_param_set_pair.0.multi_loop_closing_bp_scores[&(i, j)];
+              let multi_loop_closing_basepairing_score_2 = bp_score_param_set_pair.1.multi_loop_closing_bp_scores[&(k, l)];
               let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair.0][base_pair.1][base_pair_2.0][base_pair_2.1];
               let prob_coeff = part_func_4_bpa - global_part_func + basepair_align_score;
               let ref forward_tmp_part_func_set_mat =
@@ -5016,22 +5020,27 @@ pub fn consprob<T>(
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send,
 {
+  let feature_score_sets = FeatureCountSets::load_trained_score_params();
   let num_of_fasta_records = fasta_records.len();
   let mut bpp_mats = vec![SparseProbMat::<T>::new(); num_of_fasta_records];
   let mut sparse_bpp_mats = vec![SparseProbMat::<T>::new(); num_of_fasta_records];
   let mut max_bp_spans = vec![T::zero(); num_of_fasta_records];
+  let mut bp_score_param_set_seqs = vec![BpScoreParamSets::<T>::new(); num_of_fasta_records];
+  let ref ref_2_feature_score_sets = feature_score_sets;
   thread_pool.scoped(|scope| {
-    for (bpp_mat, sparse_bpp_mat, max_bp_span, fasta_record) in multizip((
+    for (bpp_mat, sparse_bpp_mat, max_bp_span, fasta_record, bp_score_param_sets) in multizip((
       bpp_mats.iter_mut(),
       sparse_bpp_mats.iter_mut(),
       max_bp_spans.iter_mut(),
       fasta_records.iter(),
+      bp_score_param_set_seqs.iter_mut(),
     )) {
       let seq_len = fasta_record.seq.len();
       scope.execute(move || {
         *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false).0;
         *sparse_bpp_mat = remove_small_bpps_from_bpp_mat::<T>(bpp_mat, min_bpp);
         *max_bp_span = get_max_bp_span::<T>(sparse_bpp_mat);
+        *bp_score_param_sets = BpScoreParamSets::<T>::set_curr_params(ref_2_feature_score_sets, &fasta_record.seq[..], sparse_bpp_mat);
       });
     }
   });
@@ -5042,7 +5051,6 @@ where
       prob_mats_with_rna_id_pairs.insert(rna_id_pair, StaProbMats::<T>::origin());
     }
   }
-  let feature_score_sets = FeatureCountSets::load_trained_score_params();
   thread_pool.scoped(|scope| {
     for (rna_id_pair, prob_mats) in prob_mats_with_rna_id_pairs.iter_mut() {
       let seq_pair = (
@@ -5072,6 +5080,10 @@ where
         T::zero(),
         seq_len_pair.1 - T::one(),
       );
+      let bp_score_param_set_pair = (
+        &bp_score_param_set_seqs[rna_id_pair.0],
+        &bp_score_param_set_seqs[rna_id_pair.1],
+      );
       let (forward_pos_pair_mat_set, backward_pos_pair_mat_set, pos_quadruple_mat) = get_sparse_pos_sets(&bpp_mat_pair, max_gap_num_4_il, &pseudo_pos_quadruple);
       let ref ref_2_feature_score_sets = feature_score_sets;
       scope.execute(move || {
@@ -5087,6 +5099,7 @@ where
           &forward_pos_pair_mat_set,
           &backward_pos_pair_mat_set,
           &pos_quadruple_mat,
+          &bp_score_param_set_pair,
         ).0;
       });
     }
@@ -5126,6 +5139,9 @@ where
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
   feature_score_sets.rand_init();
+  for train_datum in train_data.iter_mut() {
+    train_datum.set_curr_params(&feature_score_sets);
+  }
   let mut old_feature_score_sets = feature_score_sets.clone();
   let mut old_cost = INFINITY;
   let mut costs = Probs::new();
@@ -5152,6 +5168,7 @@ where
         let ref forward_pos_pair_mat_set = train_datum.forward_pos_pair_mat_set;
         let ref backward_pos_pair_mat_set = train_datum.backward_pos_pair_mat_set;
         let ref pos_quadruple_mat = train_datum.pos_quadruple_mat;
+        let bp_score_param_set_pair = (&train_datum.bp_score_param_set_pair.0, &train_datum.bp_score_param_set_pair.1);
         scope.execute(move || {
           *part_func = io_algo_4_prob_mats::<T>(
             &seq_pair,
@@ -5165,11 +5182,15 @@ where
             forward_pos_pair_mat_set,
             backward_pos_pair_mat_set,
             pos_quadruple_mat,
+            &bp_score_param_set_pair,
           ).1;
         });
       }
     });
     feature_score_sets.update(&train_data, &mut regularizers);
+    for train_datum in train_data.iter_mut() {
+      train_datum.set_curr_params(&feature_score_sets);
+    }
     let cost = feature_score_sets.get_cost(&train_data[..], &regularizers);
     if old_cost.is_finite() && (old_cost - cost) / num_of_data <= LEARNING_TOLERANCE {
       feature_score_sets = old_feature_score_sets.clone();

@@ -17,15 +17,12 @@ def main():
   image_dir_path = asset_dir_path + "/images"
   if not os.path.exists(image_dir_path):
     os.mkdir(image_dir_path)
-  log_losses_transfer_on = read_log_losses(asset_dir_path + "/log_losses.dat")
-  epochs_transfer_on = [i for i in range(1, len(log_losses_transfer_on) + 1)];
-  log_losses_transfer_off = read_log_losses(asset_dir_path + "/log_losses_transfer_off.dat")
-  epochs_transfer_off = [i for i in range(1, len(log_losses_transfer_off) + 1)];
-  line_1, = pyplot.plot(epochs_transfer_on, log_losses_transfer_on, label = "Transfer learning on", marker = "", linestyle = "-")
-  line_2, = pyplot.plot(epochs_transfer_off, log_losses_transfer_off, label = "Transfer learning off", marker = "", linestyle = "--")
+  costs = read_log_losses(asset_dir_path + "/costs.dat")
+  epochs = [i for i in range(1, len(costs) + 1)];
+  line_1, = pyplot.plot(epochs, costs, label = 'Dataset "train pairwise"', marker = "", linestyle = "solid")
   pyplot.xlabel("Epoch")
   pyplot.ylabel("Cost")
-  pyplot.legend(handles = [line_1, line_2], loc = "upper right")
+  pyplot.legend(handles = [line_1], loc = "upper right")
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/epochs_vs_costs.eps", bbox_inches = "tight")
 
