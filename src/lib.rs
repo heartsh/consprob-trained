@@ -40,6 +40,7 @@ pub use ndarray_rand::RandomExt;
 pub use ndarray_rand::rand_distr::{Normal, Distribution};
 pub use rand::thread_rng;
 
+pub type PosteriorBppCounts = [FeatureCount; NUM_OF_POSTERIOR_BPP_COUNTS];
 pub type RealBpScoreParamSetPair<T> = (BpScoreParamSets<T>, BpScoreParamSets<T>);
 pub type BpScoreParamSetPair<'a, T> = (&'a BpScoreParamSets<T>, &'a BpScoreParamSets<T>);
 pub type BpScores<T> = HashMap<PosPair<T>, FeatureCount>;
@@ -83,6 +84,7 @@ pub struct BpScoreParamSets<T> {
   pub multi_loop_closing_bp_scores: BpScores<T>,
   pub multi_loop_accessible_bp_scores: BpScores<T>,
   pub external_loop_accessible_bp_scores: BpScores<T>,
+  pub posterior_bpp_scores: BpScores<T>,
 }
 #[derive(Clone)]
 pub struct TrainDatum<T> {
@@ -90,6 +92,10 @@ pub struct TrainDatum<T> {
   pub observed_feature_count_sets: FeatureCountSets,
   pub expected_feature_count_sets: FeatureCountSets,
   pub bpp_mat_pair: SparseProbMatPair<T>,
+  pub log_bpp_mat_pair: SparseProbMatPair<T>,
+  pub log_log_bpp_mat_pair: SparseProbMatPair<T>,
+  pub log_ubpp_mat_pair: RealProbSeqPair,
+  pub log_log_ubpp_mat_pair: RealProbSeqPair,
   pub max_bp_span_pair: (T, T),
   pub part_func: Prob,
   pub forward_pos_pair_mat_set: PosPairMatSet<T>,
@@ -122,6 +128,7 @@ pub struct FeatureCountSets {
   pub loop_align_count_mat: LoopAlignCountMat,
   pub opening_gap_count: FeatureCount,
   pub extending_gap_count: FeatureCount,
+  pub posterior_bpp_counts: PosteriorBppCounts,
   pub hairpin_loop_length_counts_cumulative: HairpinLoopLengthCounts,
   pub bulge_loop_length_counts_cumulative: BulgeLoopLengthCounts,
   pub interior_loop_length_counts_cumulative: InteriorLoopLengthCounts,
@@ -215,6 +222,7 @@ pub struct PctStaProbMats<T> {
   pub upp_mat_4_ml: Probs,
   pub upp_mat_4_el: Probs,
 }
+pub type RealProbSeqPair = (Probs, Probs);
 pub type SparseProbMatPair<T> = (SparseProbMat<T>, SparseProbMat<T>);
 pub type ProbSetPair = (Probs, Probs);
 pub type ProbMatSets<T> = Vec<PctStaProbMats<T>>;
@@ -234,12 +242,24 @@ impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamS
       multi_loop_closing_bp_scores: BpScores::<T>::default(),
       multi_loop_accessible_bp_scores: BpScores::<T>::default(),
       external_loop_accessible_bp_scores: BpScores::<T>::default(),
+      posterior_bpp_scores: BpScores::<T>::default(),
     }
   }
-  pub fn set_curr_params(feature_score_sets: &FeatureCountSets, seq: SeqSlice, bpp_mat: &SparseProbMat<T>) -> BpScoreParamSets<T> {
+  pub fn set_curr_params(feature_score_sets: &FeatureCountSets, seq: SeqSlice, bpp_mat: &SparseProbMat<T>, log_bpp_mat: &SparseProbMat<T>, log_ubpp_mat: &Probs) -> BpScoreParamSets<T> {
+
+    let seq_len = seq.len();
     let mut bp_score_param_sets = BpScoreParamSets::<T>::new();
     for pos_pair in bpp_mat.keys() {
       let long_pos_pair = (pos_pair.0.to_usize().unwrap(), pos_pair.1.to_usize().unwrap());
+      let posterior_bpp_score =
+        get_consprob_posterior_bpp_score(
+          feature_score_sets,
+          bpp_mat,
+          log_bpp_mat,
+          log_ubpp_mat,
+          &pos_pair,
+        );
+      bp_score_param_sets.posterior_bpp_scores.insert(*pos_pair, posterior_bpp_score);
       let hairpin_loop_score =
         get_consprob_hairpin_loop_score(feature_score_sets, seq, &long_pos_pair);
       if hairpin_loop_score > NEG_INFINITY {
@@ -251,33 +271,55 @@ impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamS
         &long_pos_pair,
       );
       bp_score_param_sets.multi_loop_closing_bp_scores.insert(*pos_pair, multi_loop_closing_basepairing_score);
+      let base_pair = (seq[long_pos_pair.1], seq[long_pos_pair.0]);
+      let mismatch_pair = (seq[long_pos_pair.1 + 1], seq[long_pos_pair.0 - 1]);
+      let left_dangle_score = if long_pos_pair.1 < seq_len - 2 {
+        feature_score_sets.left_dangle_count_mat[base_pair.0][base_pair.1]
+        [mismatch_pair.0]
+      } else {
+        0.
+      };
+      let right_dangle_score = if long_pos_pair.0 > 1 {
+        feature_score_sets.right_dangle_count_mat[base_pair.0][base_pair.1]
+        [mismatch_pair.1]
+      } else {
+        0.
+      };
+      let accessible_bp_shared_subscore = feature_score_sets.base_pair_count_mat[base_pair.0][base_pair.1]
+        + posterior_bpp_score;
+      let helix_end_score = feature_score_sets.helix_end_count_mat[base_pair.0][base_pair.1];
+      let accessible_bp_shared_score = accessible_bp_shared_subscore
+        + helix_end_score;
+      let accessible_bp_shared_score_with_dangle = accessible_bp_shared_score + left_dangle_score + right_dangle_score;
       let multi_loop_accessible_basepairing_score =
         get_consprob_multi_loop_accessible_basepairing_score(
           feature_score_sets,
           seq,
           &long_pos_pair,
+          accessible_bp_shared_score_with_dangle,
         );
       bp_score_param_sets.multi_loop_accessible_bp_scores.insert(*pos_pair, multi_loop_accessible_basepairing_score);
       let external_loop_accessible_basepairing_score =
         get_consprob_external_loop_accessible_basepairing_score(
           feature_score_sets,
-          seq,
-          &long_pos_pair,
+          accessible_bp_shared_score_with_dangle,
         );
       bp_score_param_sets.external_loop_accessible_bp_scores.insert(*pos_pair, external_loop_accessible_basepairing_score);
       for pos_pair_2 in bpp_mat.keys() {
-        if !(pos_pair.0 < pos_pair_2.0 && pos_pair_2.1 < pos_pair.1) {continue;}
+        if !(pos_pair_2.0 < pos_pair.0 && pos_pair.1 < pos_pair_2.1) {continue;}
         let long_pos_pair_2 = (pos_pair_2.0.to_usize().unwrap(), pos_pair_2.1.to_usize().unwrap());
-        if long_pos_pair_2.0 - long_pos_pair.0 - 1 + long_pos_pair.1 - long_pos_pair_2.1 - 1 > CONSPROB_MAX_TWOLOOP_LEN {
+        if long_pos_pair.0 - long_pos_pair_2.0 - 1 + long_pos_pair_2.1 - long_pos_pair.1 - 1 > CONSPROB_MAX_TWOLOOP_LEN {
           continue;
         }
         let twoloop_score = get_consprob_twoloop_score(
           feature_score_sets,
           seq,
-          &long_pos_pair,
           &long_pos_pair_2,
+          &long_pos_pair,
+          accessible_bp_shared_subscore,
+          helix_end_score,
         );
-        bp_score_param_sets.twoloop_scores.insert((pos_pair.0, pos_pair.1, pos_pair_2.0, pos_pair_2.1), twoloop_score);
+        bp_score_param_sets.twoloop_scores.insert((pos_pair_2.0, pos_pair_2.1, pos_pair.0, pos_pair.1), twoloop_score);
       }
     }
     bp_score_param_sets
@@ -313,6 +355,7 @@ impl FeatureCountSets {
       loop_align_count_mat: twod_mat,
       opening_gap_count: init_val,
       extending_gap_count: init_val,
+      posterior_bpp_counts: [init_val; NUM_OF_POSTERIOR_BPP_COUNTS],
       hairpin_loop_length_counts_cumulative: [init_val; CONSPROB_MAX_HAIRPIN_LOOP_LEN - CONSPROB_MIN_HAIRPIN_LOOP_LEN + 1],
       bulge_loop_length_counts_cumulative: [init_val; CONSPROB_MAX_TWOLOOP_LEN],
       interior_loop_length_counts_cumulative: [init_val; CONSPROB_MAX_TWOLOOP_LEN - 1],
@@ -345,6 +388,7 @@ impl FeatureCountSets {
       + self.loop_align_count_mat.len().pow(2)
       + 1
       + 1
+      + self.posterior_bpp_counts.len()
   }
 
   pub fn update_regularizers(&self, regularizers: &mut Regularizers) {
@@ -659,6 +703,18 @@ impl FeatureCountSets {
     offset += 1;
     let regularizer = get_regularizer(1, self.extending_gap_count * self.extending_gap_count);
     regularizers_tmp[offset] = regularizer;
+    offset += 1;
+    let len = self.posterior_bpp_counts.len();
+    let group_size = len;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      let count = self.posterior_bpp_counts[i];
+      squared_sum += count * count;
+    }
+    let regularizer = get_regularizer(group_size, squared_sum);
+    for i in 0 .. len {
+      regularizers_tmp[offset + i] = regularizer;
+    }
     *regularizers = Array1::from(regularizers_tmp);
   }
 
@@ -879,6 +935,9 @@ impl FeatureCountSets {
       let obs_count = obs.extending_gap_count;
       let expect_count = expect.extending_gap_count;
       grad.extending_gap_count -= obs_count - expect_count;
+      for i in 0 .. obs.posterior_bpp_counts.len() {
+        grad.posterior_bpp_counts[i] -= obs.posterior_bpp_counts[i] - expect.posterior_bpp_counts[i];
+      }
     }
     convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
   }
@@ -1051,6 +1110,9 @@ impl FeatureCountSets {
     }
     self.opening_gap_count = normal.sample(&mut thread_rng);
     self.extending_gap_count = normal.sample(&mut thread_rng);
+    for v in self.posterior_bpp_counts.iter_mut() {
+      *v = normal.sample(&mut thread_rng);
+    }
     self.accumulate();
   }
 }
@@ -1196,13 +1258,17 @@ impl FastaRecord {
   }
 }
 
-impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync + Send> TrainDatum<T> {
+impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync + Send + Display> TrainDatum<T> {
   pub fn origin() -> TrainDatum<T> {
     TrainDatum {
       seq_pair: (Seq::new(), Seq::new()),
       observed_feature_count_sets: FeatureCountSets::new(0.),
       expected_feature_count_sets: FeatureCountSets::new(NEG_INFINITY),
       bpp_mat_pair: (SparseProbMat::<T>::default(), SparseProbMat::<T>::default()),
+      log_bpp_mat_pair: (SparseProbMat::<T>::default(), SparseProbMat::<T>::default()),
+      log_log_bpp_mat_pair: (SparseProbMat::<T>::default(), SparseProbMat::<T>::default()),
+      log_ubpp_mat_pair: (Probs::new(), Probs::new()),
+      log_log_ubpp_mat_pair: (Probs::new(), Probs::new()),
       max_bp_span_pair: (T::zero(), T::zero()),
       part_func: NEG_INFINITY,
       forward_pos_pair_mat_set: PosPairMatSet::<T>::default(),
@@ -1225,8 +1291,28 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       remove_gaps(&seq_pair.1),
       );
     let bpp_mat_pair = (
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.0[..], false).0, min_bpp),
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.1[..], false).0, min_bpp),
+      mccaskill_algo(&seq_pair_without_gaps.0[..], false).0,
+      mccaskill_algo(&seq_pair_without_gaps.1[..], false).0,
+    );
+    let sparse_bpp_mat_pair = (
+      remove_small_bpps_from_bpp_mat::<T>(&bpp_mat_pair.0, min_bpp),
+      remove_small_bpps_from_bpp_mat::<T>(&bpp_mat_pair.1, min_bpp),
+    );
+    let log_bpp_mat_pair: SparseProbMatPair<T> = (
+      sparse_bpp_mat_pair.0.iter().map(|(key, &val)| (*key, val.ln())).collect(),
+      sparse_bpp_mat_pair.1.iter().map(|(key, &val)| (*key, val.ln())).collect(),
+    );
+    let log_log_bpp_mat_pair = (
+      log_bpp_mat_pair.0.iter().map(|(key, &val)| (*key, val.ln())).collect(),
+      log_bpp_mat_pair.1.iter().map(|(key, &val)| (*key, val.ln())).collect(),
+    );
+    let log_ubpp_mat_pair = (
+      get_log_ubpp_mat(&bpp_mat_pair.0, seq_pair_without_gaps.0.len()),
+      get_log_ubpp_mat(&bpp_mat_pair.1, seq_pair_without_gaps.1.len()),
+    );
+    let log_log_ubpp_mat_pair = (
+      log_ubpp_mat_pair.0.iter().map(|&x| x.ln()).collect(),
+      log_ubpp_mat_pair.1.iter().map(|&x| x.ln()).collect(),
     );
     let seq_len_pair = (T::from_usize(seq_pair_without_gaps.0.len()).unwrap(), T::from_usize(seq_pair_without_gaps.1.len()).unwrap());
     let max_gap_num = offset_4_max_gap_num
@@ -1250,7 +1336,11 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       seq_pair: seq_pair_without_gaps,
       observed_feature_count_sets: FeatureCountSets::new(0.),
       expected_feature_count_sets: FeatureCountSets::new(NEG_INFINITY),
-      bpp_mat_pair: bpp_mat_pair.clone(),
+      bpp_mat_pair: sparse_bpp_mat_pair,
+      log_bpp_mat_pair: log_bpp_mat_pair,
+      log_ubpp_mat_pair: log_ubpp_mat_pair,
+      log_log_bpp_mat_pair: log_log_bpp_mat_pair,
+      log_log_ubpp_mat_pair: log_log_ubpp_mat_pair,
       max_bp_span_pair: max_bp_span_pair,
       part_func: NEG_INFINITY,
       forward_pos_pair_mat_set: forward_pos_pair_mat_set,
@@ -1322,6 +1412,12 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
         self.observed_feature_count_sets.base_pair_count_mat[dict_min_base_pair_1.0][dict_min_base_pair_1.1] += 1.;
         let dict_min_base_pair_2 = get_dict_min_base_pair(&base_pair_2);
         self.observed_feature_count_sets.base_pair_count_mat[dict_min_base_pair_2.0][dict_min_base_pair_2.1] += 1.;
+        let dict_min_basepair_align = get_dict_min_basepair_align(&base_pair_1, &base_pair_2);
+        self.observed_feature_count_sets.basepair_align_count_mat[dict_min_basepair_align.0.0][dict_min_basepair_align.0.1][dict_min_basepair_align.1.0][dict_min_basepair_align.1.1] += 1.;
+        self.observed_feature_count_sets.posterior_bpp_counts[0] += 2.;
+        self.observed_feature_count_sets.posterior_bpp_counts[1] += 2.;
+        self.observed_feature_count_sets.posterior_bpp_counts[2] += 2.;
+        self.observed_feature_count_sets.posterior_bpp_counts[3] += 2.;
       }
     }
     let mut loop_struct = HashMap::<(usize, usize), Vec<(usize, usize)>>::default();
@@ -1356,7 +1452,6 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       let base_pair_2 = (seq_pair.1[pos_pair_closing_loop.0], seq_pair.1[pos_pair_closing_loop.1]);
       let mismatch_pair = get_mismatch_pair(&seq_pair.0[..], &pos_pair_closing_loop, true);
       let mismatch_pair_2 = get_mismatch_pair(&seq_pair.1[..], &pos_pair_closing_loop, true);
-      self.observed_feature_count_sets.basepair_align_count_mat[base_pair.0][base_pair.1][base_pair_2.0][base_pair_2.1] += 1.;
       if num_of_basepairings_in_loop == 0 {
         if mismatch_pair.0 != PSEUDO_BASE && mismatch_pair.1 != PSEUDO_BASE {
           self.observed_feature_count_sets.terminal_mismatch_count_mat[base_pair.0][base_pair.1][mismatch_pair.0][mismatch_pair.1] += 1.;
@@ -1521,15 +1616,14 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       if mismatch_pair_2.0 != PSEUDO_BASE {
         self.observed_feature_count_sets.right_dangle_count_mat[base_pair_2.1][base_pair_2.0][mismatch_pair_2.0] += 1.;
       }
-      self.observed_feature_count_sets.basepair_align_count_mat[base_pair.0][base_pair.1][base_pair_2.0][base_pair_2.1] += 1.;
       self.observed_feature_count_sets.helix_end_count_mat[base_pair.1][base_pair.0] += 1.;
       self.observed_feature_count_sets.helix_end_count_mat[base_pair_2.1][base_pair_2.0] += 1.;
     }
   }
 
   pub fn set_curr_params(&mut self, feature_score_sets: &FeatureCountSets) {
-    self.bp_score_param_set_pair.0 = BpScoreParamSets::<T>::set_curr_params(feature_score_sets, &self.seq_pair.0, &self.bpp_mat_pair.0);
-    self.bp_score_param_set_pair.1 = BpScoreParamSets::<T>::set_curr_params(feature_score_sets, &self.seq_pair.1, &self.bpp_mat_pair.1);
+    self.bp_score_param_set_pair.0 = BpScoreParamSets::<T>::set_curr_params(feature_score_sets, &self.seq_pair.0, &self.bpp_mat_pair.0, &self.log_bpp_mat_pair.0, &self.log_ubpp_mat_pair.0);
+    self.bp_score_param_set_pair.1 = BpScoreParamSets::<T>::set_curr_params(feature_score_sets, &self.seq_pair.1, &self.bpp_mat_pair.1, &self.log_bpp_mat_pair.1, &self.log_ubpp_mat_pair.1);
   }
 }
 
@@ -1550,6 +1644,7 @@ pub const CONSPROB_MIN_HAIRPIN_LOOP_SPAN: usize = CONSPROB_MIN_HAIRPIN_LOOP_LEN 
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_EXPLICIT: usize = 4;
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_SYMM: usize = CONSPROB_MAX_TWOLOOP_LEN / 2;
 pub const CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM: usize = CONSPROB_MAX_TWOLOOP_LEN - 2;
+pub const NUM_OF_POSTERIOR_BPP_COUNTS: usize = 4;
 pub const GAMMA_DIST_ALPHA: FeatureCount = 0.;
 pub const GAMMA_DIST_BETA: FeatureCount = 1.;
 pub const LEARNING_TOLERANCE: FeatureCount = 0.01;
@@ -1580,6 +1675,9 @@ pub fn io_algo_4_prob_mats<T>(
   backward_pos_pair_mat_set: &PosPairMatSet<T>,
   pos_quadruple_mat: &PosQuadrupleMat<T>,
   bp_score_param_set_pair: &BpScoreParamSetPair<T>,
+  log_bpp_mat_pair: &ProbMatPair<T>,
+  log_log_bpp_mat_pair: &ProbMatPair<T>,
+  log_log_ubpp_mat_pair: &ProbSeqPair,
 ) -> (StaProbMats<T>, Prob)
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
@@ -1610,6 +1708,9 @@ where
     expected_feature_count_sets,
     pos_quadruple_mat,
     bp_score_param_set_pair,
+    log_bpp_mat_pair,
+    log_log_bpp_mat_pair,
+    log_log_ubpp_mat_pair,
   ), global_part_func)
 }
 
@@ -2786,6 +2887,9 @@ pub fn get_sta_prob_mats<T>(
   expected_feature_count_sets: &mut FeatureCountSets,
   pos_quadruple_mat: &PosQuadrupleMat<T>,
   bp_score_param_set_pair: &BpScoreParamSetPair<T>,
+  log_bpp_mat_pair: &ProbMatPair<T>,
+  log_log_bpp_mat_pair: &ProbMatPair<T>,
+  log_log_ubpp_mat_pair: &ProbSeqPair,
 ) -> StaProbMats<T>
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
@@ -3244,6 +3348,23 @@ where
               sta_outside_part_func_4d_mat_4_bpas.insert(pos_quadruple, sum);
               let bpap = prob_coeff + sum;
               if trains_score_params {
+                // Count posterior basepairing probabilities.
+                let log_bpp = log_bpp_mat_pair.0[&pos_pair];
+                let log_bpp_2 = log_bpp_mat_pair.1[&pos_pair_2];
+                let log_log_bpp = log_log_bpp_mat_pair.0[&pos_pair];
+                let log_log_bpp_2 = log_log_bpp_mat_pair.1[&pos_pair_2];
+                let log_log_ubpp_1 = log_log_ubpp_mat_pair.0[long_i];
+                let log_log_ubpp_2 = log_log_ubpp_mat_pair.0[long_j];
+                let log_log_ubpp_3 = log_log_ubpp_mat_pair.1[long_k];
+                let log_log_ubpp_4 = log_log_ubpp_mat_pair.1[long_l];
+                logsumexp(&mut expected_feature_count_sets.posterior_bpp_counts[0], log_bpp + bpap);
+                logsumexp(&mut expected_feature_count_sets.posterior_bpp_counts[0], log_bpp_2 + bpap);
+                logsumexp(&mut expected_feature_count_sets.posterior_bpp_counts[1], 2. * log_bpp + bpap);
+                logsumexp(&mut expected_feature_count_sets.posterior_bpp_counts[1], 2. * log_bpp_2 + bpap);
+                logsumexp(&mut expected_feature_count_sets.posterior_bpp_counts[2], log_log_bpp + bpap);
+                logsumexp(&mut expected_feature_count_sets.posterior_bpp_counts[2], log_log_bpp_2 + bpap);
+                logsumexp(&mut expected_feature_count_sets.posterior_bpp_counts[3], - (log_log_ubpp_1 + log_log_ubpp_2 + bpap));
+                logsumexp(&mut expected_feature_count_sets.posterior_bpp_counts[3], - (log_log_ubpp_3 + log_log_ubpp_4 + bpap));
                 // Count base pairs.
                 let dict_min_base_pair = get_dict_min_base_pair(&base_pair);
                 let dict_min_base_pair_2 = get_dict_min_base_pair(&base_pair_2);
@@ -4771,47 +4892,23 @@ pub fn get_consprob_multi_loop_accessible_basepairing_score(
   feature_score_sets: &FeatureCountSets,
   seq: SeqSlice,
   pos_pair: &(usize, usize),
+  accessible_bp_shared_score_with_dangle: FeatureCount,
 ) -> FeatureCount {
-  let base_pair = (seq[pos_pair.1], seq[pos_pair.0]);
   let mismatch_pair = (seq[pos_pair.1 + 1], seq[pos_pair.0 - 1]);
   if mismatch_pair.0 == PSEUDO_BASE || mismatch_pair.1 == PSEUDO_BASE {
     NEG_INFINITY
   } else {
     feature_score_sets.multi_loop_basepairing_count
-      + feature_score_sets.left_dangle_count_mat[base_pair.0][base_pair.1]
-        [mismatch_pair.0]
-      + feature_score_sets.right_dangle_count_mat[base_pair.0][base_pair.1]
-        [mismatch_pair.1]
-      + feature_score_sets.helix_end_count_mat[base_pair.0][base_pair.1]
-      + feature_score_sets.base_pair_count_mat[base_pair.0][base_pair.1]
+      + accessible_bp_shared_score_with_dangle
   }
 }
 
 pub fn get_consprob_external_loop_accessible_basepairing_score(
   feature_score_sets: &FeatureCountSets,
-  seq: SeqSlice,
-  pos_pair: &(usize, usize),
+  accessible_bp_shared_score_with_dangle: FeatureCount,
 ) -> FeatureCount {
-  let seq_len = seq.len();
-  let base_pair = (seq[pos_pair.1], seq[pos_pair.0]);
-  let mismatch_pair = (seq[pos_pair.1 + 1], seq[pos_pair.0 - 1]);
-  let left_terminal_mismatch_score = if pos_pair.1 < seq_len - 2 {
-    feature_score_sets.left_dangle_count_mat[base_pair.0][base_pair.1]
-      [mismatch_pair.0]
-  } else {
-    0.
-  };
-  let right_terminal_mismatch_score = if pos_pair.0 > 1 {
-    feature_score_sets.right_dangle_count_mat[base_pair.0][base_pair.1]
-      [mismatch_pair.1]
-  } else {
-    0.
-  };
-  left_terminal_mismatch_score
-    + right_terminal_mismatch_score
-    + feature_score_sets.external_loop_accessible_basepairing_count
-    + feature_score_sets.helix_end_count_mat[base_pair.0][base_pair.1]
-    + feature_score_sets.base_pair_count_mat[base_pair.0][base_pair.1]
+  feature_score_sets.external_loop_accessible_basepairing_count
+    + accessible_bp_shared_score_with_dangle
 }
 
 pub fn get_consprob_hairpin_loop_score(
@@ -4837,6 +4934,8 @@ pub fn get_consprob_twoloop_score(
   seq: SeqSlice,
   pos_pair_closing_loop: &(usize, usize),
   pos_pair_accessible: &(usize, usize),
+  accessible_bp_shared_subscore: FeatureCount,
+  helix_end_score: FeatureCount,
 ) -> FeatureCount {
   let is_stack = pos_pair_closing_loop.0 + 1 == pos_pair_accessible.0
     && pos_pair_closing_loop.1 - 1 == pos_pair_accessible.1;
@@ -4857,14 +4956,14 @@ pub fn get_consprob_twoloop_score(
     pos_pair_accessible.0 - pos_pair_closing_loop.0 - 1,
     pos_pair_closing_loop.1 - pos_pair_accessible.1 - 1,
   );
-   feature_score_sets.base_pair_count_mat[base_pair_accessible.0][base_pair_accessible.1] + if is_stack {
+  accessible_bp_shared_subscore
+  + if is_stack {
     feature_score_sets.stack_count_mat[base_pair_closing_loop.0][base_pair_closing_loop.1]
       [base_pair_accessible.0][base_pair_accessible.1]
   } else {
-    let helix_end_score_sum = feature_score_sets.helix_end_count_mat[base_pair_closing_loop.0]
+    feature_score_sets.helix_end_count_mat[base_pair_closing_loop.0]
       [base_pair_closing_loop.1]
-      + feature_score_sets.helix_end_count_mat[base_pair_accessible.1][base_pair_accessible.0];
-    helix_end_score_sum
+      + helix_end_score
       + feature_score_sets.terminal_mismatch_count_mat[base_pair_closing_loop.0][base_pair_closing_loop.1][mismatch_pair_1.0][mismatch_pair_1.1]
       + feature_score_sets.terminal_mismatch_count_mat[base_pair_accessible.1][base_pair_accessible.0][mismatch_pair_2.0][mismatch_pair_2.1] + if is_bulge_loop {
       feature_score_sets.bulge_loop_length_counts_cumulative[loop_len_pair.0 + loop_len_pair.1 - 1]
@@ -4887,6 +4986,23 @@ pub fn get_consprob_twoloop_score(
         } else {0.}
     }
   }
+}
+
+pub fn get_consprob_posterior_bpp_score<T>(
+  feature_score_sets: &FeatureCountSets,
+  bpp_mat: &SparseProbMat<T>,
+  log_bpp_mat: &SparseProbMat<T>,
+  log_ubpp_mat: &Probs,
+  pos_pair: &PosPair<T>,
+) -> FeatureCount
+where
+  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
+{
+  let bpp = bpp_mat[pos_pair];
+  feature_score_sets.posterior_bpp_counts[0] * bpp
+    + feature_score_sets.posterior_bpp_counts[1] * bpp * bpp 
+    + feature_score_sets.posterior_bpp_counts[2] * log_bpp_mat[pos_pair]
+    - feature_score_sets.posterior_bpp_counts[3] * (log_ubpp_mat[pos_pair.0.to_usize().unwrap() - 1] + log_ubpp_mat[pos_pair.1.to_usize().unwrap() - 1])
 }
 
 pub fn get_dict_min_stack(base_pair_closing_loop: &BasePair, base_pair_accessible: &BasePair) -> (BasePair, BasePair) {
@@ -5018,19 +5134,23 @@ pub fn consprob<T>(
   produces_access_probs: bool,
 ) -> ProbMatSets<T>
 where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send,
+  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send + Display,
 {
   let feature_score_sets = FeatureCountSets::load_trained_score_params();
   let num_of_fasta_records = fasta_records.len();
   let mut bpp_mats = vec![SparseProbMat::<T>::new(); num_of_fasta_records];
   let mut sparse_bpp_mats = vec![SparseProbMat::<T>::new(); num_of_fasta_records];
+  let mut log_bpp_mats = sparse_bpp_mats.clone();
+  let mut log_ubpp_mats = vec![Probs::new(); num_of_fasta_records];
   let mut max_bp_spans = vec![T::zero(); num_of_fasta_records];
   let mut bp_score_param_set_seqs = vec![BpScoreParamSets::<T>::new(); num_of_fasta_records];
   let ref ref_2_feature_score_sets = feature_score_sets;
   thread_pool.scoped(|scope| {
-    for (bpp_mat, sparse_bpp_mat, max_bp_span, fasta_record, bp_score_param_sets) in multizip((
+    for (bpp_mat, sparse_bpp_mat, log_bpp_mat, log_ubpp_mat, max_bp_span, fasta_record, bp_score_param_sets) in multizip((
       bpp_mats.iter_mut(),
       sparse_bpp_mats.iter_mut(),
+      log_bpp_mats.iter_mut(),
+      log_ubpp_mats.iter_mut(),
       max_bp_spans.iter_mut(),
       fasta_records.iter(),
       bp_score_param_set_seqs.iter_mut(),
@@ -5039,8 +5159,10 @@ where
       scope.execute(move || {
         *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false).0;
         *sparse_bpp_mat = remove_small_bpps_from_bpp_mat::<T>(bpp_mat, min_bpp);
+        *log_bpp_mat = sparse_bpp_mat.iter().map(|(key, &val)| (*key, val.ln())).collect();
+        *log_ubpp_mat = get_log_ubpp_mat(bpp_mat, seq_len - 2);
         *max_bp_span = get_max_bp_span::<T>(sparse_bpp_mat);
-        *bp_score_param_sets = BpScoreParamSets::<T>::set_curr_params(ref_2_feature_score_sets, &fasta_record.seq[..], sparse_bpp_mat);
+        *bp_score_param_sets = BpScoreParamSets::<T>::set_curr_params(ref_2_feature_score_sets, &fasta_record.seq[..], sparse_bpp_mat, log_bpp_mat, log_ubpp_mat);
       });
     }
   });
@@ -5051,6 +5173,8 @@ where
       prob_mats_with_rna_id_pairs.insert(rna_id_pair, StaProbMats::<T>::origin());
     }
   }
+  let null_prob_mat_pair = (SparseProbMat::<T>::default(), SparseProbMat::<T>::default());
+  let null_prob_seq_pair = (Probs::new(), Probs::new());
   thread_pool.scoped(|scope| {
     for (rna_id_pair, prob_mats) in prob_mats_with_rna_id_pairs.iter_mut() {
       let seq_pair = (
@@ -5084,6 +5208,8 @@ where
         &bp_score_param_set_seqs[rna_id_pair.0],
         &bp_score_param_set_seqs[rna_id_pair.1],
       );
+      let ref_2_null_prob_mat_pair = (&null_prob_mat_pair.0, &null_prob_mat_pair.1);
+      let ref_2_null_prob_seq_pair = (&null_prob_seq_pair.0, &null_prob_seq_pair.1);
       let (forward_pos_pair_mat_set, backward_pos_pair_mat_set, pos_quadruple_mat) = get_sparse_pos_sets(&bpp_mat_pair, max_gap_num_4_il, &pseudo_pos_quadruple);
       let ref ref_2_feature_score_sets = feature_score_sets;
       scope.execute(move || {
@@ -5100,6 +5226,9 @@ where
           &backward_pos_pair_mat_set,
           &pos_quadruple_mat,
           &bp_score_param_set_pair,
+          &ref_2_null_prob_mat_pair,
+          &ref_2_null_prob_mat_pair,
+          &ref_2_null_prob_seq_pair,
         ).0;
       });
     }
@@ -5135,7 +5264,7 @@ pub fn constrain<'a, T>(
   output_file_path: &Path,
 )
 where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send,
+  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send + Display,
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
   feature_score_sets.rand_init();
@@ -5169,6 +5298,9 @@ where
         let ref backward_pos_pair_mat_set = train_datum.backward_pos_pair_mat_set;
         let ref pos_quadruple_mat = train_datum.pos_quadruple_mat;
         let bp_score_param_set_pair = (&train_datum.bp_score_param_set_pair.0, &train_datum.bp_score_param_set_pair.1);
+        let log_bpp_mat_pair = (&train_datum.log_bpp_mat_pair.0, &train_datum.log_bpp_mat_pair.1);
+        let log_log_bpp_mat_pair = (&train_datum.log_log_bpp_mat_pair.0, &train_datum.log_log_bpp_mat_pair.1);
+        let log_log_ubpp_mat_pair = (&train_datum.log_log_ubpp_mat_pair.0, &train_datum.log_log_ubpp_mat_pair.1);
         scope.execute(move || {
           *part_func = io_algo_4_prob_mats::<T>(
             &seq_pair,
@@ -5183,6 +5315,9 @@ where
             backward_pos_pair_mat_set,
             pos_quadruple_mat,
             &bp_score_param_set_pair,
+            &log_bpp_mat_pair,
+            &log_log_bpp_mat_pair,
+            &log_log_ubpp_mat_pair,
           ).1;
         });
       }
@@ -5454,6 +5589,11 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   f.opening_gap_count = feature_counts[offset];
   offset += 1;
   f.extending_gap_count = feature_counts[offset];
+  offset += 1;
+  let len = f.posterior_bpp_counts.len();
+  for i in 0 .. len {
+    f.posterior_bpp_counts[i] = feature_counts[offset + i];
+  }
   f
 }
 
@@ -5610,6 +5750,11 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   feature_counts[offset] = f.opening_gap_count;
   offset += 1;
   feature_counts[offset] = f.extending_gap_count;
+  offset += 1;
+  let len = f.posterior_bpp_counts.len();
+  for i in 0 .. len {
+    feature_counts[offset + i] = f.posterior_bpp_counts[i];
+  }
   Array::from(feature_counts)
 }
 
@@ -5839,4 +5984,24 @@ pub fn write_prob_mat_sets<T>(
     }
     let _ = writer_2_upp_mat_file.write_all(buf_4_writer_2_upp_mat_file.as_bytes());
   }
+}
+
+pub fn get_log_ubpp_mat<T>(bpp_mat: &SparseProbMat<T>, seq_len: usize) -> Probs
+where
+  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Display + Ord,
+{
+  let mut ubpp_mat = vec![1. as Prob; seq_len];
+  for i in 0 .. seq_len {
+    let short_i = T::from_usize(i).unwrap();
+    for j in i + 1 .. seq_len {
+      let short_j = T::from_usize(j).unwrap();
+      match bpp_mat.get(&(short_i, short_j)) {
+        Some(&bpp) => {
+          ubpp_mat[i] -= bpp;
+          ubpp_mat[j] -= bpp;
+        }, None => {},
+      }
+    }
+  }
+  ubpp_mat.iter().map(|&x| x.ln()).collect()
 }
