@@ -1288,16 +1288,12 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       remove_gaps(&seq_pair.1),
       );
     let bpp_mat_pair = (
-      mccaskill_algo(&seq_pair_without_gaps.0[..], false).0,
-      mccaskill_algo(&seq_pair_without_gaps.1[..], false).0,
-    );
-    let sparse_bpp_mat_pair = (
-      remove_small_bpps_from_bpp_mat::<T>(&bpp_mat_pair.0, min_bpp),
-      remove_small_bpps_from_bpp_mat::<T>(&bpp_mat_pair.1, min_bpp),
+      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.0[..], false).0, min_bpp),
+      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.1[..], false).0, min_bpp),
     );
     let log_bpp_mat_pair: SparseProbMatPair<T> = (
-      sparse_bpp_mat_pair.0.iter().map(|(key, &val)| (*key, val.ln())).collect(),
-      sparse_bpp_mat_pair.1.iter().map(|(key, &val)| (*key, val.ln())).collect(),
+      bpp_mat_pair.0.iter().map(|(key, &val)| (*key, val.ln())).collect(),
+      bpp_mat_pair.1.iter().map(|(key, &val)| (*key, val.ln())).collect(),
     );
     let log_log_bpp_mat_pair = (
       log_bpp_mat_pair.0.iter().map(|(key, &val)| (*key, val.ln())).collect(),
@@ -1325,7 +1321,7 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       seq_pair: seq_pair_without_gaps,
       observed_feature_count_sets: FeatureCountSets::new(0.),
       expected_feature_count_sets: FeatureCountSets::new(NEG_INFINITY),
-      bpp_mat_pair: sparse_bpp_mat_pair,
+      bpp_mat_pair: bpp_mat_pair,
       log_bpp_mat_pair: log_bpp_mat_pair,
       log_log_bpp_mat_pair: log_log_bpp_mat_pair,
       max_bp_span_pair: max_bp_span_pair,
