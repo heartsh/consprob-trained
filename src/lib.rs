@@ -302,6 +302,7 @@ impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamS
           accessible_bp_shared_score_with_dangle,
         );
       bp_score_param_sets.external_loop_accessible_bp_scores.insert(*pos_pair, external_loop_accessible_basepairing_score);
+      let terminal_mismatch_score = if long_pos_pair.1 < seq_len - 2 && long_pos_pair.0 > 1 {feature_score_sets.terminal_mismatch_count_mat[base_pair.0][base_pair.1][mismatch_pair.0][mismatch_pair.1]} else {NEG_INFINITY};
       for pos_pair_2 in bpp_mat.keys() {
         if !(pos_pair_2.0 < pos_pair.0 && pos_pair.1 < pos_pair_2.1) {continue;}
         let long_pos_pair_2 = (pos_pair_2.0.to_usize().unwrap(), pos_pair_2.1.to_usize().unwrap());
@@ -315,6 +316,7 @@ impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamS
           &long_pos_pair,
           accessible_bp_shared_subscore,
           helix_end_score,
+          terminal_mismatch_score,
         );
         bp_score_param_sets.twoloop_scores.insert((pos_pair_2.0, pos_pair_2.1, pos_pair.0, pos_pair.1), twoloop_score);
       }
@@ -4911,6 +4913,7 @@ pub fn get_consprob_twoloop_score(
   pos_pair_accessible: &(usize, usize),
   accessible_bp_shared_subscore: FeatureCount,
   helix_end_score: FeatureCount,
+  terminal_mismatch_score: FeatureCount,
 ) -> FeatureCount {
   let is_stack = pos_pair_closing_loop.0 + 1 == pos_pair_accessible.0
     && pos_pair_closing_loop.1 - 1 == pos_pair_accessible.1;
@@ -4922,10 +4925,6 @@ pub fn get_consprob_twoloop_score(
   let mismatch_pair_1 = (
     seq[pos_pair_closing_loop.0 + 1],
     seq[pos_pair_closing_loop.1 - 1],
-  );
-  let mismatch_pair_2 = (
-    seq[pos_pair_accessible.1 + 1],
-    seq[pos_pair_accessible.0 - 1],
   );
   let loop_len_pair = (
     pos_pair_accessible.0 - pos_pair_closing_loop.0 - 1,
@@ -4940,7 +4939,7 @@ pub fn get_consprob_twoloop_score(
       [base_pair_closing_loop.1]
       + helix_end_score
       + feature_score_sets.terminal_mismatch_count_mat[base_pair_closing_loop.0][base_pair_closing_loop.1][mismatch_pair_1.0][mismatch_pair_1.1]
-      + feature_score_sets.terminal_mismatch_count_mat[base_pair_accessible.1][base_pair_accessible.0][mismatch_pair_2.0][mismatch_pair_2.1] + if is_bulge_loop {
+      + terminal_mismatch_score + if is_bulge_loop {
       feature_score_sets.bulge_loop_length_counts_cumulative[loop_len_pair.0 + loop_len_pair.1 - 1]
         + if loop_len_pair.0 + loop_len_pair.1 == 1 {
           feature_score_sets.bulge_loop_0x1_length_counts[if loop_len_pair.0 == 0 {mismatch_pair_1.1} else {mismatch_pair_1.0}]
