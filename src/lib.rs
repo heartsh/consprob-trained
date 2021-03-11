@@ -84,7 +84,6 @@ pub struct BpScoreParamSets<T> {
   pub multi_loop_closing_bp_scores: BpScores<T>,
   pub multi_loop_accessible_bp_scores: BpScores<T>,
   pub external_loop_accessible_bp_scores: BpScores<T>,
-  pub posterior_bpp_scores: BpScores<T>,
 }
 #[derive(Clone)]
 pub struct TrainDatum<T> {
@@ -240,7 +239,6 @@ impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamS
       multi_loop_closing_bp_scores: BpScores::<T>::default(),
       multi_loop_accessible_bp_scores: BpScores::<T>::default(),
       external_loop_accessible_bp_scores: BpScores::<T>::default(),
-      posterior_bpp_scores: BpScores::<T>::default(),
     }
   }
 
@@ -256,7 +254,6 @@ impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamS
           log_bpp_mat,
           &pos_pair,
         );
-      bp_score_param_sets.posterior_bpp_scores.insert(*pos_pair, posterior_bpp_score);
       let hairpin_loop_score =
         get_consprob_hairpin_loop_score(feature_score_sets, seq, &long_pos_pair);
       if hairpin_loop_score > NEG_INFINITY {
@@ -4587,6 +4584,9 @@ where
       }
       expected_feature_count_sets.opening_gap_count = expf(expected_feature_count_sets.opening_gap_count);
       expected_feature_count_sets.extending_gap_count = expf(expected_feature_count_sets.extending_gap_count);
+      for count in expected_feature_count_sets.posterior_bpp_counts.iter_mut() {
+        *count = expf(*count);
+      }
     }
   }
   sta_prob_mats
