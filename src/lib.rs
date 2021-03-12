@@ -1393,7 +1393,15 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       if base_pair.1 == PSEUDO_BASE {
         last_pos_pair.1 = last_pos_pair.1 + T::one();
       }
-      mapped_pos_pair_seqs.push(last_pos_pair);
+      let add_pos_pair = (
+        if base_pair.0 == PSEUDO_BASE {
+          last_pos_pair.0
+        } else {T::zero()},
+        if base_pair.1 == PSEUDO_BASE {
+          last_pos_pair.1
+        } else {T::zero()},
+      );
+      mapped_pos_pair_seqs.push(add_pos_pair);
       let notation_char = dot_bracket_notation[i];
       if notation_char == BASE_PAIRING_LEFT_BASE {
         stack.push(i);
@@ -1414,6 +1422,11 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
         self.observed_feature_count_sets.basepair_align_count_mat[dict_min_basepair_align.0.0][dict_min_basepair_align.0.1][dict_min_basepair_align.1.0][dict_min_basepair_align.1.1] += 1.;
         let mapped_pos_pair = (mapped_pos_pair_seqs[pos].0, mapped_pos_pair_seqs[i].0);
         let mapped_pos_pair_2 = (mapped_pos_pair_seqs[pos].1, mapped_pos_pair_seqs[i].1);
+        if mapped_pos_pair.0 == T::zero() || mapped_pos_pair.1 == T::zero() || mapped_pos_pair_2.0 == T::zero() || mapped_pos_pair_2.1 == T::zero() {
+          continue;
+        }
+        let mapped_pos_pair = (mapped_pos_pair.0 - T::one(), mapped_pos_pair.1 - T::one());
+        let mapped_pos_pair_2 = (mapped_pos_pair_2.0 - T::one(), mapped_pos_pair_2.1 - T::one());
         match bpp_mat_pair.0.get(&mapped_pos_pair) {
           Some(&bpp) => {
             match bpp_mat_pair.1.get(&mapped_pos_pair_2) {
