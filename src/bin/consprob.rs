@@ -41,7 +41,12 @@ fn main() {
   opts.optflag(
     "a",
     "produces_access_probs",
-    &format!("Also compute accessible probabilities (only for Turner model)"),
+    &format!("Also compute accessible probabilities"),
+  );
+  opts.optflag(
+    "l",
+    "produces_align_probs",
+    &format!("Also compute nucleotide alignment probabilities"),
   );
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
@@ -81,6 +86,7 @@ fn main() {
     num_cpus::get() as NumOfThreads
   };
   let produces_access_probs = matches.opt_present("a");
+  let produces_align_probs = matches.opt_present("l");
   let output_dir_path = matches.opt_str("o").unwrap();
   let output_dir_path = Path::new(&output_dir_path);
   let fasta_file_reader = Reader::from_file(Path::new(&input_file_path)).unwrap();
@@ -99,22 +105,24 @@ fn main() {
   }
   let mut thread_pool = Pool::new(num_of_threads);
   if max_seq_len <= u8::MAX as usize {
-    let prob_mat_sets = consprob::<u8>(
+    let (prob_mat_sets, pct_align_prob_mats_with_rna_id_pairs) = consprob::<u8>(
       &mut thread_pool,
       &fasta_records,
       min_bpp,
       offset_4_max_gap_num as u8,
       produces_access_probs,
+      produces_align_probs,
     );
-    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs);
+    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs, &pct_align_prob_mats_with_rna_id_pairs, produces_align_probs);
   } else {
-    let prob_mat_sets = consprob::<u16>(
+    let (prob_mat_sets, pct_align_prob_mats_with_rna_id_pairs) = consprob::<u16>(
       &mut thread_pool,
       &fasta_records,
       min_bpp,
       offset_4_max_gap_num as u16,
       produces_access_probs,
+      produces_align_probs,
     );
-    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs);
+    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs, &pct_align_prob_mats_with_rna_id_pairs, produces_align_probs);
   }
 }
