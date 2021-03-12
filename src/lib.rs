@@ -1289,12 +1289,16 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       remove_gaps(&seq_pair.1),
       );
     let bpp_mat_pair = (
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.0[..], false).0, min_bpp),
-      remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.1[..], false).0, min_bpp),
+      mccaskill_algo(&seq_pair_without_gaps.0[..], false).0,
+      mccaskill_algo(&seq_pair_without_gaps.1[..], false).0,
+    );
+    let sparse_bpp_mat_pair = (
+      remove_small_bpps_from_bpp_mat::<T>(&bpp_mat_pair.0, min_bpp),
+      remove_small_bpps_from_bpp_mat::<T>(&bpp_mat_pair.1, min_bpp),
     );
     let log_bpp_mat_pair: SparseProbMatPair<T> = (
-      bpp_mat_pair.0.iter().map(|(key, &val)| (*key, val.ln())).collect(),
-      bpp_mat_pair.1.iter().map(|(key, &val)| (*key, val.ln())).collect(),
+      sparse_bpp_mat_pair.0.iter().map(|(key, &val)| (*key, val.ln())).collect(),
+      sparse_bpp_mat_pair.1.iter().map(|(key, &val)| (*key, val.ln())).collect(),
     );
     let log_log_bpp_mat_pair = (
       log_bpp_mat_pair.0.iter().map(|(key, &val)| (*key, val.ln())).collect(),
@@ -1313,16 +1317,16 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       T::zero(),
       seq_len_pair.1 + T::one(),
     );
-    let (forward_pos_pair_mat_set, backward_pos_pair_mat_set, pos_quadruple_mat) = get_sparse_pos_sets(&(&bpp_mat_pair.0, &bpp_mat_pair.1), max_gap_num_4_il, &pseudo_pos_quadruple);
+    let (forward_pos_pair_mat_set, backward_pos_pair_mat_set, pos_quadruple_mat) = get_sparse_pos_sets(&(&sparse_bpp_mat_pair.0, &sparse_bpp_mat_pair.1), max_gap_num_4_il, &pseudo_pos_quadruple);
     let max_bp_span_pair = (
-      get_max_bp_span::<T>(&bpp_mat_pair.0),
-      get_max_bp_span::<T>(&bpp_mat_pair.1),
+      get_max_bp_span::<T>(&sparse_bpp_mat_pair.0),
+      get_max_bp_span::<T>(&sparse_bpp_mat_pair.1),
     );
     let mut train_datum = TrainDatum {
       seq_pair: seq_pair_without_gaps,
       observed_feature_count_sets: FeatureCountSets::new(0.),
       expected_feature_count_sets: FeatureCountSets::new(NEG_INFINITY),
-      bpp_mat_pair: bpp_mat_pair,
+      bpp_mat_pair: sparse_bpp_mat_pair,
       log_bpp_mat_pair: log_bpp_mat_pair,
       log_log_bpp_mat_pair: log_log_bpp_mat_pair,
       max_bp_span_pair: max_bp_span_pair,
@@ -1332,7 +1336,7 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       pos_quadruple_mat: pos_quadruple_mat,
       bp_score_param_set_pair: (BpScoreParamSets::<T>::new(), BpScoreParamSets::<T>::new()),
     };
-    train_datum.convert(&seq_pair, cons_second_struct);
+    train_datum.convert(&seq_pair, cons_second_struct, &bpp_mat_pair);
     train_datum.seq_pair.0.insert(0, PSEUDO_BASE);
     train_datum.seq_pair.0.push(PSEUDO_BASE);
     train_datum.seq_pair.1.insert(0, PSEUDO_BASE);
@@ -1340,7 +1344,7 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
     train_datum
   }
 
-  pub fn convert(&mut self, seq_pair: &RealSeqPair, dot_bracket_notation: TextSlice) {
+  pub fn convert(&mut self, seq_pair: &RealSeqPair, dot_bracket_notation: TextSlice, bpp_mat_pair: &SparseProbMatPair<T>) {
     let align_len = dot_bracket_notation.len();
     let mut is_inserting = false;
     let mut is_inserting_2 = is_inserting;
@@ -1379,7 +1383,17 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
     }
     let mut stack = Vec::new();
     let mut cons_second_struct = HashSet::<(usize, usize)>::default();
+    let mut mapped_pos_pair_seqs = Vec::new();
+    let mut last_pos_pair = (T::zero(), T::zero());
     for i in 0 .. align_len {
+      let base_pair = (seq_pair.0[i], seq_pair.1[i]);
+      if base_pair.0 == PSEUDO_BASE {
+        last_pos_pair.0 = last_pos_pair.0 + T::one();
+      }
+      if base_pair.1 == PSEUDO_BASE {
+        last_pos_pair.1 = last_pos_pair.1 + T::one();
+      }
+      mapped_pos_pair_seqs.push(last_pos_pair);
       let notation_char = dot_bracket_notation[i];
       if notation_char == BASE_PAIRING_LEFT_BASE {
         stack.push(i);
@@ -1398,9 +1412,27 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
         self.observed_feature_count_sets.base_pair_count_mat[dict_min_base_pair_2.0][dict_min_base_pair_2.1] += 1.;
         let dict_min_basepair_align = get_dict_min_basepair_align(&base_pair_1, &base_pair_2);
         self.observed_feature_count_sets.basepair_align_count_mat[dict_min_basepair_align.0.0][dict_min_basepair_align.0.1][dict_min_basepair_align.1.0][dict_min_basepair_align.1.1] += 1.;
-        self.observed_feature_count_sets.posterior_bpp_counts[0] += 2.;
-        self.observed_feature_count_sets.posterior_bpp_counts[1] += 2.;
-        self.observed_feature_count_sets.posterior_bpp_counts[2] += 2.;
+        let mapped_pos_pair = (mapped_pos_pair_seqs[pos].0, mapped_pos_pair_seqs[i].0);
+        let mapped_pos_pair_2 = (mapped_pos_pair_seqs[pos].1, mapped_pos_pair_seqs[i].1);
+        match bpp_mat_pair.0.get(&mapped_pos_pair) {
+          Some(&bpp) => {
+            match bpp_mat_pair.1.get(&mapped_pos_pair_2) {
+              Some(&bpp_2) => {
+                let bpp_pair = (
+                  bpp,
+                  bpp_2,
+                );
+                let log_bpp_pair = (
+                  bpp_pair.0.ln(),
+                  bpp_pair.1.ln(),
+                );
+                self.observed_feature_count_sets.posterior_bpp_counts[0] += bpp_pair.0 + bpp_pair.1;
+                self.observed_feature_count_sets.posterior_bpp_counts[1] += bpp_pair.0 * bpp_pair.0 + bpp_pair.1 * bpp_pair.1;
+                self.observed_feature_count_sets.posterior_bpp_counts[2] += log_bpp_pair.0 + log_bpp_pair.1;
+              }, None => {},
+            }
+          }, None => {},
+        }
       }
     }
     let mut loop_struct = HashMap::<(usize, usize), Vec<(usize, usize)>>::default();
