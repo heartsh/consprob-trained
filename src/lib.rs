@@ -1413,7 +1413,8 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
         let twoloop_length_pair = get_2loop_length_pair(&seq_pair.0[..], &pos_pair_closing_loop, &pos_pair_in_loop);
         let sum = twoloop_length_pair.0 + twoloop_length_pair.1;
         if sum == 0 {
-          self.observed_feature_count_sets.stack_count_mat[base_pair.0][base_pair.1][base_pair_3.0][base_pair_3.1] += 1.;
+          let dict_min_stack = get_dict_min_stack(&base_pair, &base_pair_3);
+          self.observed_feature_count_sets.stack_count_mat[dict_min_stack.0.0][dict_min_stack.0.1][dict_min_stack.1.0][dict_min_stack.1.1] += 1.;
         } else if twoloop_length_pair.0 == 0 || twoloop_length_pair.1 == 0 {
           if sum <= CONSPROB_MAX_TWOLOOP_LEN {
             self.observed_feature_count_sets.bulge_loop_length_counts[sum - 1] += 1.;
@@ -1455,7 +1456,8 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
         let twoloop_length_pair_2 = get_2loop_length_pair(&seq_pair.1[..], &pos_pair_closing_loop, &pos_pair_in_loop);
         let sum_2 = twoloop_length_pair_2.0 + twoloop_length_pair_2.1;
         if sum_2 == 0 {
-          self.observed_feature_count_sets.stack_count_mat[base_pair_2.0][base_pair_2.1][base_pair_4.0][base_pair_4.1] += 1.;
+          let dict_min_stack_2 = get_dict_min_stack(&base_pair_2, &base_pair_4);
+          self.observed_feature_count_sets.stack_count_mat[dict_min_stack_2.0.0][dict_min_stack_2.0.1][dict_min_stack_2.1.0][dict_min_stack_2.1.1] += 1.;
         } else if twoloop_length_pair_2.0 == 0 || twoloop_length_pair_2.1 == 0 {
           if sum_2 <= CONSPROB_MAX_TWOLOOP_LEN {
             self.observed_feature_count_sets.bulge_loop_length_counts[sum_2 - 1] += 1.;
