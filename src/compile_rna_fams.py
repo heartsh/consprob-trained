@@ -13,7 +13,6 @@ import datetime
 import shutil
 from Bio.Align import MultipleSeqAlignment
 from sklearn.model_selection import train_test_split
-from random import shuffle
 
 bracket_pairs = [("(", ")"), ("A", "a"), ("B", "b"), ("C", "c"), ("D", "d"), ("E", "e"), ]
 
@@ -39,8 +38,6 @@ def main():
   stas = [sta for (i, sta) in enumerate(stas) if not struct_srcs[i]]
   num_of_stas = len(stas)
   print("# RNA families: %d" % num_of_stas)
-  train_data_num = int(0.5 * num_of_stas)
-  test_data_num = num_of_stas - train_data_num
   train_data, test_data = train_test_split(stas, test_size = 0.5)
   for (i, train_datum) in enumerate(train_data):
     cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
@@ -81,7 +78,6 @@ def get_struct_srcs(rfam_file_path):
       if line.startswith("#=GF SS "):
         struct_srcs.append("Predicted; " in line)
   return struct_srcs
-          
 
 def is_valid(sta):
   for row in sta:
