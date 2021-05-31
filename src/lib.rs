@@ -1617,7 +1617,7 @@ pub const UPP_MAT_ON_ML_FILE_NAME: &'static str = "upp_mats_on_ml.dat";
 pub const UPP_MAT_ON_EL_FILE_NAME: &'static str = "upp_mats_on_el.dat";
 pub const BASEPAIR_ALIGN_PROB_MAT_FILE_NAME: &'static str = "basepair_align_prob_mat.dat";
 pub const LOOP_ALIGN_PROB_MAT_FILE_NAME: &'static str = "loop_align_prob_mat.dat";
-pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH: &'static str = "./src/trained_feature_score_sets.rs";
+pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH: &'static str = "../src/trained_feature_score_sets.rs";
 
 pub fn io_algo_4_prob_mats<T>(
   seq_pair: &SeqPair,
