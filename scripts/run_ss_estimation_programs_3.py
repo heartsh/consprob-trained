@@ -72,27 +72,29 @@ def main():
       if gamma == 1.:
         turbofold_params_4_running_time.insert(0, (rna_file_path, turbofold_output_file_path, gamma, temp_dir_path, rna_family_name))
   pool = multiprocessing.Pool(num_of_threads)
-  begin = time.time()
-  pool.map(run_raf, raf_params)
-  raf_elapsed_time = time.time() - begin
-  begin = time.time()
-  pool.map(run_locarna, locarna_params)
-  locarna_elapsed_time = time.time() - begin
-  begin = time.time()
-  pool.map(run_dafs, dafs_params)
-  dafs_elapsed_time = time.time() - begin
-  begin = time.time()
-  pool.map(run_locarna, sparse_params)
-  sparse_elapsed_time = time.time() - begin
-  # pool.map(run_turbofold, turbofold_params)
-  begin = time.time()
-  pool.map(run_turbofold, turbofold_params_4_running_time)
-  turbofold_elapsed_time = time.time() - begin
-  print("The elapsed time of RAF = %f [s]." % raf_elapsed_time)
-  print("The elapsed time of LocARNA = %f [s]." % locarna_elapsed_time)
-  print("The elapsed time of DAFS = %f [s]." % dafs_elapsed_time)
-  print("The elapsed time of SPARSE = %f [s]." % sparse_elapsed_time)
-  print("The elapsed time of TurboFold = %f [s]." % turbofold_elapsed_time)
+  if False:
+    begin = time.time()
+    pool.map(run_raf, raf_params)
+    raf_elapsed_time = time.time() - begin
+    begin = time.time()
+    pool.map(run_locarna, locarna_params)
+    locarna_elapsed_time = time.time() - begin
+    begin = time.time()
+    pool.map(run_dafs, dafs_params)
+    dafs_elapsed_time = time.time() - begin
+    begin = time.time()
+    pool.map(run_locarna, sparse_params)
+    sparse_elapsed_time = time.time() - begin
+  pool.map(run_turbofold, turbofold_params)
+  if False:
+    begin = time.time()
+    pool.map(run_turbofold, turbofold_params_4_running_time)
+    turbofold_elapsed_time = time.time() - begin
+    print("The elapsed time of RAF = %f [s]." % raf_elapsed_time)
+    print("The elapsed time of LocARNA = %f [s]." % locarna_elapsed_time)
+    print("The elapsed time of DAFS = %f [s]." % dafs_elapsed_time)
+    print("The elapsed time of SPARSE = %f [s]." % sparse_elapsed_time)
+    print("The elapsed time of TurboFold = %f [s]." % turbofold_elapsed_time)
   shutil.rmtree(temp_dir_path)
 
 def run_raf(raf_params):
@@ -135,7 +137,7 @@ def run_dafs(dafs_params):
 
 def run_locarna(locarna_params):
   (rna_file_path, locarna_output_file_path, is_sparse) = locarna_params
-  locarna_command = "mlocarna " + rna_file_path + " --keep-sequence-order --width=1000"
+  locarna_command = "mlocarna " + rna_file_path + " --keep-sequence-order --width=10000"
   if is_sparse:
     locarna_command += " --sparse"
   (output, _, _) = utils.run_command(locarna_command)

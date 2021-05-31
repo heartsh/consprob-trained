@@ -23,11 +23,11 @@ def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
   num_of_threads = multiprocessing.cpu_count()
   infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
-  conshomfold_ppvs = []
-  conshomfold_senss = []
-  conshomfold_fprs = []
-  conshomfold_f1_scores = []
-  conshomfold_mccs = []
+  consalifold_ppvs = []
+  consalifold_senss = []
+  consalifold_fprs = []
+  consalifold_f1_scores = []
+  consalifold_mccs = []
   raf_sens = 0
   raf_ppv = 0
   raf_fpr = 0
@@ -54,7 +54,7 @@ def main():
   turbofold_f1_scores = []
   turbofold_mccs = []
   gammas = [2. ** i for i in range(-7, 11)]
-  conshomfold_ss_dir_path = asset_dir_path + "/conshomfold"
+  consalifold_ss_dir_path = asset_dir_path + "/consalifold"
   raf_ss_dir_path = asset_dir_path + "/raf"
   locarna_ss_dir_path = asset_dir_path + "/locarna"
   dafs_ss_dir_path = asset_dir_path + "/dafs"
@@ -63,7 +63,7 @@ def main():
   rna_fam_dir_path = asset_dir_path + "/test_ref_sss"
   pool = multiprocessing.Pool(num_of_threads)
   for gamma in gammas:
-    conshomfold_count_params = []
+    consalifold_count_params = []
     raf_count_params = []
     locarna_count_params = []
     dafs_count_params = []
@@ -81,9 +81,9 @@ def main():
       rna_seq_lens = [len(rna_seq.seq) for rna_seq in SeqIO.parse(rna_seq_file_path, "fasta")]
       ref_ss_file_path = os.path.join(rna_fam_dir_path, rna_fam_file)
       ref_sss = utils.get_sss(ref_ss_file_path)
-      conshomfold_estimated_ss_dir_path = os.path.join(conshomfold_ss_dir_path, rna_fam_name)
-      conshomfold_estimated_ss_file_path = os.path.join(conshomfold_estimated_ss_dir_path, "gamma=" + gamma_str + ".bpseq")
-      conshomfold_count_params.insert(0, (conshomfold_estimated_ss_file_path, ref_sss, rna_seq_lens))
+      consalifold_estimated_ss_dir_path = os.path.join(consalifold_ss_dir_path, rna_fam_name)
+      consalifold_estimated_ss_file_path = os.path.join(consalifold_estimated_ss_dir_path, "gamma=" + gamma_str + ".fa")
+      consalifold_count_params.insert(0, (consalifold_estimated_ss_file_path, ref_sss, rna_seq_lens))
       if gamma == 1.:
         raf_estimated_ss_file_path = os.path.join(raf_ss_dir_path, rna_fam_name + ".fa")
         raf_count_params.insert(0, (raf_estimated_ss_file_path, ref_sss, rna_seq_lens))
@@ -94,19 +94,19 @@ def main():
         sparse_estimated_ss_file_path = os.path.join(sparse_ss_dir_path, rna_fam_name + ".fa")
         sparse_count_params.insert(0, (sparse_estimated_ss_file_path, ref_sss, rna_seq_lens))
       turbofold_estimated_ss_dir_path = os.path.join(turbofold_ss_dir_path, rna_fam_name)
-      conshomfold_estimated_ss_file_path = os.path.join(conshomfold_estimated_ss_dir_path, )
+      consalifold_estimated_ss_file_path = os.path.join(consalifold_estimated_ss_dir_path, )
       turbofold_estimated_ss_file_path = os.path.join(turbofold_estimated_ss_dir_path, "gamma=" + gamma_str + ".fa")
       turbofold_count_params.insert(0, (turbofold_estimated_ss_file_path, ref_sss, rna_seq_lens))
-    results = pool.map(get_pos_neg_counts, conshomfold_count_params)
+    results = pool.map(get_pos_neg_counts, consalifold_count_params)
     tp, tn, fp, fn = final_sum(results)
     ppv = get_ppv(tp, fp)
     sens = get_sens(tp, fn)
     fpr = get_fpr(tn, fp)
-    conshomfold_ppvs.insert(0, ppv)
-    conshomfold_senss.insert(0, sens)
-    conshomfold_fprs.insert(0, fpr)
-    conshomfold_f1_scores.append(get_f1_score(ppv, sens))
-    conshomfold_mccs.append(get_mcc(tp, tn, fp, fn))
+    consalifold_ppvs.insert(0, ppv)
+    consalifold_senss.insert(0, sens)
+    consalifold_fprs.insert(0, fpr)
+    consalifold_f1_scores.append(get_f1_score(ppv, sens))
+    consalifold_mccs.append(get_mcc(tp, tn, fp, fn))
     if gamma == 1.:
       results = pool.map(get_pos_neg_counts, raf_count_params)
       tp, tn, fp, fn = final_sum(results)
@@ -158,10 +158,10 @@ def main():
     turbofold_fprs.insert(0, fpr)
     turbofold_f1_scores.append(get_f1_score(ppv, sens))
     turbofold_mccs.append(get_mcc(tp, tn, fp, fn))
-  line_1, = pyplot.plot(conshomfold_ppvs, conshomfold_senss, label = "ConsHomfold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(consalifold_ppvs, consalifold_senss, label = "ConsAlifold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(raf_ppv, raf_sens, label = "RAF", marker = "s")
-  line_3, = pyplot.plot(locarna_ppv, locarna_sens, label = "LocARNA", marker = "*")
-  line_4, = pyplot.plot(dafs_ppv, dafs_sens, label = "DAFS", marker = "p")
+  line_3, = pyplot.plot(locarna_ppv, locarna_sens, label = "LocARNA", marker = "*", zorder = 9)
+  line_4, = pyplot.plot(dafs_ppv, dafs_sens, label = "DAFS", marker = "p", zorder = 10)
   line_5, = pyplot.plot(sparse_ppv, sparse_sens, label = "SPARSE", marker = "D")
   line_6, = pyplot.plot(turbofold_ppvs, turbofold_senss, label = "TurboFold", marker = "v", linestyle = "dashed")
   pyplot.xlabel("Precision")
@@ -173,10 +173,10 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/pr_curves_on_ss_estimation_3.eps", bbox_inches = "tight")
   pyplot.clf()
-  line_1, = pyplot.plot(conshomfold_fprs, conshomfold_senss, label = "ConsHomfold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(consalifold_fprs, consalifold_senss, label = "ConsAlifold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(raf_fpr, raf_sens, label = "RAF", marker = "s")
-  line_3, = pyplot.plot(locarna_fpr, locarna_sens, label = "LocARNA", marker = "*")
-  line_4, = pyplot.plot(dafs_fpr, dafs_sens, label = "DAFS", marker = "p")
+  line_3, = pyplot.plot(locarna_fpr, locarna_sens, label = "LocARNA", marker = "*", zorder = 9)
+  line_4, = pyplot.plot(dafs_fpr, dafs_sens, label = "DAFS", marker = "p", zorder = 10)
   line_5, = pyplot.plot(sparse_fpr, sparse_sens, label = "SPARSE", marker = "D")
   line_6, = pyplot.plot(turbofold_fprs, turbofold_senss, label = "TurboFold", marker = "v", linestyle = "dashed")
   pyplot.xlabel("Fall-out")
@@ -185,13 +185,13 @@ def main():
   pyplot.savefig(image_dir_path + "/roc_curves_on_ss_estimation_3.eps", bbox_inches = "tight")
   pyplot.clf()
   gammas = [i for i in range(-7, 11)]
-  line_1, = pyplot.plot(gammas, conshomfold_f1_scores, label = "ConsHomfold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(gammas, consalifold_f1_scores, label = "ConsAlifold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(-2, raf_f1_score, label = "RAF", marker = "s")
   line_3, = pyplot.plot(-2, locarna_f1_score, label = "LocARNA", marker = "*")
   line_4, = pyplot.plot(-2, dafs_f1_score, label = "DAFS", marker = "p")
   line_5, = pyplot.plot(-2, sparse_f1_score, label = "SPARSE", marker = "D")
   line_6, = pyplot.plot(gammas, turbofold_f1_scores, label = "TurboFold", marker = "v", linestyle = "dashed")
-  line_7, = pyplot.plot(min_gamma + numpy.argmax(conshomfold_f1_scores), max(conshomfold_f1_scores), label = "ConsHomfold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
+  line_7, = pyplot.plot(min_gamma + numpy.argmax(consalifold_f1_scores), max(consalifold_f1_scores), label = "ConsAlifold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
   line_8, = pyplot.plot(min_gamma + numpy.argmax(turbofold_f1_scores), max(turbofold_f1_scores), label = "TurboFold", marker = "v", markerfacecolor = white, markeredgecolor = color_palette[5])
   pyplot.xlabel("$\log_2 \gamma$")
   pyplot.ylabel("F1 score")
@@ -199,13 +199,13 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/gammas_vs_f1_scores_on_ss_estimation_3.eps", bbox_inches = "tight")
   pyplot.clf()
-  line_1, = pyplot.plot(gammas, conshomfold_mccs, label = "ConsHomfold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(gammas, consalifold_mccs, label = "ConsAlifold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(-2, raf_mcc, label = "RAF", marker = "s")
   line_3, = pyplot.plot(-2, locarna_mcc, label = "LocARNA", marker = "*")
   line_4, = pyplot.plot(-2, dafs_mcc, label = "DAFS", marker = "p")
   line_5, = pyplot.plot(-2, sparse_mcc, label = "SPARSE", marker = "D")
   line_6, = pyplot.plot(gammas, turbofold_mccs, label = "TurboFold", marker = "v", linestyle = "dashed")
-  line_7, = pyplot.plot(min_gamma + numpy.argmax(conshomfold_mccs), max(conshomfold_mccs), label = "ConsHomfold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
+  line_7, = pyplot.plot(min_gamma + numpy.argmax(consalifold_mccs), max(consalifold_mccs), label = "ConsAlifold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
   line_8, = pyplot.plot(min_gamma + numpy.argmax(turbofold_mccs), max(turbofold_mccs), label = "TurboFold", marker = "v", markerfacecolor = white, markeredgecolor = color_palette[5])
   pyplot.xlabel("$\log_2 \gamma$")
   pyplot.ylabel("MCC")

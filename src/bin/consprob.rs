@@ -37,6 +37,7 @@ fn main() {
     ),
     "UINT",
   );
+  opts.optopt("", "mix_weight", &format!("A mixture weight (Uses {} by default)", DEFAULT_MIX_WEIGHT), "FLOAT");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag(
     "a",
@@ -87,6 +88,11 @@ fn main() {
   };
   let produces_access_probs = matches.opt_present("a");
   let produces_align_probs = matches.opt_present("l");
+  let mix_weight = if matches.opt_present("mix_weight") {
+    matches.opt_str("mix_weight").unwrap().parse().unwrap()
+  } else {
+    DEFAULT_MIX_WEIGHT
+  };
   let output_dir_path = matches.opt_str("o").unwrap();
   let output_dir_path = Path::new(&output_dir_path);
   let fasta_file_reader = Reader::from_file(Path::new(&input_file_path)).unwrap();
@@ -105,24 +111,26 @@ fn main() {
   }
   let mut thread_pool = Pool::new(num_of_threads);
   if max_seq_len <= u8::MAX as usize {
-    let (prob_mat_sets, pct_align_prob_mats_with_rna_id_pairs) = consprob::<u8>(
+    let (prob_mat_sets, pct_align_prob_mat_pairs_with_rna_id_pairs) = consprob::<u8>(
       &mut thread_pool,
       &fasta_records,
       min_bpp,
       offset_4_max_gap_num as u8,
       produces_access_probs,
       produces_align_probs,
+      mix_weight,
     );
-    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs, &pct_align_prob_mats_with_rna_id_pairs, produces_align_probs);
+    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs, &pct_align_prob_mat_pairs_with_rna_id_pairs, produces_align_probs);
   } else {
-    let (prob_mat_sets, pct_align_prob_mats_with_rna_id_pairs) = consprob::<u16>(
+    let (prob_mat_sets, pct_align_prob_mat_pairs_with_rna_id_pairs) = consprob::<u16>(
       &mut thread_pool,
       &fasta_records,
       min_bpp,
       offset_4_max_gap_num as u16,
       produces_access_probs,
       produces_align_probs,
+      mix_weight,
     );
-    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs, &pct_align_prob_mats_with_rna_id_pairs, produces_align_probs);
+    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_access_probs, &pct_align_prob_mat_pairs_with_rna_id_pairs, produces_align_probs);
   }
 }

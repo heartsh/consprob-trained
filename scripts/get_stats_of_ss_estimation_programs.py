@@ -23,11 +23,11 @@ def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
   num_of_threads = multiprocessing.cpu_count()
   infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
-  conshomfold_ppvs = []
-  conshomfold_senss = []
-  conshomfold_fprs = []
-  conshomfold_f1_scores = []
-  conshomfold_mccs = []
+  consalifold_ppvs = []
+  consalifold_senss = []
+  consalifold_fprs = []
+  consalifold_f1_scores = []
+  consalifold_mccs = []
   centroidhomfold_ppvs = []
   centroidhomfold_senss = []
   centroidhomfold_fprs = []
@@ -53,8 +53,8 @@ def main():
   contextfold_fpr = 0
   contextfold_f1_score = 0
   contextfold_mcc = 0.
-  gammas = [2. ** i for i in range(-7, 11)]
-  conshomfold_ss_dir_path = asset_dir_path + "/conshomfold"
+  gammas = [2. ** i for i in range(min_gamma, max_gamma + 1)]
+  consalifold_ss_dir_path = asset_dir_path + "/consalifold"
   centroidhomfold_ss_dir_path = asset_dir_path + "/centroidhomfold"
   rnafold_ss_dir_path = asset_dir_path + "/rnafold"
   contrafold_ss_dir_path = asset_dir_path + "/contrafold"
@@ -63,7 +63,7 @@ def main():
   rna_fam_dir_path = asset_dir_path + "/test_ref_sss"
   pool = multiprocessing.Pool(num_of_threads)
   for gamma in gammas:
-    conshomfold_count_params = []
+    consalifold_count_params = []
     centroidhomfold_count_params = []
     rnafold_count_params = []
     contrafold_count_params = []
@@ -81,9 +81,9 @@ def main():
       rna_seq_lens = [len(rna_seq.seq) for rna_seq in SeqIO.parse(rna_seq_file_path, "fasta")]
       ref_ss_file_path = os.path.join(rna_fam_dir_path, rna_fam_file)
       ref_sss = utils.get_sss(ref_ss_file_path)
-      conshomfold_estimated_ss_dir_path = os.path.join(conshomfold_ss_dir_path, rna_fam_name)
-      conshomfold_estimated_ss_file_path = os.path.join(conshomfold_estimated_ss_dir_path, "gamma=" + gamma_str + ".bpseq")
-      conshomfold_count_params.insert(0, (conshomfold_estimated_ss_file_path, ref_sss, rna_seq_lens))
+      consalifold_estimated_ss_dir_path = os.path.join(consalifold_ss_dir_path, rna_fam_name)
+      consalifold_estimated_ss_file_path = os.path.join(consalifold_estimated_ss_dir_path, "gamma=" + gamma_str + ".fa")
+      consalifold_count_params.insert(0, (consalifold_estimated_ss_file_path, ref_sss, rna_seq_lens))
       centroidhomfold_estimated_ss_dir_path = os.path.join(centroidhomfold_ss_dir_path, rna_fam_name)
       centroidhomfold_estimated_ss_file_path = os.path.join(centroidhomfold_estimated_ss_dir_path, "gamma=" + gamma_str + ".fa")
       centroidhomfold_count_params.insert(0, (centroidhomfold_estimated_ss_file_path, ref_sss, rna_seq_lens))
@@ -101,16 +101,16 @@ def main():
         contextfold_estimated_ss_dir_path = os.path.join(contextfold_ss_dir_path, )
         contextfold_estimated_ss_file_path = os.path.join(contextfold_ss_dir_path, rna_fam_name + ".fa")
         contextfold_count_params.insert(0, (contextfold_estimated_ss_file_path, ref_sss, rna_seq_lens))
-    results = pool.map(get_pos_neg_counts, conshomfold_count_params)
+    results = pool.map(get_pos_neg_counts, consalifold_count_params)
     tp, tn, fp, fn = final_sum(results)
     ppv = get_ppv(tp, fp)
     sens = get_sens(tp, fn)
     fpr = get_fpr(tn, fp)
-    conshomfold_ppvs.insert(0, ppv)
-    conshomfold_senss.insert(0, sens)
-    conshomfold_fprs.insert(0, fpr)
-    conshomfold_f1_scores.append(get_f1_score(ppv, sens))
-    conshomfold_mccs.append(get_mcc(tp, tn, fp, fn))
+    consalifold_ppvs.insert(0, ppv)
+    consalifold_senss.insert(0, sens)
+    consalifold_fprs.insert(0, fpr)
+    consalifold_f1_scores.append(get_f1_score(ppv, sens))
+    consalifold_mccs.append(get_mcc(tp, tn, fp, fn))
     results = pool.map(get_pos_neg_counts, centroidhomfold_count_params)
     tp, tn, fp, fn = final_sum(results)
     ppv = get_ppv(tp, fp)
@@ -163,7 +163,7 @@ def main():
       contextfold_fpr = fpr
       contextfold_f1_score = get_f1_score(ppv, sens)
       contextfold_mcc = get_mcc(tp, tn, fp, fn)
-  line_1, = pyplot.plot(conshomfold_ppvs, conshomfold_senss, label = "ConsHomfold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(consalifold_ppvs, consalifold_senss, label = "ConsAlifold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(centroidhomfold_ppvs, centroidhomfold_senss, label = "CentroidHomFold", marker = "s", linestyle = "dashed")
   line_3, = pyplot.plot(rnafold_ppv, rnafold_sens, label = "RNAfold", marker = "*", zorder = 10)
   line_4, = pyplot.plot(contrafold_ppvs, contrafold_senss, label = "CONTRAfold", marker = "p", linestyle = "dashdot")
@@ -178,7 +178,7 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/pr_curves_on_ss_estimation.eps", bbox_inches = "tight")
   pyplot.clf()
-  line_1, = pyplot.plot(conshomfold_fprs, conshomfold_senss, label = "ConsHomfold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(consalifold_fprs, consalifold_senss, label = "ConsAlifold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(centroidhomfold_fprs, centroidhomfold_senss, label = "CentroidHomfold", marker = "s", linestyle = "dashed")
   line_3, = pyplot.plot(rnafold_fpr, rnafold_sens, label = "RNAfold", marker = "*", zorder = 10)
   line_4, = pyplot.plot(contrafold_fprs, contrafold_senss, label = "CONTRAfold", marker = "p", linestyle = "dashdot")
@@ -189,14 +189,14 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/roc_curves_on_ss_estimation.eps", bbox_inches = "tight")
   pyplot.clf()
-  gammas = [i for i in range(-7, 11)]
-  line_1, = pyplot.plot(gammas, conshomfold_f1_scores, label = "ConsHomfold", marker = "o", linestyle = "solid")
+  gammas = [i for i in range(min_gamma, max_gamma + 1)]
+  line_1, = pyplot.plot(gammas, consalifold_f1_scores, label = "ConsAlifold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(gammas, centroidhomfold_f1_scores, label = "CentroidHomfold", marker = "s", linestyle = "dashed")
   line_3, = pyplot.plot(-2, rnafold_f1_score, label = "RNAfold", marker = "*", zorder = 10)
   line_4, = pyplot.plot(gammas, contrafold_f1_scores, label = "CONTRAfold", marker = "p", linestyle = "dashdot")
   line_5, = pyplot.plot(gammas, centroidfold_f1_scores, label = "CentroidFold", marker = "D", linestyle = "dotted")
   line_6, = pyplot.plot(-2, contextfold_f1_score, label = "ContextFold", marker = "v", zorder = 10)
-  line_7, = pyplot.plot(min_gamma + numpy.argmax(conshomfold_f1_scores), max(conshomfold_f1_scores), label = "ConsHomfold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
+  line_7, = pyplot.plot(min_gamma + numpy.argmax(consalifold_f1_scores), max(consalifold_f1_scores), label = "ConsAlifold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
   line_8, = pyplot.plot(min_gamma + numpy.argmax(centroidhomfold_f1_scores), max(centroidhomfold_f1_scores), label = "CentroidHomfold", marker = "s", markerfacecolor = white, markeredgecolor = color_palette[1])
   line_9, = pyplot.plot(min_gamma + numpy.argmax(contrafold_f1_scores), max(contrafold_f1_scores), label = "CONTRAfold", marker = "p", markerfacecolor = white, markeredgecolor = color_palette[3])
   line_10, = pyplot.plot(min_gamma + numpy.argmax(centroidfold_f1_scores), max(centroidfold_f1_scores), label = "CentroidFold", marker = "D", markerfacecolor = white, markeredgecolor = color_palette[4])
@@ -206,13 +206,13 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/gammas_vs_f1_scores_on_ss_estimation.eps", bbox_inches = "tight")
   pyplot.clf()
-  line_1, = pyplot.plot(gammas, conshomfold_mccs, label = "ConsHomfold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(gammas, consalifold_mccs, label = "ConsAlifold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(gammas, centroidhomfold_mccs, label = "CentroidHomfold", marker = "s", linestyle = "dashed")
   line_3, = pyplot.plot(-2, rnafold_mcc, label = "RNAfold", marker = "*", zorder = 10)
   line_4, = pyplot.plot(gammas, contrafold_mccs, label = "CONTRAfold", marker = "p", linestyle = "dashdot")
   line_5, = pyplot.plot(gammas, centroidfold_mccs, label = "CentroidFold", marker = "D", linestyle = "dotted")
   line_6, = pyplot.plot(-2, contextfold_mcc, label = "ContextFold", marker = "v", zorder = 10)
-  line_7, = pyplot.plot(min_gamma + numpy.argmax(conshomfold_mccs), max(conshomfold_mccs), label = "ConsHomfold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
+  line_7, = pyplot.plot(min_gamma + numpy.argmax(consalifold_mccs), max(consalifold_mccs), label = "ConsAlifold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
   line_8, = pyplot.plot(min_gamma + numpy.argmax(centroidhomfold_mccs), max(centroidhomfold_mccs), label = "CentroidHomfold", marker = "s", markerfacecolor = white, markeredgecolor = color_palette[1])
   line_9, = pyplot.plot(min_gamma + numpy.argmax(contrafold_mccs), max(contrafold_mccs), label = "CONTRAfold", marker = "p", markerfacecolor = white, markeredgecolor = color_palette[3])
   line_10, = pyplot.plot(min_gamma + numpy.argmax(centroidfold_mccs), max(centroidfold_mccs), label = "CentroidFold", marker = "D", markerfacecolor = white, markeredgecolor = color_palette[4])
