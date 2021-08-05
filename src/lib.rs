@@ -6080,3 +6080,177 @@ pub fn write_prob_mat_sets<T>(
     let _ = writer_2_basepair_align_prob_mat_file.write_all(buf_4_writer_2_basepair_align_prob_mat_file.as_bytes());
   }
 }
+
+pub fn mccaskill_algo_trained<T>(feature_score_sets: &FeatureCountSets, seq: SeqSlice) -> SparseProbMat<T>
+where
+  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer,
+{
+  let seq_len = seq.len();
+  let mut identity_mat = SparseProbMat::<T>::default();
+  for i in 0 .. seq_len {
+    let nuc = seq[i];
+    let short_i = T::from_usize(i).unwrap();
+    for j in i + 1 .. seq_len {
+      let nuc_pair = (nuc, seq[j]);
+      let short_j = T::from_usize(j).unwrap();
+      if is_canonical(&nuc_pair) {
+        identity_mat.insert((short_i, short_j), 1.);
+      }
+    }
+  }
+  let bp_score_param_sets = BpScoreParamSets::<T>::set_curr_params(feature_score_sets, seq, &identity_mat);
+  let bpp_mat = get_base_pairing_prob_mat_trained::<T>(feature_score_sets, &get_ss_part_func_mats_trained::<T>(feature_score_sets, seq_len, &bp_score_param_sets), seq_len, &bp_score_param_sets);
+  bpp_mat
+}
+
+pub fn get_ss_part_func_mats_trained<T>(feature_score_sets: &FeatureCountSets, seq_len: usize, bp_score_param_sets: &BpScoreParamSets<T>) -> SsPartFuncMatsContra<T>
+where
+  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer,
+{
+  let mut ss_part_func_mats = SsPartFuncMatsContra::<T>::new(seq_len);
+  let short_seq_len = T::from_usize(seq_len).unwrap();
+  for sub_seq_len in range_inclusive(T::one(), short_seq_len) {
+    for i in range_inclusive(T::zero(), short_seq_len - sub_seq_len) {
+      let j = i + sub_seq_len - T::one();
+      let (long_i, long_j) = (i.to_usize().unwrap(), j.to_usize().unwrap());
+      let pp_closing_loop = (i, j);
+      let long_pp_closing_loop = (long_i, long_j);
+      let mut sum = NEG_INFINITY;
+      if long_pp_closing_loop.1 - long_pp_closing_loop.0 + 1 >= CONSPROB_MIN_HAIRPIN_LOOP_SPAN {
+        if long_j - long_i - 1 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN {
+          let hl_fe = bp_score_param_sets.hairpin_loop_scores[&pp_closing_loop];
+          logsumexp(&mut sum, hl_fe);
+        }
+        for k in range(i + T::one(), j - T::one()) {
+          let long_k = k.to_usize().unwrap();
+          if long_k - long_i - 1 > MAX_2_LOOP_LEN {break;}
+          for l in range(k + T::one(), j).rev() {
+            let long_l = l.to_usize().unwrap();
+            if long_j - long_l - 1 + long_k - long_i - 1 > CONSPROB_MAX_TWOLOOP_LEN {break;}
+            let accessible_pp = (k, l);
+            match ss_part_func_mats.part_func_mat_4_base_pairings.get(&accessible_pp) {
+              Some(&part_func) => {
+                let twoloop_score = bp_score_param_sets.twoloop_scores[&(pp_closing_loop.0, pp_closing_loop.1, accessible_pp.0, accessible_pp.1)];
+                logsumexp(&mut sum, part_func + twoloop_score);
+              }, None => {},
+            }
+          }
+        }
+        let coefficient = bp_score_param_sets.multi_loop_closing_bp_scores[&pp_closing_loop];
+        for k in long_i + 1 .. long_j {
+          logsumexp(&mut sum, ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[long_i + 1][k - 1] + ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[k][long_j - 1] + coefficient);
+        }
+        if sum > NEG_INFINITY {
+          ss_part_func_mats.part_func_mat_4_base_pairings.insert(pp_closing_loop, sum);
+          let sum_4_el = sum + bp_score_param_sets.external_loop_accessible_bp_scores[&pp_closing_loop];
+          let sum_4_ml = sum + bp_score_param_sets.multi_loop_accessible_bp_scores[&pp_closing_loop];
+          ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_el.insert(pp_closing_loop, sum_4_el);
+          ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_mls.insert(pp_closing_loop, sum_4_ml);
+        }
+      }
+      sum = NEG_INFINITY;
+      let mut sum_2 = sum;
+      for k in range_inclusive(i + T::one(), j) {
+        let accessible_pp = (i, k);
+        match ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_el.get(&accessible_pp) {
+          Some(&part_func) => {
+            logsumexp(&mut sum, part_func + feature_score_sets.external_loop_accessible_baseunpairing_count * (j - k).to_f32().unwrap());
+            logsumexp(&mut sum_2, ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_mls[&accessible_pp] + feature_score_sets.multi_loop_accessible_baseunpairing_count * (j - k).to_f32().unwrap());
+          }, None => {},
+        }
+      }
+      ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_el[long_i][long_j] = sum;
+      ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[long_i][long_j] = sum_2;
+      sum = feature_score_sets.external_loop_accessible_baseunpairing_count * sub_seq_len.to_f32().unwrap();
+      for k in long_i .. long_j {
+        let ss_part_func_4_rightmost_base_pairings_on_el = ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_el[k][long_j];
+        if ss_part_func_4_rightmost_base_pairings_on_el == NEG_INFINITY {
+          continue;
+        }
+        let part_func = if long_i == 0 && k == 0 {0.} else {ss_part_func_mats.part_func_mat[long_i][k - 1]};
+        logsumexp(&mut sum, part_func + ss_part_func_4_rightmost_base_pairings_on_el);
+      }
+      ss_part_func_mats.part_func_mat[long_i][long_j] = sum;
+      sum = ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[long_i][long_j];
+      for k in long_i + 1 .. long_j {
+        let ss_part_func_4_rightmost_base_pairings_on_mls = ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[k][long_j];
+        logsumexp(&mut sum, ss_part_func_4_rightmost_base_pairings_on_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count * (k - long_i) as FreeEnergy);
+        logsumexp(&mut sum, ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[long_i][k - 1] + ss_part_func_4_rightmost_base_pairings_on_mls);
+      }
+      ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[long_i][long_j] = sum;
+    }
+  }
+  ss_part_func_mats
+}
+
+fn get_base_pairing_prob_mat_trained<T>(feature_score_sets: &FeatureCountSets, ss_part_func_mats: &SsPartFuncMatsContra<T>, seq_len: usize, bp_score_param_sets: &BpScoreParamSets<T>) -> SparseProbMat<T>
+where
+  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer,
+{
+  let ss_part_func = ss_part_func_mats.part_func_mat[0][seq_len - 1];
+  let mut bpp_mat = SparseProbMat::<T>::default();
+  let mut prob_mat_4_mls_1 = vec![vec![NEG_INFINITY; seq_len]; seq_len];
+  let mut prob_mat_4_mls_2 = prob_mat_4_mls_1.clone();
+  let short_seq_len = T::from_usize(seq_len).unwrap();
+  for sub_seq_len in range_inclusive(T::from_usize(CONSPROB_MIN_HAIRPIN_LOOP_SPAN).unwrap(), short_seq_len).rev() {
+    for i in range_inclusive(T::zero(), short_seq_len - sub_seq_len) {
+      let j = i + sub_seq_len - T::one();
+      let (long_i, long_j) = (i.to_usize().unwrap(), j.to_usize().unwrap());
+      let mut sum_1 = NEG_INFINITY;
+      let mut sum_2 = sum_1;
+      for k in range(j + T::one(), short_seq_len) {
+        let long_k = k.to_usize().unwrap();
+        let pp_closing_loop = (i, k);
+        // let long_pp_closing_loop = (i.to_usize().unwrap(), k.to_usize().unwrap());
+        match ss_part_func_mats.part_func_mat_4_base_pairings.get(&pp_closing_loop) {
+          Some(&part_func) => {
+            let bpp = bpp_mat[&pp_closing_loop];
+            // let coefficient = bpp + get_consprob_multi_loop_closing_basepairing_score(feature_score_sets, seq, &long_pp_closing_loop) - part_func;
+            let coefficient = bpp + bp_score_param_sets.multi_loop_closing_bp_scores[&pp_closing_loop] - part_func;
+            logsumexp(&mut sum_1, coefficient + ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[long_j + 1][long_k - 1]);
+            logsumexp(&mut sum_2, coefficient + feature_score_sets.multi_loop_accessible_baseunpairing_count * (k - j - T::one()).to_f32().unwrap());
+          }, None => {},
+        }
+      }
+      prob_mat_4_mls_1[long_i][long_j] = sum_1;
+      prob_mat_4_mls_2[long_i][long_j] = sum_2;
+      let accessible_pp = (i, j);
+      match ss_part_func_mats.part_func_mat_4_base_pairings.get(&accessible_pp) {
+        Some(&part_func) => {
+          let part_func_pair = (
+            if accessible_pp.0 < T::one() {0.} else {ss_part_func_mats.part_func_mat[0][long_i - 1]},
+            if accessible_pp.1 > short_seq_len - T::from_usize(2).unwrap() {0.} else {ss_part_func_mats.part_func_mat[long_j + 1][seq_len - 1]},
+          );
+          let mut sum = part_func_pair.0 + part_func_pair.1 + ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_el[&accessible_pp] - ss_part_func;
+          for k in range(T::zero(), i).rev() {
+            let long_k = k.to_usize().unwrap();
+            if long_i - long_k - 1 > CONSPROB_MAX_TWOLOOP_LEN {break;}
+            for l in range(j + T::one(), short_seq_len) {
+              let long_l = l.to_usize().unwrap();
+              if long_l - long_j - 1 + long_i - long_k - 1 > CONSPROB_MAX_TWOLOOP_LEN {break;}
+              let pp_closing_loop = (k, l);
+              match ss_part_func_mats.part_func_mat_4_base_pairings.get(&pp_closing_loop) {
+                Some(&part_func_2) => {
+                  let twoloop_score = bp_score_param_sets.twoloop_scores[&(pp_closing_loop.0, pp_closing_loop.1, accessible_pp.0, accessible_pp.1)];
+                  logsumexp(&mut sum, bpp_mat[&pp_closing_loop] + part_func - part_func_2 + twoloop_score);
+                }, None => {},
+              }
+            }
+          }
+          let coefficient = bp_score_param_sets.multi_loop_accessible_bp_scores[&accessible_pp];
+          for k in 0 .. long_i {
+            let ss_part_func_4_at_least_1_base_pairings_on_mls = ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[k + 1][long_i - 1];
+            logsumexp(&mut sum, coefficient + prob_mat_4_mls_2[k][long_j] + ss_part_func_4_at_least_1_base_pairings_on_mls);
+            let prob_4_mls = prob_mat_4_mls_1[k][long_j];
+            logsumexp(&mut sum, coefficient + prob_4_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count * (long_i - k - 1) as FreeEnergy);
+            logsumexp(&mut sum, coefficient + prob_4_mls + ss_part_func_4_at_least_1_base_pairings_on_mls);
+          }
+          debug_assert!(NEG_INFINITY <= sum && sum <= 0.);
+          bpp_mat.insert(accessible_pp, sum);
+        }, None => {},
+      }
+    }
+  }
+  bpp_mat = bpp_mat.iter().map(|(pos_pair, &bpp)| {(*pos_pair, expf(bpp))}).collect();
+  bpp_mat
+}

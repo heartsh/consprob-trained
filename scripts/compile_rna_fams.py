@@ -32,19 +32,19 @@ def main():
   if not os.path.isdir(test_ref_sa_dir_path):
     os.mkdir(test_ref_sa_dir_path)
   max_sa_len = 500
-  min_seq_num = 5
   max_seq_num = 20
-  stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) >= min_seq_num and len(sta) <= max_seq_num and is_valid(sta)]
+  stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) <= max_seq_num and is_valid(sta)]
   struct_srcs = get_struct_srcs(rfam_seed_sta_file_path)
   stas = [sta for (i, sta) in enumerate(stas) if not struct_srcs[i]]
   num_of_stas = len(stas)
   print("# RNA families: %d" % num_of_stas)
   train_data, test_data = train_test_split(stas, test_size = 0.5)
+  sampled_seq_num = 10
   for (i, train_datum) in enumerate(train_data):
     cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
     align_len = len(train_datum)
     indexes = [j for j in range(0, align_len)]
-    sampled_indexes = numpy.random.choice(indexes, min_seq_num, replace = False).tolist()
+    sampled_indexes = indexes if align_len <= sampled_seq_num else numpy.random.choice(indexes, sampled_seq_num, replace = False).tolist()
     sampled_index_pairs = [(idx_1, idx_2) for (j, idx_1) in enumerate(sampled_indexes) for idx_2 in sampled_indexes[j + 1:]]
     for (j, sampled_index_pair) in enumerate(sampled_index_pairs):
       seq_1 = train_datum[int(sampled_index_pair[0])].seq
@@ -55,19 +55,13 @@ def main():
   for i, test_datum in enumerate(test_data):
     align_len = len(test_datum)
     indexes = [j for j in range(0, align_len)]
-    # sampled_indexes = numpy.random.choice(indexes, min_seq_num, replace = False).tolist()
-    # recs = [test_datum[j] for j in sampled_indexes]
-    # sampled_sta = AlignIO.MultipleSeqAlignment(recs)
     css = convert_css(test_datum.column_annotations["secondary_structure"])
-    # sampled_sta.column_annotations["secondary_structure"] = css
     sa_file_path = os.path.join(test_ref_sa_dir_path, "rna_fam_%d.sth" % i)
-    # AlignIO.write(sampled_sta, sa_file_path, "stockholm")
     AlignIO.write(test_datum, sa_file_path, "stockholm")
     test_datum_file_path = os.path.join(test_data_dir_path, "rna_fam_%d.fa" % i)
     ref_ss_file_path = os.path.join(test_ref_ss_dir_path, "rna_fam_%d.fa" % i)
     test_datum_file = open(test_datum_file_path, "w")
     ref_ss_file = open(ref_ss_file_path, "w")
-    # for j, rec in enumerate(sampled_sta):
     for j, rec in enumerate(test_datum):
       seq_with_gaps = str(rec.seq)
       test_datum_file.write(">%d(%s)\n%s\n" % (j, rec.id, seq_with_gaps.replace("-", "")))
