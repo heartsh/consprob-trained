@@ -914,7 +914,8 @@ impl FeatureCountSets {
       let expect_count = expect.extending_gap_count;
       grad.extending_gap_count -= obs_count - expect_count;
     }
-    convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
+    // convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
+    convert_struct_2_vec(&grad, false) + feature_scores
   }
 
   pub fn get_cost<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCount {
@@ -926,8 +927,9 @@ impl FeatureCountSets {
       log_likelihood -= train_datum.part_func;
     }
     let feature_scores = convert_struct_2_vec(self, false);
-    let product = regularizers.clone() * feature_scores.clone();
-    - log_likelihood + product.dot(&feature_scores) / 2.
+    // let product = regularizers.clone() * feature_scores.clone();
+    // - log_likelihood + product.dot(&feature_scores) / 2.
+    - log_likelihood + feature_scores.dot(&feature_scores) / 2.
   }
 
   pub fn rand_init(&mut self) {
@@ -5353,7 +5355,7 @@ where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send + Display,
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
-  feature_score_sets.rand_init();
+  // feature_score_sets.rand_init();
   for train_datum in train_data.iter_mut() {
     train_datum.set_curr_params(&feature_score_sets);
   }

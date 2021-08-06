@@ -84,9 +84,10 @@ def main():
   pool = multiprocessing.Pool(num_of_threads)
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
   pool.map(run_consfold, consfold_params)
-  begin = time.time()
-  pool.map(run_consfold, consfold_params_4_running_time)
-  consfold_elapsed_time = time.time() - begin
+  if False:
+    begin = time.time()
+    pool.map(run_consfold, consfold_params_4_running_time)
+    consfold_elapsed_time = time.time() - begin
   pool = multiprocessing.Pool(num_of_threads)
   begin = time.time()
   pool.map(run_rnafold, rnafold_params)
@@ -102,8 +103,7 @@ def main():
   begin = time.time()
   pool.map(run_contextfold, contextfold_params)
   contextfold_elapsed_time = time.time() - begin
-  print("The elapsed time of ConsAlifold (new) = %f [s]." % consfold_elapsed_time)
-  print("The elapsed time of ConsAlifold (old) = %f [s]." % consfold_old_elapsed_time)
+  print("The elapsed time of ConsFold = %f [s]." % consfold_elapsed_time)
   print("The elapsed time of RNAfold = %f [s]." % rnafold_elapsed_time)
   print("The elapsed time of CONTRAfold = %f [s]." % contrafold_elapsed_time)
   print("The elapsed time of CentroidFold = %f [s]." % centroidfold_elapsed_time)
