@@ -914,8 +914,7 @@ impl FeatureCountSets {
       let expect_count = expect.extending_gap_count;
       grad.extending_gap_count -= obs_count - expect_count;
     }
-    // convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
-    convert_struct_2_vec(&grad, false) + feature_scores
+    convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
   }
 
   pub fn get_cost<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCount {
@@ -927,9 +926,8 @@ impl FeatureCountSets {
       log_likelihood -= train_datum.part_func;
     }
     let feature_scores = convert_struct_2_vec(self, false);
-    // let product = regularizers.clone() * feature_scores.clone();
-    // - log_likelihood + product.dot(&feature_scores) / 2.
-    - log_likelihood + feature_scores.dot(&feature_scores) / 2.
+    let product = regularizers.clone() * feature_scores.clone();
+    - log_likelihood + product.dot(&feature_scores) / 2.
   }
 
   pub fn rand_init(&mut self) {
@@ -5355,7 +5353,7 @@ where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send + Display,
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
-  // feature_score_sets.rand_init();
+  feature_score_sets.rand_init();
   for train_datum in train_data.iter_mut() {
     train_datum.set_curr_params(&feature_score_sets);
   }
@@ -6203,11 +6201,9 @@ where
       for k in range(j + T::one(), short_seq_len) {
         let long_k = k.to_usize().unwrap();
         let pp_closing_loop = (i, k);
-        // let long_pp_closing_loop = (i.to_usize().unwrap(), k.to_usize().unwrap());
         match ss_part_func_mats.part_func_mat_4_base_pairings.get(&pp_closing_loop) {
           Some(&part_func) => {
             let bpp = bpp_mat[&pp_closing_loop];
-            // let coefficient = bpp + get_consprob_multi_loop_closing_basepairing_score(feature_score_sets, seq, &long_pp_closing_loop) - part_func;
             let coefficient = bpp + bp_score_param_sets.multi_loop_closing_bp_scores[&pp_closing_loop] - part_func;
             logsumexp(&mut sum_1, coefficient + ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[long_j + 1][long_k - 1]);
             logsumexp(&mut sum_2, coefficient + feature_score_sets.multi_loop_accessible_baseunpairing_count * (k - j - T::one()).to_f32().unwrap());
