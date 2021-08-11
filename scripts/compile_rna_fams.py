@@ -15,6 +15,7 @@ from Bio.Align import MultipleSeqAlignment
 from sklearn.model_selection import train_test_split
 
 bracket_pairs = [("(", ")"), ("A", "a"), ("B", "b"), ("C", "c"), ("D", "d"), ("E", "e"), ]
+tmp_seq_align_file_path = "./tmp_seq_align.aln"
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
@@ -32,7 +33,7 @@ def main():
   if not os.path.isdir(test_ref_sa_dir_path):
     os.mkdir(test_ref_sa_dir_path)
   max_sa_len = 500
-  sampled_seq_num = 10
+  sampled_seq_num = 5
   stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and is_valid(sta)]
   struct_srcs = get_struct_srcs(rfam_seed_sta_file_path)
   stas = [sta for (i, sta) in enumerate(stas) if not struct_srcs[i]]
@@ -41,6 +42,8 @@ def main():
   train_data, test_data = train_test_split(stas, test_size = 0.5)
   for (i, train_datum) in enumerate(train_data):
     cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
+    if not is_stabled(train_datum):
+      continue
     align_len = len(train_datum)
     indexes = [j for j in range(0, align_len)]
     sampled_indexes = indexes if align_len <= sampled_seq_num else numpy.random.choice(indexes, sampled_seq_num, replace = False).tolist()
@@ -52,6 +55,8 @@ def main():
       train_datum_file = open(train_datum_file_path, "w")
       train_datum_file.write(">seq_1\n%s\n\n>seq_2\n%s\n\n>cons_second_struct\n%s" % (seq_1, seq_2, cons_second_struct))
   for i, test_datum in enumerate(test_data):
+    if not is_stabled(train_datum):
+      continue
     align_len = len(test_datum)
     indexes = [j for j in range(0, align_len)]
     sampled_indexes = indexes if align_len <= sampled_seq_num else numpy.random.choice(indexes, sampled_seq_num, replace = False).tolist()
@@ -132,5 +137,14 @@ def recover_ss(css, seq_with_gaps):
         recovered_ss = recovered_ss[: mapped_i] + right + recovered_ss[mapped_i + 1 :]
   return recovered_ss
 
+def is_stabled(struct_align):
+  AlignIO.write(struct_align, tmp_seq_align_file_path, "clustal")
+  rnaz_command = "RNAz " + tmp_seq_align_file_path
+  (output, _, _) = utils.run_command(rnaz_command)
+  if "Prediction: RNA" in str(output):
+    return True
+  else:
+    return False
+  
 if __name__ == "__main__":
   main()
