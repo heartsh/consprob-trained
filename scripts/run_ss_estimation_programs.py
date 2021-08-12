@@ -143,7 +143,7 @@ def main():
       if gamma == 1.:
         petfold_params_4_running_time.insert(0, (mafft_xinsi_output_file_path_2, petfold_output_file_path, petfold_gamma_str))
   pool = multiprocessing.Pool(num_of_threads)
-  # pool.map(run_mafft_xinsi, mafft_xinsi_params)
+  pool.map(run_mafft_xinsi, mafft_xinsi_params)
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
   pool.map(run_conshomfold, conshomfold_params)
   if False:
@@ -163,7 +163,7 @@ def main():
     begin = time.time()
     pool.map(run_centroidhomfold, centroidhomfold_params_4_running_time)
     centroidhomfold_elapsed_time = time.time() - begin
-  if False:
+  if True:
     begin = time.time()
     pool.map(run_rnafold, rnafold_params)
     rnafold_elapsed_time = time.time() - begin
@@ -172,16 +172,16 @@ def main():
     begin = time.time()
     pool.map(run_contrafold, contrafold_params_4_running_time)
     contrafold_elapsed_time = time.time() - begin
-  # pool.map(run_centroidfold, centroidfold_params)
+  pool.map(run_centroidfold, centroidfold_params)
   if False:
     begin = time.time()
     pool.map(run_centroidfold, centroidfold_params_4_running_time)
     centroidfold_elapsed_time = time.time() - begin
-  if False:
+  if True:
     begin = time.time()
     pool.map(run_contextfold, contextfold_params)
     contextfold_elapsed_time = time.time() - begin
-  if False:
+  if True:
     begin = time.time()
     pool.map(run_rnaalifold, rnaalifold_params)
     rnaalifold_elapsed_time = time.time() - begin
@@ -190,7 +190,7 @@ def main():
     begin = time.time()
     pool.map(run_centroidalifold, centroidalifold_params_4_running_time)
     centroidalifold_elapsed_time = time.time() - begin
-  # pool.map(run_petfold, petfold_params)
+  pool.map(run_petfold, petfold_params)
   if False:
     begin = time.time()
     pool.map(run_petfold, petfold_params_4_running_time)
