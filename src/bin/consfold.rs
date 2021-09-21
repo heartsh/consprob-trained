@@ -17,7 +17,6 @@ fn main() {
   opts.optopt("", "min_pow_of_2", &format!("A minimum power of 2 to calculate a gamma parameter (Uses {} by default)", DEFAULT_MIN_POW_OF_2), "FLOAT");
   opts.optopt("", "max_pow_of_2", &format!("A maximum power of 2 to calculate a gamma parameter (Uses {} by default)", DEFAULT_MAX_POW_OF_2), "FLOAT");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
-  opts.optflag("c", "uses_contra_model", "Use CONTRAfold model instead of Turner's model to score RNA secondary structures");
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1 ..]) {
     Ok(opt) => {opt}
@@ -46,7 +45,6 @@ fn main() {
   } else {
     DEFAULT_MAX_POW_OF_2
   };
-  let uses_contra_model = matches.opt_present("c");
   let fasta_file_reader = Reader::from_file(Path::new(&input_file_path)).unwrap();
   let mut fasta_records = FastaRecords::new();
   let mut max_seq_len = 0;
@@ -59,25 +57,27 @@ fn main() {
     }
     fasta_records.push(FastaRecord::new(String::from(fasta_record.id()), seq));
   }
+  let feature_score_sets = FeatureCountSets::load_trained_score_params();
   let mut thread_pool = Pool::new(num_of_threads);
   if max_seq_len <= u8::MAX as usize {
-    multi_threaded_centroid_estimator::<u8>(&mut thread_pool, &fasta_records, output_dir_path, min_pow_of_2, max_pow_of_2, uses_contra_model);
+    multi_threaded_centroid_estimator::<u8>(&mut thread_pool, &fasta_records, output_dir_path, min_pow_of_2, max_pow_of_2, &feature_score_sets);
   } else {
-    multi_threaded_centroid_estimator::<u16>(&mut thread_pool, &fasta_records, output_dir_path, min_pow_of_2, max_pow_of_2, uses_contra_model);
+    multi_threaded_centroid_estimator::<u16>(&mut thread_pool, &fasta_records, output_dir_path, min_pow_of_2, max_pow_of_2, &feature_score_sets);
   }
 }
 
-fn multi_threaded_centroid_estimator<T>(thread_pool: &mut Pool, fasta_records: &FastaRecords, output_dir_path: &Path, min_pow_of_2: i32, max_pow_of_2: i32, uses_contra_model: bool)
+fn multi_threaded_centroid_estimator<T>(thread_pool: &mut Pool, fasta_records: &FastaRecords, output_dir_path: &Path, min_pow_of_2: i32, max_pow_of_2: i32, feature_score_sets: &FeatureCountSets)
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Display + Sync + Send,
 {
   let num_of_fasta_records = fasta_records.len();
   let mut bpp_mats = vec![SparseProbMat::<T>::default(); num_of_fasta_records];
+  let ref ref_2_feature_score_sets = feature_score_sets;
   thread_pool.scoped(|scope| {
     for (fasta_record, bpp_mat) in fasta_records.iter().zip(bpp_mats.iter_mut()) {
       let ref seq = fasta_record.seq;
       scope.execute(move || {
-        *bpp_mat = mccaskill_algo::<T>(seq, uses_contra_model).0;
+        *bpp_mat = mccaskill_algo_trained::<T>(ref_2_feature_score_sets, seq);
       });
     }
   });
