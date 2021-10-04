@@ -1526,7 +1526,43 @@ impl TrainDatumSs {
         if sum == 0 {
           let dict_min_stack = get_dict_min_stack(&base_pair, &base_pair_2);
           self.observed_feature_count_sets.stack_count_mat[dict_min_stack.0.0][dict_min_stack.0.1][dict_min_stack.1.0][dict_min_stack.1.1] += 1.;
-        } else if twoloop_length_pair.0 == 0 || twoloop_length_pair.1 == 0 {
+        } else {
+          if twoloop_length_pair.0 == 0 || twoloop_length_pair.1 == 0 {
+            if sum <= CONSPROB_MAX_TWOLOOP_LEN {
+              self.observed_feature_count_sets.bulge_loop_length_counts[sum - 1] += 1.;
+              if sum == 1 {
+                let mismatch = if twoloop_length_pair.0 == 0 {mismatch_pair.1} else {mismatch_pair.0};
+                self.observed_feature_count_sets.bulge_loop_0x1_length_counts[mismatch] += 1.;
+              }
+            }
+          } else {
+            if sum <= CONSPROB_MAX_TWOLOOP_LEN {
+              self.observed_feature_count_sets.interior_loop_length_counts[sum - 2] += 1.;
+              let diff = get_diff(twoloop_length_pair.0, twoloop_length_pair.1);
+              if diff == 0 {
+                self.observed_feature_count_sets.interior_loop_length_counts_symm[twoloop_length_pair.0 - 1] += 1.;
+              } else {
+                self.observed_feature_count_sets.interior_loop_length_counts_asymm[diff - 1] += 1.;
+              }
+              if twoloop_length_pair.0 == 1 && twoloop_length_pair.1 == 1 {
+                let dict_min_mismatch_pair = get_dict_min_mismatch_pair(&mismatch_pair);
+                self.observed_feature_count_sets.interior_loop_1x1_length_count_mat[dict_min_mismatch_pair.0][dict_min_mismatch_pair.1] += 1.;
+              }
+              if twoloop_length_pair.0 <= CONSPROB_MAX_INTERIOR_LOOP_LEN_EXPLICIT && twoloop_length_pair.1 <= CONSPROB_MAX_INTERIOR_LOOP_LEN_EXPLICIT {
+                let dict_min_loop_len_pair = get_dict_min_loop_len_pair(&twoloop_length_pair);
+                self.observed_feature_count_sets.interior_loop_length_count_mat_explicit[dict_min_loop_len_pair.0 - 1][dict_min_loop_len_pair.1 - 1] += 1.;
+              }
+            }
+          }
+          if sum <= CONSPROB_MAX_TWOLOOP_LEN {
+            self.observed_feature_count_sets.terminal_mismatch_count_mat[base_pair.0][base_pair.1][mismatch_pair.0][mismatch_pair.1] += 1.;
+            let mismatch_pair_2 = get_mismatch_pair(&seq[..], pos_pair_in_loop, false);
+            self.observed_feature_count_sets.terminal_mismatch_count_mat[base_pair_2.1][base_pair_2.0][mismatch_pair_2.1][mismatch_pair_2.0] += 1.;
+            self.observed_feature_count_sets.helix_end_count_mat[base_pair.0][base_pair.1] += 1.;
+            self.observed_feature_count_sets.helix_end_count_mat[base_pair_2.1][base_pair_2.0] += 1.;
+          }
+        }
+        /* } else if twoloop_length_pair.0 == 0 || twoloop_length_pair.1 == 0 {
           if sum <= CONSPROB_MAX_TWOLOOP_LEN {
             self.observed_feature_count_sets.bulge_loop_length_counts[sum - 1] += 1.;
             if sum == 1 {
@@ -1559,7 +1595,7 @@ impl TrainDatumSs {
           self.observed_feature_count_sets.terminal_mismatch_count_mat[base_pair_2.1][base_pair_2.0][mismatch_pair_2.1][mismatch_pair_2.0] += 1.;
           self.observed_feature_count_sets.helix_end_count_mat[base_pair.0][base_pair.1] += 1.;
           self.observed_feature_count_sets.helix_end_count_mat[base_pair_2.1][base_pair_2.0] += 1.;
-        }
+        } */
       } else {
         self.observed_feature_count_sets.left_dangle_count_mat[base_pair.0][base_pair.1][mismatch_pair.0] += 1.;
         self.observed_feature_count_sets.right_dangle_count_mat[base_pair.0][base_pair.1][mismatch_pair.1] += 1.;
@@ -5367,10 +5403,12 @@ where
         logsumexp(&mut sum, part_func + ss_part_func_4_rightmost_base_pairings_on_el);
       }
       ss_part_func_mats.part_func_mat[long_i][long_j] = sum;
-      sum = ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[long_i][long_j];
+      // sum = ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[long_i][long_j];
+      sum = NEG_INFINITY;
       let mut sum_2 = sum;
       let mut sum_4_ml = NEG_INFINITY;
-      for k in long_i + 1 .. long_j {
+      // for k in long_i + 1 .. long_j {
+      for k in long_i .. long_j {
         let ss_part_func_4_rightmost_base_pairings_on_mls = ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[k][long_j];
         let part_func = ss_part_func_4_rightmost_base_pairings_on_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count * (k - long_i) as FreeEnergy;
         logsumexp(&mut sum, part_func);
@@ -5529,7 +5567,7 @@ where
               }
             }
           }
-          let coefficient = bp_score_param_sets.multi_loop_accessible_bp_scores[&accessible_pp];
+          let coefficient = ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_mls[&accessible_pp];
           let mut bpp_4_ml = NEG_INFINITY;
           for k in 1 .. long_i {
             let ss_part_func_4_at_least_1_base_pairings_on_mls = ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[k + 1][long_i - 1];
@@ -5555,6 +5593,9 @@ where
             logsumexp(&mut expected_feature_count_sets.helix_end_count_mat
               [base_pair.1][base_pair.0],
               bpp_4_ml);
+            // Count multi-loop accessible basepairings.
+            logsumexp(&mut expected_feature_count_sets
+              .multi_loop_basepairing_count, bpp_4_ml);
           }
           debug_assert!(NEG_INFINITY <= sum && sum <= 0.);
           bpp_mat.insert(accessible_pp, sum);
@@ -5564,7 +5605,7 @@ where
             logsumexp(&mut expected_feature_count_sets.base_pair_count_mat[dict_min_base_pair.0][dict_min_base_pair.1], sum);
             if long_j - long_i - 1 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN {
               let hl_fe = bp_score_param_sets.hairpin_loop_scores[&accessible_pp];
-              let bpp_4_hl = bpp_mat[&accessible_pp] - part_func + hl_fe;
+              let bpp_4_hl = sum - part_func + hl_fe;
               logsumexp(&mut expected_feature_count_sets.hairpin_loop_length_counts[long_j - long_i - 1 - CONSPROB_MIN_HAIRPIN_LOOP_LEN], bpp_4_hl);
               let mismatch_pair = (seq[long_i + 1], seq[long_j - 1]);
               logsumexp(&mut expected_feature_count_sets.terminal_mismatch_count_mat
@@ -5632,9 +5673,6 @@ where
           logsumexp(&mut expected_feature_count_sets.multi_loop_base_count, bpp_4_ml);
           // Count multi-loop closing basepairings.
           logsumexp(&mut expected_feature_count_sets.multi_loop_basepairing_count, bpp_4_ml);
-          // Count multi-loop accessible basepairings.
-          logsumexp(&mut expected_feature_count_sets
-            .multi_loop_basepairing_count, bpp_4_ml);
         }, None => {},
       }
     }
@@ -5725,6 +5763,7 @@ where
     expected_feature_count_sets.multi_loop_base_count = expf(expected_feature_count_sets.multi_loop_base_count);
     debug_assert!(expected_feature_count_sets.multi_loop_base_count.is_finite());
     expected_feature_count_sets.multi_loop_basepairing_count = expf(expected_feature_count_sets.multi_loop_basepairing_count);
+    debug_assert!(expected_feature_count_sets.multi_loop_basepairing_count.is_finite());
     expected_feature_count_sets.multi_loop_accessible_baseunpairing_count = expf(expected_feature_count_sets.multi_loop_accessible_baseunpairing_count);
     debug_assert!(expected_feature_count_sets.multi_loop_accessible_baseunpairing_count.is_finite());
     expected_feature_count_sets.external_loop_accessible_basepairing_count = expf(expected_feature_count_sets.external_loop_accessible_basepairing_count);
