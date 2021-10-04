@@ -8,10 +8,6 @@ target
 !Cargo.toml
 !.gitignore
 !README.md
-!trna.fa
-!sampled_trnas.fa
 !rfam_seed_stas_v14.4.sth
-!costs.dat
-!conshomfold_running_time_3d_plot.dat
-!contrafold_running_time_3d_plot.dat
-!raf_running_time_3d_plot.dat
+!costs_sa.dat
+!costs_ss.dat

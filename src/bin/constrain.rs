@@ -9,33 +9,27 @@ fn main() {
   let mut opts = Options::new();
   opts.reqopt(
     "i",
-    "input_dir",
-    "A path to an input directory containing RNA structural alignments in STOCKHOLM format",
+    "input_dir_seq_align",
+    "A path to an input directory containing RNA sequence alignments in FASTA format",
+    "STR",
+  );
+  opts.reqopt(
+    "j",
+    "input_dir_second_struct",
+    "A path to an input directory containing RNA secondary structures in FASTA format",
     "STR",
   );
   opts.reqopt(
     "o",
-    "output_file_path",
-    "A path to an output file to record intermediate training log likelihoods",
+    "output_file_path_seq_align",
+    "A path to an output file to record intermediate training log likelihoods in RNA sequence alignments",
     "STR",
   );
-  opts.optopt(
-    "",
-    "min_base_pair_prob",
-    &format!(
-      "A minimum base-pairing-probability (Uses {} by default)",
-      DEFAULT_MIN_BPP_4_TRAIN
-    ),
-    "FLOAT",
-  );
-  opts.optopt(
-    "",
-    "offset_4_max_gap_num",
-    &format!(
-      "An offset for maximum numbers of gaps (Uses {} by default)",
-      DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN
-    ),
-    "UINT",
+  opts.reqopt(
+    "p",
+    "output_file_path_second_struct",
+    "A path to an output file to record intermediate training log likelihoods in RNA secondary structures",
+    "STR",
   );
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag("h", "help", "Print a help menu");
@@ -50,44 +44,32 @@ fn main() {
     print_program_usage(&program_name, &opts);
     return;
   }
-  let input_dir_path = matches.opt_str("i").unwrap();
-  let input_dir_path = Path::new(&input_dir_path);
-  let min_bpp = if matches.opt_present("min_base_pair_prob") {
-    matches
-      .opt_str("min_base_pair_prob")
-      .unwrap()
-      .parse()
-      .unwrap()
-  } else {
-    DEFAULT_MIN_BPP_4_TRAIN
-  };
-  let offset_4_max_gap_num = if matches.opt_present("offset_4_max_gap_num") {
-    matches
-      .opt_str("offset_4_max_gap_num")
-      .unwrap()
-      .parse()
-      .unwrap()
-  } else {
-    DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN
-  } as u16;
+  let input_dir_path_sa = matches.opt_str("i").unwrap();
+  let input_dir_path_sa = Path::new(&input_dir_path_sa);
+  let input_dir_path_ss = matches.opt_str("j").unwrap();
+  let input_dir_path_ss = Path::new(&input_dir_path_ss);
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
     num_cpus::get() as NumOfThreads
   };
   println!("# threads = {}", num_of_threads);
-  let output_file_path = matches.opt_str("o").unwrap();
-  let output_file_path = Path::new(&output_file_path);
-  let entries: Vec<DirEntry> = read_dir(input_dir_path).unwrap().map(|x| x.unwrap()).collect();
+  let output_file_path_sa = matches.opt_str("o").unwrap();
+  let output_file_path_sa = Path::new(&output_file_path_sa);
+  let output_file_path_ss = matches.opt_str("p").unwrap();
+  let output_file_path_ss = Path::new(&output_file_path_ss);
+  let entries: Vec<DirEntry> = read_dir(input_dir_path_sa).unwrap().map(|x| x.unwrap()).collect();
   let num_of_entries = entries.len();
-  let mut train_data = vec![TrainDatum::origin(); num_of_entries];
+  let mut train_data_sa = vec![TrainDatumSa::origin(); num_of_entries];
+  for (input_file_path, train_datum) in entries.iter().zip(train_data_sa.iter_mut()) {
+    *train_datum = TrainDatumSa::new(&input_file_path.path());
+  }
+  let entries: Vec<DirEntry> = read_dir(input_dir_path_ss).unwrap().map(|x| x.unwrap()).collect();
+  let num_of_entries = entries.len();
+  let mut train_data_ss = vec![TrainDatumSs::origin(); num_of_entries];
+  for (input_file_path, train_datum) in entries.iter().zip(train_data_ss.iter_mut()) {
+    *train_datum = TrainDatumSs::new(&input_file_path.path());
+  }
   let mut thread_pool = Pool::new(num_of_threads);
-  thread_pool.scoped(|scope| {
-    for (input_file_path, train_datum) in entries.iter().zip(train_data.iter_mut()) {
-      scope.execute(move || {
-        *train_datum = TrainDatum::<u16>::new(&input_file_path.path(), min_bpp, offset_4_max_gap_num);
-      });
-    }
-  });
-  constrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, output_file_path);
+  constrain::<u16>(&mut thread_pool, &mut train_data_sa, &mut train_data_ss, output_file_path_sa, output_file_path_ss);
 }
