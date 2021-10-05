@@ -9,5 +9,4 @@ target
 !.gitignore
 !README.md
 !rfam_seed_stas_v14.4.sth
-!costs_sa.dat
-!costs_ss.dat
+!costs.dat

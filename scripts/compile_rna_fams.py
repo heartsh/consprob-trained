@@ -20,15 +20,12 @@ sampled_seq_num = 5
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
   rfam_seed_sta_file_path = asset_dir_path + "/rfam_seed_stas_v14.4.sth"
-  train_data_dir_path_sa = asset_dir_path + "/train_data_sa"
-  train_data_dir_path_ss = asset_dir_path + "/train_data_ss"
+  train_data_dir_path = asset_dir_path + "/train_data"
   test_data_dir_path = asset_dir_path + "/test_data"
   test_ref_ss_dir_path = asset_dir_path + "/test_ref_sss"
   test_ref_sa_dir_path = asset_dir_path + "/test_ref_sas"
-  if not os.path.isdir(train_data_dir_path_sa):
-    os.mkdir(train_data_dir_path_sa)
-  if not os.path.isdir(train_data_dir_path_ss):
-    os.mkdir(train_data_dir_path_ss)
+  if not os.path.isdir(train_data_dir_path):
+    os.mkdir(train_data_dir_path)
   if not os.path.isdir(test_data_dir_path):
     os.mkdir(test_data_dir_path)
   if not os.path.isdir(test_ref_ss_dir_path):
@@ -45,7 +42,7 @@ def main():
   print("# RNA families: %d" % num_of_stas)
   train_data, test_data = train_test_split(stas, test_size = 0.5)
   param_sets = zip(list(range(0, len(train_data))), train_data)
-  param_sets = [(params[0], params[1], train_data_dir_path_sa, train_data_dir_path_ss) for params in param_sets]
+  param_sets = [(params[0], params[1], train_data_dir_path) for params in param_sets]
   num_of_threads = multiprocessing.cpu_count()
   pool = multiprocessing.Pool(num_of_threads)
   pool.map(write_train_datum, param_sets)
@@ -54,7 +51,7 @@ def main():
   pool.map(write_test_datum, param_sets)
 
 def write_train_datum(params):
-  (i, train_datum, train_data_dir_path_sa, train_data_dir_path_ss) = params
+  (i, train_datum, train_data_dir_path) = params
   cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
   align_len = len(train_datum)
   indexes = [j for j in range(0, align_len)]
@@ -65,16 +62,9 @@ def write_train_datum(params):
   for (j, sampled_index_pair) in enumerate(sampled_index_pairs):
     seq_1 = train_datum[int(sampled_index_pair[0])].seq
     seq_2 = train_datum[int(sampled_index_pair[1])].seq
-    seq_1, seq_2 = remove_gap_only_cols(seq_1, seq_2)
-    train_datum_file_path = os.path.join(train_data_dir_path_sa, "train_datum_%d_%d.fa" % (i, j))
+    train_datum_file_path = os.path.join(train_data_dir_path, "train_datum_%d_%d.fa" % (i, j))
     train_datum_file = open(train_datum_file_path, "w")
-    train_datum_file.write(">seq_1\n%s\n\n>seq_2\n%s" % (seq_1, seq_2))
-  for (j, sampled_index) in enumerate(sampled_indexes):
-    seq = str(train_datum[int(sampled_index)].seq)
-    recovered_ss = recover_ss(cons_second_struct, seq)
-    train_datum_file_path = os.path.join(train_data_dir_path_ss, "train_datum_%d_%d.fa" % (i, j))
-    train_datum_file = open(train_datum_file_path, "w")
-    train_datum_file.write(">seq\n%s\n\n>second_struct\n%s" % (seq.replace("-", ""), recovered_ss))
+    train_datum_file.write(">seq_1\n%s\n\n>seq_2\n%s\n\n>cons_second_struct\n%s" % (seq_1, seq_2, cons_second_struct))
 
 def write_test_datum(params):
   (i, test_datum, test_data_dir_path, test_ref_sa_dir_path, test_ref_ss_dir_path) = params
@@ -153,21 +143,6 @@ def recover_ss(css, seq_with_gaps):
         recovered_ss = recovered_ss[: mapped_j] + left + recovered_ss[mapped_j + 1 :]
         recovered_ss = recovered_ss[: mapped_i] + right + recovered_ss[mapped_i + 1 :]
   return recovered_ss
-
-def remove_gap_only_cols(seq_1, seq_2):
-  are_gap_only_cols = True
-  while are_gap_only_cols:
-    are_gap_only_cols_found = False
-    for i in range(len(seq_1)):
-      char_pair = (seq_1[i], seq_2[i])
-      if char_pair[0] == "-" and char_pair[1] == "-":
-        are_gap_only_cols_found = True
-        seq_1 = seq_1[0 : i] + seq_1[i + 1 :]
-        seq_2 = seq_2[0 : i] + seq_2[i + 1 :]
-        break
-    if not are_gap_only_cols_found:
-      are_gap_only_cols = False
-  return seq_1, seq_2
   
 if __name__ == "__main__":
   main()
