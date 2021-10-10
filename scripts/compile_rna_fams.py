@@ -16,6 +16,7 @@ from sklearn.model_selection import train_test_split
 
 bracket_pairs = [("(", ")"), ("A", "a"), ("B", "b"), ("C", "c"), ("D", "d"), ("E", "e"), ]
 sampled_seq_num = 5
+min_seq_num = sampled_seq_num
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
@@ -33,11 +34,11 @@ def main():
   if not os.path.isdir(test_ref_sa_dir_path):
     os.mkdir(test_ref_sa_dir_path)
   max_sa_len = 500
-  min_seq_num = sampled_seq_num
   max_seq_num = 20
-  stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) >= min_seq_num and len(sta) <= max_seq_num and is_valid(sta)]
+  stas = [sta for sta in AlignIO.parse(rfam_seed_sta_file_path, "stockholm") if len(sta[0]) <= max_sa_len and len(sta) <= max_seq_num and is_valid(sta)]
   struct_srcs = get_struct_srcs(rfam_seed_sta_file_path)
-  stas = [sta for (i, sta) in enumerate(stas) if not struct_srcs[i]]
+  for i, sta in enumerate(stas):
+    sta.annotations["is_predicted"] = struct_srcs[i]
   num_of_stas = len(stas)
   print("# RNA families: %d" % num_of_stas)
   train_data, test_data = train_test_split(stas, test_size = 0.5)
@@ -52,6 +53,8 @@ def main():
 
 def write_train_datum(params):
   (i, train_datum, train_data_dir_path) = params
+  if train_datum.annotations["is_predicted"] or len(train_datum) < min_seq_num:
+    return
   cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
   align_len = len(train_datum)
   indexes = [j for j in range(0, align_len)]

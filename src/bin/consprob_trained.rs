@@ -10,13 +10,13 @@ fn main() {
   opts.reqopt(
     "i",
     "input_file_path",
-    "The path to an input FASTA file containing RNA sequences to predict probabilities",
+    "A path to an input FASTA file containing RNA sequences to predict probabilities",
     "STR",
   );
   opts.reqopt(
     "o",
     "output_dir_path",
-    "The path to an output directory",
+    "A path to an output directory",
     "STR",
   );
   opts.optopt(

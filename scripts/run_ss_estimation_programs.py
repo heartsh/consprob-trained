@@ -21,11 +21,13 @@ def main():
   temp_dir_path = "/tmp/run_ss_estimation_programs_%s" % datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H:%M:%S')
   if not os.path.isdir(temp_dir_path):
     os.mkdir(temp_dir_path)
-  mafft_xinsi_params = []
+  # mafft_xinsi_params = []
   conshomfold_params = []
   conshomfold_params_4_running_time = []
-  conshomfold_old_params = []
-  conshomfold_old_params_4_running_time = []
+  conshomfold_old_params_turner = []
+  conshomfold_old_params_4_running_time_turner = []
+  conshomfold_old_params_contra = []
+  conshomfold_old_params_4_running_time_contra = []
   centroidhomfold_params = []
   centroidhomfold_params_4_running_time = []
   rnafold_params = []
@@ -34,30 +36,34 @@ def main():
   centroidfold_params = []
   centroidfold_params_4_running_time = []
   contextfold_params = []
-  rnaalifold_params = []
-  rnaalifold_params_4_running_time = []
-  centroidalifold_params = []
-  centroidalifold_params_4_running_time = []
-  petfold_params = []
-  petfold_params_4_running_time = []
-  mafft_xinsi_dir_path = asset_dir_path + "/mafft_xinsi"
+  # rnaalifold_params = []
+  # rnaalifold_params_4_running_time = []
+  # centroidalifold_params = []
+  # centroidalifold_params_4_running_time = []
+  # petfold_params = []
+  # petfold_params_4_running_time = []
+  # mafft_xinsi_dir_path = asset_dir_path + "/mafft_xinsi"
   conshomfold_dir_path = asset_dir_path + "/conshomfold"
-  conshomfold_old_dir_path = asset_dir_path + "/conshomfold_old"
+  conshomfold_old_dir_path_turner = asset_dir_path + "/conshomfold_old_turner"
+  conshomfold_old_dir_path_contra = asset_dir_path + "/conshomfold_old_contra"
   centroidhomfold_dir_path = asset_dir_path + "/centroidhomfold"
   rnafold_dir_path = asset_dir_path + "/rnafold"
   contrafold_dir_path = asset_dir_path + "/contrafold"
   centroidfold_dir_path = asset_dir_path + "/centroidfold"
   contextfold_dir_path = asset_dir_path + "/contextfold"
-  rnaalifold_dir_path = asset_dir_path + "/rnaalifold"
-  centroidalifold_dir_path = asset_dir_path + "/centroidalifold"
-  petfold_dir_path = asset_dir_path + "/petfold"
+  # rnaalifold_dir_path = asset_dir_path + "/rnaalifold"
+  # centroidalifold_dir_path = asset_dir_path + "/centroidalifold"
+  # petfold_dir_path = asset_dir_path + "/petfold"
   infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
-  if not os.path.isdir(mafft_xinsi_dir_path):
-    os.mkdir(mafft_xinsi_dir_path)
+  if False:
+    if not os.path.isdir(mafft_xinsi_dir_path):
+      os.mkdir(mafft_xinsi_dir_path)
   if not os.path.isdir(conshomfold_dir_path):
     os.mkdir(conshomfold_dir_path)
-  if not os.path.isdir(conshomfold_old_dir_path):
-    os.mkdir(conshomfold_old_dir_path)
+  if not os.path.isdir(conshomfold_old_dir_path_turner):
+    os.mkdir(conshomfold_old_dir_path_turner)
+  if not os.path.isdir(conshomfold_old_dir_path_contra):
+    os.mkdir(conshomfold_old_dir_path_contra)
   if not os.path.isdir(centroidhomfold_dir_path):
     os.mkdir(centroidhomfold_dir_path)
   if not os.path.isdir(rnafold_dir_path):
@@ -68,12 +74,13 @@ def main():
     os.mkdir(centroidfold_dir_path)
   if not os.path.isdir(contextfold_dir_path):
     os.mkdir(contextfold_dir_path)
-  if not os.path.isdir(rnaalifold_dir_path):
-    os.mkdir(rnaalifold_dir_path)
-  if not os.path.isdir(centroidalifold_dir_path):
-    os.mkdir(centroidalifold_dir_path)
-  if not os.path.isdir(petfold_dir_path):
-    os.mkdir(petfold_dir_path)
+  if False:
+    if not os.path.isdir(rnaalifold_dir_path):
+      os.mkdir(rnaalifold_dir_path)
+    if not os.path.isdir(centroidalifold_dir_path):
+      os.mkdir(centroidalifold_dir_path)
+    if not os.path.isdir(petfold_dir_path):
+      os.mkdir(petfold_dir_path)
   rna_dir_path = asset_dir_path + "/test_data"
   sub_thread_num = 4
   for rna_file in os.listdir(rna_dir_path):
@@ -81,47 +88,54 @@ def main():
       continue
     rna_file_path = os.path.join(rna_dir_path, rna_file)
     (rna_family_name, extension) = os.path.splitext(rna_file)
-    mafft_xinsi_output_file_path = os.path.join(mafft_xinsi_dir_path, rna_family_name + ".aln")
-    mafft_xinsi_output_file_path_2 = os.path.join(mafft_xinsi_dir_path, rna_family_name + ".fa")
+    # mafft_xinsi_output_file_path = os.path.join(mafft_xinsi_dir_path, rna_family_name + ".aln")
+    # mafft_xinsi_output_file_path_2 = os.path.join(mafft_xinsi_dir_path, rna_family_name + ".fa")
     conshomfold_output_dir_path = os.path.join(conshomfold_dir_path, rna_family_name)
-    conshomfold_old_output_dir_path = os.path.join(conshomfold_old_dir_path, rna_family_name)
+    conshomfold_old_output_dir_path_turner = os.path.join(conshomfold_old_dir_path_turner, rna_family_name)
+    conshomfold_old_output_dir_path_contra = os.path.join(conshomfold_old_dir_path_contra, rna_family_name)
     centroidhomfold_output_dir_path = os.path.join(centroidhomfold_dir_path, rna_family_name)
     rnafold_output_file_path = os.path.join(rnafold_dir_path, rna_family_name + ".fa")
     contrafold_output_dir_path = os.path.join(contrafold_dir_path, rna_family_name)
     centroidfold_output_dir_path = os.path.join(centroidfold_dir_path, rna_family_name)
     contextfold_output_file_path = os.path.join(contextfold_dir_path, rna_family_name + ".fa")
-    rnaalifold_output_file_path = os.path.join(rnaalifold_dir_path, rna_family_name + ".fa")
-    centroidalifold_output_dir_path = os.path.join(centroidalifold_dir_path, rna_family_name)
-    petfold_output_dir_path = os.path.join(petfold_dir_path, rna_family_name)
+    if False:
+      rnaalifold_output_file_path = os.path.join(rnaalifold_dir_path, rna_family_name + ".fa")
+      centroidalifold_output_dir_path = os.path.join(centroidalifold_dir_path, rna_family_name)
+      petfold_output_dir_path = os.path.join(petfold_dir_path, rna_family_name)
     infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_family_name + "_infernal.dat")
     if os.path.isfile(infernal_black_list_file_path):
       continue
     if not os.path.isdir(conshomfold_output_dir_path):
       os.mkdir(conshomfold_output_dir_path)
-    if not os.path.isdir(conshomfold_old_output_dir_path):
-      os.mkdir(conshomfold_old_output_dir_path)
+    if not os.path.isdir(conshomfold_old_output_dir_path_turner):
+      os.mkdir(conshomfold_old_output_dir_path_turner)
+    if not os.path.isdir(conshomfold_old_output_dir_path_contra):
+      os.mkdir(conshomfold_old_output_dir_path_contra)
     if not os.path.isdir(centroidhomfold_output_dir_path):
       os.mkdir(centroidhomfold_output_dir_path)
     if not os.path.isdir(contrafold_output_dir_path):
       os.mkdir(contrafold_output_dir_path)
     if not os.path.isdir(centroidfold_output_dir_path):
       os.mkdir(centroidfold_output_dir_path)
-    if not os.path.isdir(centroidalifold_output_dir_path):
-      os.mkdir(centroidalifold_output_dir_path)
-    if not os.path.isdir(petfold_output_dir_path):
-      os.mkdir(petfold_output_dir_path)
-    mafft_xinsi_params.insert(0, (rna_file_path, mafft_xinsi_output_file_path))
-    conshomfold_params.insert(0, (sub_thread_num, rna_file_path, conshomfold_output_dir_path, True, False))
-    conshomfold_params_4_running_time.insert(0, (sub_thread_num, rna_file_path, conshomfold_output_dir_path, True, True))
-    conshomfold_old_params.insert(0, (sub_thread_num, rna_file_path, conshomfold_old_output_dir_path, False, False))
-    conshomfold_old_params_4_running_time.insert(0, (sub_thread_num, rna_file_path, conshomfold_old_output_dir_path, False, True))
+    if False:
+      if not os.path.isdir(centroidalifold_output_dir_path):
+        os.mkdir(centroidalifold_output_dir_path)
+      if not os.path.isdir(petfold_output_dir_path):
+        os.mkdir(petfold_output_dir_path)
+    # mafft_xinsi_params.insert(0, (rna_file_path, mafft_xinsi_output_file_path))
+    conshomfold_params.insert(0, (sub_thread_num, rna_file_path, conshomfold_output_dir_path, True, False, False))
+    conshomfold_params_4_running_time.insert(0, (sub_thread_num, rna_file_path, conshomfold_output_dir_path, True, True, False))
+    conshomfold_old_params_turner.insert(0, (sub_thread_num, rna_file_path, conshomfold_old_output_dir_path_turner, False, False, False))
+    conshomfold_old_params_4_running_time_turner.insert(0, (sub_thread_num, rna_file_path, conshomfold_old_output_dir_path_turner, False, True, False))
+    conshomfold_old_params_contra.insert(0, (sub_thread_num, rna_file_path, conshomfold_old_output_dir_path_contra, False, False, True))
+    conshomfold_old_params_4_running_time_contra.insert(0, (sub_thread_num, rna_file_path, conshomfold_old_output_dir_path_contra, False, True, True))
     rnafold_params.insert(0, (rna_file_path, rnafold_output_file_path))
     contextfold_params.insert(0, (rna_file_path, contextfold_output_file_path, temp_dir_path))
-    rnaalifold_params.insert(0, (mafft_xinsi_output_file_path, rnaalifold_output_file_path))
+    # rnaalifold_params.insert(0, (mafft_xinsi_output_file_path, rnaalifold_output_file_path))
     for gamma in gammas:
       gamma_str = str(gamma) if gamma < 1 else str(int(gamma))
       output_file = "gamma=" + gamma_str + ".fa"
-      petfold_gamma_str = str(1 / gamma) if gamma > 1 else str(int(1 / gamma))
+      # petfold_gamma_str = str(1 / gamma) if gamma > 1 else str(int(1 / gamma))
       centroidhomfold_output_file_path = os.path.join(centroidhomfold_output_dir_path, output_file)
       centroidhomfold_params.insert(0, (rna_file_path, centroidhomfold_output_file_path, gamma_str, temp_dir_path))
       if gamma == 1.:
@@ -134,16 +148,17 @@ def main():
       centroidfold_params.insert(0, (rna_file_path, centroidfold_output_file_path, gamma_str))
       if gamma == 1.:
         centroidfold_params_4_running_time.insert(0, (rna_file_path, centroidfold_output_file_path, gamma_str))
-      centroidalifold_output_file_path = os.path.join(centroidalifold_output_dir_path, output_file)
-      centroidalifold_params.insert(0, (mafft_xinsi_output_file_path, centroidalifold_output_file_path, gamma_str))
-      if gamma == 1.:
-        centroidalifold_params_4_running_time.insert(0, (mafft_xinsi_output_file_path, centroidalifold_output_file_path, gamma_str))
-      petfold_output_file_path = os.path.join(petfold_output_dir_path, output_file)
-      petfold_params.insert(0, (mafft_xinsi_output_file_path_2, petfold_output_file_path, petfold_gamma_str))
-      if gamma == 1.:
-        petfold_params_4_running_time.insert(0, (mafft_xinsi_output_file_path_2, petfold_output_file_path, petfold_gamma_str))
-  pool = multiprocessing.Pool(num_of_threads)
-  pool.map(run_mafft_xinsi, mafft_xinsi_params)
+      if False:
+        centroidalifold_output_file_path = os.path.join(centroidalifold_output_dir_path, output_file)
+        centroidalifold_params.insert(0, (mafft_xinsi_output_file_path, centroidalifold_output_file_path, gamma_str))
+        if gamma == 1.:
+          centroidalifold_params_4_running_time.insert(0, (mafft_xinsi_output_file_path, centroidalifold_output_file_path, gamma_str))
+        petfold_output_file_path = os.path.join(petfold_output_dir_path, output_file)
+        petfold_params.insert(0, (mafft_xinsi_output_file_path_2, petfold_output_file_path, petfold_gamma_str))
+        if gamma == 1.:
+          petfold_params_4_running_time.insert(0, (mafft_xinsi_output_file_path_2, petfold_output_file_path, petfold_gamma_str))
+  # pool = multiprocessing.Pool(num_of_threads)
+  # pool.map(run_mafft_xinsi, mafft_xinsi_params)
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
   pool.map(run_conshomfold, conshomfold_params)
   if False:
@@ -151,12 +166,17 @@ def main():
     # pool.map(utils.run_command, conshomfold_params_4_running_time)
     pool.map(run_conshomfold, conshomfold_params_4_running_time)
     conshomfold_elapsed_time = time.time() - begin
-  pool.map(run_conshomfold, conshomfold_old_params)
+  pool.map(run_conshomfold, conshomfold_old_params_turner)
+  pool.map(run_conshomfold, conshomfold_old_params_contra)
   if False:
     begin = time.time()
     # pool.map(utils.run_command, conshomfold_params_4_running_time)
-    pool.map(run_conshomfold, conshomfold_old_params_4_running_time)
-    conshomfold_old_elapsed_time = time.time() - begin
+    pool.map(run_conshomfold, conshomfold_old_params_4_running_time_turner)
+    conshomfold_old_elapsed_time_turner = time.time() - begin
+    begin = time.time()
+    # pool.map(utils.run_command, conshomfold_params_4_running_time)
+    pool.map(run_conshomfold, conshomfold_old_params_4_running_time_contra)
+    conshomfold_old_elapsed_time_contra = time.time() - begin
   pool = multiprocessing.Pool(num_of_threads)
   pool.map(run_centroidhomfold, centroidhomfold_params)
   if False:
@@ -181,7 +201,7 @@ def main():
     begin = time.time()
     pool.map(run_contextfold, contextfold_params)
     contextfold_elapsed_time = time.time() - begin
-  if True:
+  if False:
     begin = time.time()
     pool.map(run_rnaalifold, rnaalifold_params)
     rnaalifold_elapsed_time = time.time() - begin
@@ -190,14 +210,15 @@ def main():
     begin = time.time()
     pool.map(run_centroidalifold, centroidalifold_params_4_running_time)
     centroidalifold_elapsed_time = time.time() - begin
-  pool.map(run_petfold, petfold_params)
+  # pool.map(run_petfold, petfold_params)
   if False:
     begin = time.time()
     pool.map(run_petfold, petfold_params_4_running_time)
     petfold_elapsed_time = time.time() - begin
   if False:
     print("The elapsed time of ConsHomfold (new) = %f [s]." % conshomfold_elapsed_time)
-    print("The elapsed time of ConsHomfold (old) = %f [s]." % conshomfold_old_elapsed_time)
+    print("The elapsed time of ConsHomfold (old, Turner) = %f [s]." % conshomfold_old_elapsed_time_turner)
+    print("The elapsed time of ConsHomfold (old, CONTRAfold) = %f [s]." % conshomfold_old_elapsed_time_contra)
     print("The elapsed time of CentroidHomfold = %f [s]." % centroidhomfold_elapsed_time)
     print("The elapsed time of RNAfold = %f [s]." % rnafold_elapsed_time)
     print("The elapsed time of CONTRAfold = %f [s]." % contrafold_elapsed_time)
@@ -292,8 +313,8 @@ def run_contextfold(contextfold_params):
   contextfold_output_file.close()
 
 def run_conshomfold(conshomfold_params):
-  (sub_thread_num, rna_file_path, conshomfold_output_dir_path, is_trained, is_benchmarked) = conshomfold_params
-  conshomfold_command = "conshomfold%s %s-t " % ("-trained" if is_trained else "", "-b " if is_benchmarked else "") + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path
+  (sub_thread_num, rna_file_path, conshomfold_output_dir_path, is_trained, is_benchmarked, uses_contrafold_model) = conshomfold_params
+  conshomfold_command = "conshomfold%s %s%s-t " % ("-trained" if is_trained else "", "-b " if is_benchmarked else "", "-c " if uses_contrafold_model else "") + str(sub_thread_num) + " -i " + rna_file_path + " -o " + conshomfold_output_dir_path
   utils.run_command(conshomfold_command)
 
 def run_rnaalifold(rnaalifold_params):

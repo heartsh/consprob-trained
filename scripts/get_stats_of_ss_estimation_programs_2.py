@@ -23,11 +23,11 @@ def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
   num_of_threads = multiprocessing.cpu_count()
   infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
-  consfold_ppvs = []
-  consfold_senss = []
-  consfold_fprs = []
-  consfold_f1_scores = []
-  consfold_mccs = []
+  conshomfold_ppvs = []
+  conshomfold_senss = []
+  conshomfold_fprs = []
+  conshomfold_f1_scores = []
+  conshomfold_mccs = []
   linearfold_ppv = 0
   linearfold_sens = 0
   linearfold_fpr = 0
@@ -54,7 +54,7 @@ def main():
   spot_rna_f1_score = 0
   spot_rna_mcc = 0
   gammas = [2. ** i for i in range(-7, 11)]
-  consfold_ss_dir_path = asset_dir_path + "/consfold"
+  conshomfold_ss_dir_path = asset_dir_path + "/conshomfold"
   linearfold_ss_dir_path = asset_dir_path + "/linearfold"
   mxfold_ss_dir_path = asset_dir_path + "/mxfold"
   probknot_ss_dir_path = asset_dir_path + "/probknot"
@@ -63,7 +63,7 @@ def main():
   rna_fam_dir_path = asset_dir_path + "/test_ref_sss"
   pool = multiprocessing.Pool(num_of_threads)
   for gamma in gammas:
-    consfold_count_params = []
+    conshomfold_count_params = []
     linearfold_count_params = []
     mxfold_count_params = []
     probknot_count_params = []
@@ -81,9 +81,9 @@ def main():
       rna_seq_lens = [len(rna_seq.seq) for rna_seq in SeqIO.parse(rna_seq_file_path, "fasta")]
       ref_ss_file_path = os.path.join(rna_fam_dir_path, rna_fam_file)
       ref_sss = utils.get_sss(ref_ss_file_path)
-      consfold_estimated_ss_dir_path = os.path.join(consfold_ss_dir_path, rna_fam_name)
-      consfold_estimated_ss_file_path = os.path.join(consfold_estimated_ss_dir_path, "gamma=" + gamma_str + ".fa")
-      consfold_count_params.insert(0, (consfold_estimated_ss_file_path, ref_sss, rna_seq_lens))
+      conshomfold_estimated_ss_dir_path = os.path.join(conshomfold_ss_dir_path, rna_fam_name)
+      conshomfold_estimated_ss_file_path = os.path.join(conshomfold_estimated_ss_dir_path, "gamma=" + gamma_str + ".fa")
+      conshomfold_count_params.insert(0, (conshomfold_estimated_ss_file_path, ref_sss, rna_seq_lens))
       if gamma == 1.:
         linearfold_estimated_ss_file_path = os.path.join(linearfold_ss_dir_path, rna_fam_name + ".fa")
         linearfold_count_params.insert(0, (linearfold_estimated_ss_file_path, ref_sss, rna_seq_lens))
@@ -96,16 +96,16 @@ def main():
         ipknot_count_params.insert(0, (ipknot_estimated_ss_file_path, ref_sss, rna_seq_lens))
         spot_rna_estimated_ss_file_path = os.path.join(spot_rna_ss_dir_path, rna_fam_name + ".bpseq")
         spot_rna_count_params.insert(0, (spot_rna_estimated_ss_file_path, ref_sss, rna_seq_lens))
-    results = pool.map(get_pos_neg_counts, consfold_count_params)
+    results = pool.map(get_pos_neg_counts, conshomfold_count_params)
     tp, tn, fp, fn = final_sum(results)
     ppv = get_ppv(tp, fp)
     sens = get_sens(tp, fn)
     fpr = get_fpr(tn, fp)
-    consfold_ppvs.insert(0, ppv)
-    consfold_senss.insert(0, sens)
-    consfold_fprs.insert(0, fpr)
-    consfold_f1_scores.append(get_f1_score(ppv, sens))
-    consfold_mccs.append(get_mcc(tp, tn, fp, fn))
+    conshomfold_ppvs.insert(0, ppv)
+    conshomfold_senss.insert(0, sens)
+    conshomfold_fprs.insert(0, fpr)
+    conshomfold_f1_scores.append(get_f1_score(ppv, sens))
+    conshomfold_mccs.append(get_mcc(tp, tn, fp, fn))
     if gamma == 1.:
       results = pool.map(get_pos_neg_counts, linearfold_count_params)
       tp, tn, fp, fn = final_sum(results)
@@ -157,7 +157,7 @@ def main():
       spot_rna_fpr = fpr
       spot_rna_f1_score = get_f1_score(ppv, sens)
       spot_rna_mcc = get_mcc(tp, tn, fp, fn)
-  line_1, = pyplot.plot(consfold_ppvs, consfold_senss, label = "ConsFold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(conshomfold_ppvs, conshomfold_senss, label = "ConsHomfold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(linearfold_ppv, linearfold_sens, label = "LinearFold", marker = "s")
   line_3, = pyplot.plot(mxfold_ppv, mxfold_sens, label = "MXfold2", marker = "*")
   line_4, = pyplot.plot(probknot_ppv, probknot_sens, label = "ProbKnot", marker = "p")
@@ -172,7 +172,7 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/pr_curves_on_ss_estimation_2.eps", bbox_inches = "tight")
   pyplot.clf()
-  line_1, = pyplot.plot(consfold_fprs, consfold_senss, label = "ConsFold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(conshomfold_fprs, conshomfold_senss, label = "ConsHomfold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(linearfold_fpr, linearfold_sens, label = "LinearFold", marker = "s")
   line_3, = pyplot.plot(mxfold_fpr, mxfold_sens, label = "MXfold2", marker = "*")
   line_4, = pyplot.plot(probknot_fpr, probknot_sens, label = "ProbKnot", marker = "p")
@@ -184,26 +184,26 @@ def main():
   pyplot.savefig(image_dir_path + "/roc_curves_on_ss_estimation_2.eps", bbox_inches = "tight")
   pyplot.clf()
   gammas = [i for i in range(-7, 11)]
-  line_1, = pyplot.plot(gammas, consfold_f1_scores, label = "ConsFold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(gammas, conshomfold_f1_scores, label = "ConsHomfold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(-2, linearfold_f1_score, label = "LinearFold", marker = "s")
   line_3, = pyplot.plot(-2, mxfold_f1_score, label = "MXfold2", marker = "*")
   line_4, = pyplot.plot(-2, probknot_f1_score, label = "ProbKnot", marker = "p")
   line_5, = pyplot.plot(-2, ipknot_f1_score, label = "IPknot", marker = "D")
   line_6, = pyplot.plot(-2, spot_rna_f1_score, label = "SPOT-RNA", marker = "v")
-  line_7, = pyplot.plot(min_gamma + numpy.argmax(consfold_f1_scores), max(consfold_f1_scores), label = "ConsFold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
+  line_7, = pyplot.plot(min_gamma + numpy.argmax(conshomfold_f1_scores), max(conshomfold_f1_scores), label = "ConsHomfold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
   pyplot.xlabel("$\log_2 \gamma$")
   pyplot.ylabel("F1 score")
   pyplot.legend(handles = [line_7], loc = "lower right")
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/gammas_vs_f1_scores_on_ss_estimation_2.eps", bbox_inches = "tight")
   pyplot.clf()
-  line_1, = pyplot.plot(gammas, consfold_mccs, label = "ConsFold", marker = "o", linestyle = "solid")
+  line_1, = pyplot.plot(gammas, conshomfold_mccs, label = "ConsHomfold", marker = "o", linestyle = "solid")
   line_2, = pyplot.plot(-2, linearfold_mcc, label = "LinearFold", marker = "s")
   line_3, = pyplot.plot(-2, mxfold_mcc, label = "MXfold2", marker = "*")
   line_4, = pyplot.plot(-2, probknot_mcc, label = "ProbKnot", marker = "p")
   line_5, = pyplot.plot(-2, ipknot_mcc, label = "IPknot", marker = "D")
   line_6, = pyplot.plot(-2, spot_rna_mcc, label = "SPOT-RNA", marker = "v")
-  line_7, = pyplot.plot(min_gamma + numpy.argmax(consfold_mccs), max(consfold_mccs), label = "ConsFold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
+  line_7, = pyplot.plot(min_gamma + numpy.argmax(conshomfold_mccs), max(conshomfold_mccs), label = "ConsHomfold", marker = "o", markerfacecolor = white, markeredgecolor = color_palette[0])
   pyplot.xlabel("$\log_2 \gamma$")
   pyplot.ylabel("MCC")
   pyplot.tight_layout()
