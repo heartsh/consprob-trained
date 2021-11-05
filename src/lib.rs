@@ -225,6 +225,7 @@ pub type RealSeqPair = (Seq, Seq);
 pub struct AlignProbMatPair<T> {
   pub loop_align_prob_mat: SparseProbMat<T>,
   pub basepair_align_prob_mat: Prob4dMat<T>,
+  pub align_prob_mat: SparseProbMat<T>,
 }
 pub type AlignProbMatPairsWithRnaIdPairs<T> = HashMap<RnaIdPair, AlignProbMatPair<T>>;
 
@@ -288,7 +289,7 @@ impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamS
           accessible_bp_shared_score_with_dangle,
         );
       bp_score_param_sets.external_loop_accessible_bp_scores.insert(*pos_pair, external_loop_accessible_basepairing_score);
-      let terminal_mismatch_score = if long_pos_pair.1 < seq_len - 2 && long_pos_pair.0 > 1 {feature_score_sets.terminal_mismatch_count_mat[base_pair.0][base_pair.1][mismatch_pair.0][mismatch_pair.1]} else {NEG_INFINITY};
+      let terminal_mismatch_score = if long_pos_pair.1 < seq_len - 2 && long_pos_pair.0 > 1 {feature_score_sets.terminal_mismatch_count_mat[base_pair.0][base_pair.1][mismatch_pair.0][mismatch_pair.1]} else {0.};
       for pos_pair_2 in bpp_mat.keys() {
         if !(pos_pair_2.0 < pos_pair.0 && pos_pair.1 < pos_pair_2.1) {continue;}
         let long_pos_pair_2 = (pos_pair_2.0.to_usize().unwrap(), pos_pair_2.1.to_usize().unwrap());
@@ -1553,6 +1554,7 @@ impl<T: Hash + Clone> AlignProbMatPair<T> {
     AlignProbMatPair {
       loop_align_prob_mat: SparseProbMat::<T>::default(),
       basepair_align_prob_mat: Prob4dMat::<T>::default(),
+      align_prob_mat: SparseProbMat::<T>::default(),
     }
   }
 }
@@ -1587,7 +1589,10 @@ pub const UPP_MAT_ON_EL_FILE_NAME: &'static str = "upp_mats_on_el.dat";
 pub const BPP_MAT_FILE_NAME_2: &'static str = "bpp_mats_2.dat";
 pub const BASEPAIR_ALIGN_PROB_MAT_FILE_NAME: &'static str = "basepair_align_prob_mat.dat";
 pub const LOOP_ALIGN_PROB_MAT_FILE_NAME: &'static str = "loop_align_prob_mat.dat";
+pub const ALIGN_PROB_MAT_FILE_NAME: &'static str = "align_prob_mat.dat";
 pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH: &'static str = "../src/trained_feature_score_sets.rs";
+pub const README_FILE_NAME: &str = "README.md";
+pub const README_CONTENTS: &str = "# bpp_mats.dat\nThis file contains average probabilistic consistency based on posterior nucleotide pair-matching probabilities. You can treat this average probabilistic consistency like conventional nucleotide base-pairing probabilities. Nucleotide positions are indexed starting from zero.\n\n# bpp_mats_on_ss.dat\nThis file contains McCaskill's nucleotide base-pairing probabilities on RNA secondary structures. These nucleotide base-pairing probabilities are used to accelerate ConsProb's inside-outside algorithm.\n\n# bpp_mats_2.dat\nThis file contains average probabilistic consistency per nucleotide. This average probabilistic consistency is obtained by marginalizing one nucleotide for average probabilistic consistency in \"bpp_mats.dat.\"\n\n# upp_mats_on_x.dat\nThis file type contains average probabilistic consistency per nucleotide. This average probabilistic consistency is for nucleotide unpairing and under the structural context \"x.\" \"hl,\" \"2l,\" \"ml,\" \"el\" stand for hairpin loops, 2-loops, multi-loops, external loops, respectively.\n\n# basepair_align_prob_mat.dat\nThis file contains three-way probabilistic consistency based on posterior nucleotide pair-matching probabilities. You can treat this three-way probabilistic consistency like posterior nucleotide pair-matching probabilities.\n\n# loop_align_prob_mat.dat\nThis file contains three-way probabilistic consistency based on posterior nucleotide loop-matching probabilities. You can treat this three-way probabilistic consistency like posterior nucleotide loop-matching probabilities.\n\nalign_prob_mat.dat\nThis file contains three-way probabilistic consistency based on posterior nucleotide matching probabilities. You can treat this three-way probabilistic consistency like posterior nucleotide matching probabilities.";
 
 pub fn io_algo_4_prob_mats<T>(
   seq_pair: &SeqPair,
@@ -4203,6 +4208,25 @@ where
       }
     }
   }
+  pct_align_prob_mat_pair.align_prob_mat = pct_align_prob_mat_pair.loop_align_prob_mat.clone();
+  for (pos_quadruple, &bpap) in &pct_align_prob_mat_pair.basepair_align_prob_mat {
+    let pos_pair = (pos_quadruple.0, pos_quadruple.2);
+    match pct_align_prob_mat_pair.align_prob_mat.get_mut(&pos_pair) {
+      Some(bap) => {
+        *bap += bpap;
+      }, None => {
+        pct_align_prob_mat_pair.align_prob_mat.insert(pos_pair, bpap);
+      }
+    }
+    let pos_pair = (pos_quadruple.1, pos_quadruple.3);
+    match pct_align_prob_mat_pair.align_prob_mat.get_mut(&pos_pair) {
+      Some(bap) => {
+        *bap += bpap;
+      }, None => {
+        pct_align_prob_mat_pair.align_prob_mat.insert(pos_pair, bpap);
+      }
+    }
+  }
   pct_align_prob_mat_pair
 }
 
@@ -5302,10 +5326,13 @@ pub fn write_prob_mat_sets<T>(
   if produces_align_probs {
     let loop_align_prob_mat_file_path = output_dir_path.join(LOOP_ALIGN_PROB_MAT_FILE_NAME);
     let basepair_align_prob_mat_file_path = output_dir_path.join(BASEPAIR_ALIGN_PROB_MAT_FILE_NAME);
+    let align_prob_mat_file_path = output_dir_path.join(ALIGN_PROB_MAT_FILE_NAME);
     let mut writer_2_loop_align_prob_mat_file = BufWriter::new(File::create(loop_align_prob_mat_file_path).unwrap());
     let mut writer_2_basepair_align_prob_mat_file = BufWriter::new(File::create(basepair_align_prob_mat_file_path).unwrap());
+    let mut writer_2_align_prob_mat_file = BufWriter::new(File::create(align_prob_mat_file_path).unwrap());
     let mut buf_4_writer_2_loop_align_prob_mat_file = String::new();
     let mut buf_4_writer_2_basepair_align_prob_mat_file = String::new();
+    let mut buf_4_writer_2_align_prob_mat_file = String::new();
     for (rna_id_pair, align_prob_mat_pair) in pct_align_prob_mat_pairs_with_rna_id_pairs.iter() {
       let mut buf_4_rna_id_pair = format!("\n\n>{},{}\n", rna_id_pair.0, rna_id_pair.1);
       for (&(i, j), &loop_align_prob) in align_prob_mat_pair.loop_align_prob_mat.iter() {
@@ -5317,9 +5344,15 @@ pub fn write_prob_mat_sets<T>(
         buf_4_rna_id_pair.push_str(&format!("{},{},{},{},{} ", i - T::one(), j - T::one(), k - T::one(), l - T::one(), basepair_align_prob));
       }
       buf_4_writer_2_basepair_align_prob_mat_file.push_str(&buf_4_rna_id_pair);
+      let mut buf_4_rna_id_pair = format!("\n\n>{},{}\n", rna_id_pair.0, rna_id_pair.1);
+      for (&(i, j), &align_prob) in align_prob_mat_pair.align_prob_mat.iter() {
+        buf_4_rna_id_pair.push_str(&format!("{},{},{} ", i - T::one(), j - T::one(), align_prob));
+      }
+      buf_4_writer_2_align_prob_mat_file.push_str(&buf_4_rna_id_pair);
     }
     let _ = writer_2_loop_align_prob_mat_file.write_all(buf_4_writer_2_loop_align_prob_mat_file.as_bytes());
     let _ = writer_2_basepair_align_prob_mat_file.write_all(buf_4_writer_2_basepair_align_prob_mat_file.as_bytes());
+    let _ = writer_2_align_prob_mat_file.write_all(buf_4_writer_2_align_prob_mat_file.as_bytes());
   }
 }
 
@@ -5494,4 +5527,11 @@ where
   }
   bpp_mat = bpp_mat.iter().map(|(pos_pair, &bpp)| {(*pos_pair, expf(bpp))}).collect();
   bpp_mat
+}
+
+pub fn write_readme(output_dir_path: &Path, readme_contents: &String) {
+  let readme_file_path = output_dir_path.join(README_FILE_NAME);
+  let mut writer_2_readme_file = BufWriter::new(File::create(readme_file_path).unwrap());
+  let buf_4_writer_2_readme_file = String::from(readme_contents);
+  let _ = writer_2_readme_file.write_all(buf_4_writer_2_readme_file.as_bytes());
 }

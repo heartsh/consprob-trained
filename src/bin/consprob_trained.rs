@@ -133,4 +133,5 @@ fn main() {
     );
     write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &pct_align_prob_mat_pairs_with_rna_id_pairs, produces_align_probs);
   }
+  write_readme(output_dir_path, &String::from(README_CONTENTS));
 }
