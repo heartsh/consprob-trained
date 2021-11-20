@@ -4176,6 +4176,11 @@ where
     let ref ref_2_basepair_align_prob_mat_2 = prob_mats_with_rna_id_pairs[&rna_id_pair_3].basepair_align_prob_mat;
     for (pos_pair, &loop_align_prob) in ref_2_loop_align_prob_mat.iter() {
       for (pos_pair_2, &loop_align_prob_2) in ref_2_loop_align_prob_mat_2.iter() {
+        let marginalized_pos_pair = (
+          if rna_id_pair.0 < rna_id {pos_pair.1} else {pos_pair.0},
+          if rna_id_pair.1 < rna_id {pos_pair_2.1} else {pos_pair_2.0},
+          );
+        if marginalized_pos_pair.0 != marginalized_pos_pair.1 {continue;}
         let pos_pair_3 = (
           if rna_id_pair.0 < rna_id {pos_pair.0} else {pos_pair.1},
           if rna_id_pair.1 < rna_id {pos_pair_2.0} else {pos_pair_2.1},
@@ -4196,6 +4201,9 @@ where
         let pos_pair = if rna_id_pair.0 < rna_id {(pos_quadruple.0, pos_quadruple.1)} else {(pos_quadruple.2, pos_quadruple.3)};
         let pos_pair_2 = if rna_id_pair.1 < rna_id {(pos_quadruple_2.0, pos_quadruple_2.1)} else {(pos_quadruple_2.2, pos_quadruple_2.3)};
         let pos_quadruple_3 = (pos_pair.0, pos_pair.1, pos_pair_2.0, pos_pair_2.1);
+        let marginalized_pos_pair = if rna_id_pair.0 < rna_id {(pos_quadruple.2, pos_quadruple.3)} else {(pos_quadruple.0, pos_quadruple.1)};
+        let marginalized_pos_pair_2 = if rna_id_pair.1 < rna_id {(pos_quadruple_2.2, pos_quadruple_2.3)} else {(pos_quadruple_2.0, pos_quadruple_2.1)};
+        if marginalized_pos_pair != marginalized_pos_pair_2 {continue;}
         let weighted_basepair_align_prob = weight * basepair_align_prob * basepair_align_prob_2;
         match pct_align_prob_mat_pair.basepair_align_prob_mat.get_mut(&pos_quadruple_3) {
           Some(pct_basepair_align_prob) => {
