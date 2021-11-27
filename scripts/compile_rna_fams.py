@@ -65,9 +65,18 @@ def write_train_datum(params):
   for (j, sampled_index_pair) in enumerate(sampled_index_pairs):
     seq_1 = train_datum[int(sampled_index_pair[0])].seq
     seq_2 = train_datum[int(sampled_index_pair[1])].seq
+    if contains_gap_only_cols(seq_1, seq_2, cons_second_struct):
+      continue
     train_datum_file_path = os.path.join(train_data_dir_path, "train_datum_%d_%d.fa" % (i, j))
     train_datum_file = open(train_datum_file_path, "w")
     train_datum_file.write(">seq_1\n%s\n\n>seq_2\n%s\n\n>cons_second_struct\n%s" % (seq_1, seq_2, cons_second_struct))
+
+def contains_gap_only_cols(seq_1, seq_2, cons_second_struct):
+  for i in range(len(cons_second_struct)):
+    char_pair = (seq_1[i], seq_2[i])
+    if char_pair[0] == "-" and char_pair[1] == "-":
+      return True
+  return False
 
 def write_test_datum(params):
   (i, test_datum, test_data_dir_path, test_ref_sa_dir_path, test_ref_ss_dir_path) = params
