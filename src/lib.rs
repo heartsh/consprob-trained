@@ -2722,11 +2722,11 @@ where
               [&pos_quadruple]
               - part_func_4_bpa;
             if trains_score_params {
-              let prob = coefficient + forward_term_4_align + backward_term;
+              let prob = prob_coeff + coefficient + forward_term_4_align + backward_term;
               logsumexp(&mut expected_feature_count_sets.match_2_match_count, prob);
-              let prob = coefficient + forward_term_4_insert + backward_term;
+              let prob = prob_coeff + coefficient + forward_term_4_insert + backward_term;
               logsumexp(&mut expected_feature_count_sets.match_2_insert_count, prob);
-              let prob = coefficient + forward_term_4_insert_2 + backward_term;
+              let prob = prob_coeff + coefficient + forward_term_4_insert_2 + backward_term;
               logsumexp(&mut expected_feature_count_sets.match_2_insert_count, prob);
             }
             let part_func_4_el = forward_term + backward_term;
@@ -2820,11 +2820,11 @@ where
                   let twoloop_score_2 = bp_score_param_set_pair.1.twoloop_scores[&(o, p, k, l)];
                   let coefficient = basepair_align_score + twoloop_score + twoloop_score_2 + part_func;
                   if trains_score_params {
-                    let prob = coefficient + forward_term_4_align + backward_term;
+                    let prob = prob_coeff + coefficient + forward_term_4_align + backward_term;
                     logsumexp(&mut expected_feature_count_sets.match_2_match_count, prob);
-                    let prob = coefficient + forward_term_4_insert + backward_term;
+                    let prob = prob_coeff + coefficient + forward_term_4_insert + backward_term;
                     logsumexp(&mut expected_feature_count_sets.match_2_insert_count, prob);
-                    let prob = coefficient + forward_term_4_insert_2 + backward_term;
+                    let prob = prob_coeff + coefficient + forward_term_4_insert_2 + backward_term;
                     logsumexp(&mut expected_feature_count_sets.match_2_insert_count, prob);
                   }
                   let part_func_4_2l = forward_term + backward_term;
@@ -3046,17 +3046,17 @@ where
                     + multi_loop_closing_basepairing_score_2
                     + part_func_4_bpa_2;
                   if trains_score_params {
-                    let prob = coefficient + forward_term_4_align + backward_term;
+                    let prob = prob_coeff + coefficient + forward_term_4_align + backward_term;
                     logsumexp(&mut expected_feature_count_sets.match_2_match_count, prob);
-                    let prob = coefficient + forward_term_4_insert + backward_term;
+                    let prob = prob_coeff + coefficient + forward_term_4_insert + backward_term;
                     logsumexp(&mut expected_feature_count_sets.match_2_insert_count, prob);
-                    let prob = coefficient + forward_term_4_insert_2 + backward_term;
+                    let prob = prob_coeff + coefficient + forward_term_4_insert_2 + backward_term;
                     logsumexp(&mut expected_feature_count_sets.match_2_insert_count, prob);
-                    let prob = coefficient + forward_term_2_4_align + backward_term_2;
+                    let prob = prob_coeff + coefficient + forward_term_2_4_align + backward_term_2;
                     logsumexp(&mut expected_feature_count_sets.match_2_match_count, prob);
-                    let prob = coefficient + forward_term_2_4_insert + backward_term_2;
+                    let prob = prob_coeff + coefficient + forward_term_2_4_insert + backward_term_2;
                     logsumexp(&mut expected_feature_count_sets.match_2_insert_count, prob);
-                    let prob = coefficient + forward_term_2_4_insert_2 + backward_term_2;
+                    let prob = prob_coeff + coefficient + forward_term_2_4_insert_2 + backward_term_2;
                     logsumexp(&mut expected_feature_count_sets.match_2_insert_count, prob);
                   }
                   let mut part_func_4_ml = forward_term + backward_term;
