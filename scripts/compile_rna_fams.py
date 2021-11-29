@@ -65,20 +65,36 @@ def write_train_datum(params):
   for (j, sampled_index_pair) in enumerate(sampled_index_pairs):
     seq_1 = train_datum[int(sampled_index_pair[0])].seq
     seq_2 = train_datum[int(sampled_index_pair[1])].seq
-    if contains_invalid_cols(seq_1, seq_2, cons_second_struct):
-      continue
+    seq_1, seq_2, new_css = remove_invalid_cols(seq_1, seq_2, cons_second_struct)
     train_datum_file_path = os.path.join(train_data_dir_path, "train_datum_%d_%d.fa" % (i, j))
     train_datum_file = open(train_datum_file_path, "w")
-    train_datum_file.write(">seq_1\n%s\n\n>seq_2\n%s\n\n>cons_second_struct\n%s" % (seq_1, seq_2, cons_second_struct))
+    train_datum_file.write(">seq_1\n%s\n\n>seq_2\n%s\n\n>cons_second_struct\n%s" % (seq_1, seq_2, new_css))
 
-def contains_invalid_cols(seq_1, seq_2, cons_second_struct):
+def remove_invalid_cols(seq_1, seq_2, cons_second_struct):
+  new_seq_1 = list(seq_1)
+  new_seq_2 = list(seq_2)
+  new_cons_second_struct = list(cons_second_struct)
+  stack = []
+  for i, char in enumerate(cons_second_struct):
+    if char == "(":
+      stack.append(i)
+    elif char == ")":
+      seq_char_pair = (seq_1[i], seq_2[i])
+      col_pos = stack.pop()
+      seq_char_pair_2 = (seq_1[col_pos], seq_2[col_pos])
+      if seq_char_pair[0] == "-" or seq_char_pair[1] == "-" or seq_char_pair_2[0] == "-" or seq_char_pair_2[1] == "-":
+        new_cons_second_struct[col_pos] = "."
+        new_cons_second_struct[i] = "."
   for i in range(len(cons_second_struct)):
-    struct_motif = cons_second_struct[i]
     char_pair = (seq_1[i], seq_2[i])
-    contains_gap = char_pair[0] == "-" or char_pair[1] == "-"
-    if (char_pair[0] == "-" and char_pair[1] == "-") or (contains_gap and struct_motif != "."):
-      return True
-  return False
+    if char_pair[0] == "-" and char_pair[1] == "-":
+      new_seq_1[i] = ""
+      new_seq_2[i] = ""
+      new_cons_second_struct[i] = ""
+  new_seq_1 = "".join(new_seq_1)
+  new_seq_2 = "".join(new_seq_2)
+  new_cons_second_struct = "".join(new_cons_second_struct)
+  return new_seq_1, new_seq_2, new_cons_second_struct
 
 def write_test_datum(params):
   (i, test_datum, test_data_dir_path, test_ref_sa_dir_path, test_ref_ss_dir_path) = params
