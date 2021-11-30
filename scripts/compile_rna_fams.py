@@ -15,7 +15,7 @@ from Bio.Align import MultipleSeqAlignment
 from sklearn.model_selection import train_test_split
 
 bracket_pairs = [("(", ")"), ("A", "a"), ("B", "b"), ("C", "c"), ("D", "d"), ("E", "e"), ]
-sampled_seq_num = 5
+sampled_seq_num = 10
 min_seq_num = sampled_seq_num
 
 def main():
