@@ -4461,63 +4461,65 @@ where
 {
   let weight = (1. - mix_weight) / (num_of_rnas - 2) as Prob;
   let mut pct_align_prob_mat_pair = AlignProbMatPair::new();
-  pct_align_prob_mat_pair.loop_align_prob_mat = prob_mats_with_rna_id_pairs[rna_id_pair].loop_align_prob_mat.iter().map(|(&key, &val)| (key, mix_weight * val)).collect();
-  pct_align_prob_mat_pair.basepair_align_prob_mat = prob_mats_with_rna_id_pairs[rna_id_pair].basepair_align_prob_mat.iter().map(|(&key, &val)| (key, mix_weight * val)).collect();
-  for rna_id in 0 .. num_of_rnas {
-    if rna_id_pair.0 == rna_id || rna_id_pair.1 == rna_id {
-      continue;
-    }
-    let rna_id_pair_2 = if rna_id_pair.0 < rna_id {
-      (rna_id_pair.0, rna_id)
-    } else {
-      (rna_id, rna_id_pair.0)
-    };
-    let ref ref_2_loop_align_prob_mat = prob_mats_with_rna_id_pairs[&rna_id_pair_2].loop_align_prob_mat;
-    let ref ref_2_basepair_align_prob_mat = prob_mats_with_rna_id_pairs[&rna_id_pair_2].basepair_align_prob_mat;
-    let rna_id_pair_3 = if rna_id_pair.1 < rna_id {
-      (rna_id_pair.1, rna_id)
-    } else {
-      (rna_id, rna_id_pair.1)
-    };
-    let ref ref_2_loop_align_prob_mat_2 = prob_mats_with_rna_id_pairs[&rna_id_pair_3].loop_align_prob_mat;
-    let ref ref_2_basepair_align_prob_mat_2 = prob_mats_with_rna_id_pairs[&rna_id_pair_3].basepair_align_prob_mat;
-    for (pos_pair, &loop_align_prob) in ref_2_loop_align_prob_mat.iter() {
-      for (pos_pair_2, &loop_align_prob_2) in ref_2_loop_align_prob_mat_2.iter() {
-        let marginalized_pos_pair = (
-          if rna_id_pair.0 < rna_id {pos_pair.1} else {pos_pair.0},
-          if rna_id_pair.1 < rna_id {pos_pair_2.1} else {pos_pair_2.0},
-          );
-        if marginalized_pos_pair.0 != marginalized_pos_pair.1 {continue;}
-        let pos_pair_3 = (
-          if rna_id_pair.0 < rna_id {pos_pair.0} else {pos_pair.1},
-          if rna_id_pair.1 < rna_id {pos_pair_2.0} else {pos_pair_2.1},
-          );
-        let weighted_loop_align_prob = weight * loop_align_prob * loop_align_prob_2;
-        match pct_align_prob_mat_pair.loop_align_prob_mat.get_mut(&pos_pair_3) {
-          Some(pct_loop_align_prob) => {
-            *pct_loop_align_prob += weighted_loop_align_prob;
-          }
-          None => {
-            pct_align_prob_mat_pair.loop_align_prob_mat.insert(pos_pair_3, weighted_loop_align_prob);
+  pct_align_prob_mat_pair.loop_align_prob_mat = if num_of_rnas == 2 {prob_mats_with_rna_id_pairs[rna_id_pair].loop_align_prob_mat.clone()} else {prob_mats_with_rna_id_pairs[rna_id_pair].loop_align_prob_mat.iter().map(|(&key, &val)| (key, mix_weight * val)).collect()};
+  pct_align_prob_mat_pair.basepair_align_prob_mat = if num_of_rnas == 2 {prob_mats_with_rna_id_pairs[rna_id_pair].basepair_align_prob_mat.clone()} else {prob_mats_with_rna_id_pairs[rna_id_pair].basepair_align_prob_mat.iter().map(|(&key, &val)| (key, mix_weight * val)).collect()};
+  if num_of_rnas > 2 {
+    for rna_id in 0 .. num_of_rnas {
+      if rna_id_pair.0 == rna_id || rna_id_pair.1 == rna_id {
+        continue;
+      }
+      let rna_id_pair_2 = if rna_id_pair.0 < rna_id {
+        (rna_id_pair.0, rna_id)
+      } else {
+        (rna_id, rna_id_pair.0)
+      };
+      let ref ref_2_loop_align_prob_mat = prob_mats_with_rna_id_pairs[&rna_id_pair_2].loop_align_prob_mat;
+      let ref ref_2_basepair_align_prob_mat = prob_mats_with_rna_id_pairs[&rna_id_pair_2].basepair_align_prob_mat;
+      let rna_id_pair_3 = if rna_id_pair.1 < rna_id {
+        (rna_id_pair.1, rna_id)
+      } else {
+        (rna_id, rna_id_pair.1)
+      };
+      let ref ref_2_loop_align_prob_mat_2 = prob_mats_with_rna_id_pairs[&rna_id_pair_3].loop_align_prob_mat;
+      let ref ref_2_basepair_align_prob_mat_2 = prob_mats_with_rna_id_pairs[&rna_id_pair_3].basepair_align_prob_mat;
+      for (pos_pair, &loop_align_prob) in ref_2_loop_align_prob_mat.iter() {
+        for (pos_pair_2, &loop_align_prob_2) in ref_2_loop_align_prob_mat_2.iter() {
+          let marginalized_pos_pair = (
+            if rna_id_pair.0 < rna_id {pos_pair.1} else {pos_pair.0},
+            if rna_id_pair.1 < rna_id {pos_pair_2.1} else {pos_pair_2.0},
+            );
+          if marginalized_pos_pair.0 != marginalized_pos_pair.1 {continue;}
+          let pos_pair_3 = (
+            if rna_id_pair.0 < rna_id {pos_pair.0} else {pos_pair.1},
+            if rna_id_pair.1 < rna_id {pos_pair_2.0} else {pos_pair_2.1},
+            );
+          let weighted_loop_align_prob = weight * loop_align_prob * loop_align_prob_2;
+          match pct_align_prob_mat_pair.loop_align_prob_mat.get_mut(&pos_pair_3) {
+            Some(pct_loop_align_prob) => {
+              *pct_loop_align_prob += weighted_loop_align_prob;
+            }
+            None => {
+              pct_align_prob_mat_pair.loop_align_prob_mat.insert(pos_pair_3, weighted_loop_align_prob);
+            }
           }
         }
       }
-    }
-    for (pos_quadruple, &basepair_align_prob) in ref_2_basepair_align_prob_mat.iter() {
-      for (pos_quadruple_2, &basepair_align_prob_2) in ref_2_basepair_align_prob_mat_2.iter() {
-        let pos_pair = if rna_id_pair.0 < rna_id {(pos_quadruple.0, pos_quadruple.1)} else {(pos_quadruple.2, pos_quadruple.3)};
-        let pos_pair_2 = if rna_id_pair.1 < rna_id {(pos_quadruple_2.0, pos_quadruple_2.1)} else {(pos_quadruple_2.2, pos_quadruple_2.3)};
-        let pos_quadruple_3 = (pos_pair.0, pos_pair.1, pos_pair_2.0, pos_pair_2.1);
-        let marginalized_pos_pair = if rna_id_pair.0 < rna_id {(pos_quadruple.2, pos_quadruple.3)} else {(pos_quadruple.0, pos_quadruple.1)};
-        let marginalized_pos_pair_2 = if rna_id_pair.1 < rna_id {(pos_quadruple_2.2, pos_quadruple_2.3)} else {(pos_quadruple_2.0, pos_quadruple_2.1)};
-        if marginalized_pos_pair != marginalized_pos_pair_2 {continue;}
-        let weighted_basepair_align_prob = weight * basepair_align_prob * basepair_align_prob_2;
-        match pct_align_prob_mat_pair.basepair_align_prob_mat.get_mut(&pos_quadruple_3) {
-          Some(pct_basepair_align_prob) => {
-            *pct_basepair_align_prob += weighted_basepair_align_prob;
-          }
-          None => {
-            pct_align_prob_mat_pair.basepair_align_prob_mat.insert(pos_quadruple_3, weighted_basepair_align_prob);
+      for (pos_quadruple, &basepair_align_prob) in ref_2_basepair_align_prob_mat.iter() {
+        for (pos_quadruple_2, &basepair_align_prob_2) in ref_2_basepair_align_prob_mat_2.iter() {
+          let pos_pair = if rna_id_pair.0 < rna_id {(pos_quadruple.0, pos_quadruple.1)} else {(pos_quadruple.2, pos_quadruple.3)};
+          let pos_pair_2 = if rna_id_pair.1 < rna_id {(pos_quadruple_2.0, pos_quadruple_2.1)} else {(pos_quadruple_2.2, pos_quadruple_2.3)};
+          let pos_quadruple_3 = (pos_pair.0, pos_pair.1, pos_pair_2.0, pos_pair_2.1);
+          let marginalized_pos_pair = if rna_id_pair.0 < rna_id {(pos_quadruple.2, pos_quadruple.3)} else {(pos_quadruple.0, pos_quadruple.1)};
+          let marginalized_pos_pair_2 = if rna_id_pair.1 < rna_id {(pos_quadruple_2.2, pos_quadruple_2.3)} else {(pos_quadruple_2.0, pos_quadruple_2.1)};
+          if marginalized_pos_pair != marginalized_pos_pair_2 {continue;}
+          let weighted_basepair_align_prob = weight * basepair_align_prob * basepair_align_prob_2;
+          match pct_align_prob_mat_pair.basepair_align_prob_mat.get_mut(&pos_quadruple_3) {
+            Some(pct_basepair_align_prob) => {
+              *pct_basepair_align_prob += weighted_basepair_align_prob;
+            }
+            None => {
+              pct_align_prob_mat_pair.basepair_align_prob_mat.insert(pos_quadruple_3, weighted_basepair_align_prob);
+            }
           }
         }
       }
