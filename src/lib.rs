@@ -3353,7 +3353,7 @@ where
               let mut loop_align_prob_4_el = NEG_INFINITY;
               let term = loop_align_score + part_funcs.part_func_4_align + if is_begin {0.} else {feature_score_sets.match_2_match_count} + backward_term_4_align - global_part_func + 2. * feature_score_sets.external_loop_accessible_baseunpairing_count;
               if trains_score_params {
-                if is_begin {
+                if !is_begin {
                   logsumexp(&mut expected_feature_count_sets.match_2_match_count, term);
                 }
               }
@@ -3401,7 +3401,7 @@ where
               let mut insert_prob = NEG_INFINITY;
               let term = insert_score + if is_begin {0.} else {feature_score_sets.match_2_insert_count} + part_funcs.part_func_4_align + backward_term_4_insert - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if trains_score_params {
-                if is_begin {
+                if !is_begin {
                   logsumexp(&mut expected_feature_count_sets.match_2_insert_count, term);
                 }
               }
@@ -3438,7 +3438,7 @@ where
               let mut insert_prob = NEG_INFINITY;
               let term = insert_score_2 + if is_begin {0.} else {feature_score_sets.match_2_insert_count} + part_funcs.part_func_4_align + backward_term_4_insert_2 - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if trains_score_params {
-                if is_begin {
+                if !is_begin {
                   logsumexp(&mut expected_feature_count_sets.match_2_insert_count, term);
                 }
               }
