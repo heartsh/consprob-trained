@@ -37,7 +37,6 @@ fn main() {
     ),
     "UINT",
   );
-  opts.optopt("", "mix_weight", &format!("A mixture weight (Uses {} by default)", DEFAULT_MIX_WEIGHT), "FLOAT");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag(
     "s",
@@ -88,11 +87,11 @@ fn main() {
   };
   let produces_struct_profs = matches.opt_present("s");
   let produces_align_probs = matches.opt_present("a");
-  let mix_weight = if matches.opt_present("mix_weight") {
+  /* let mix_weight = if matches.opt_present("mix_weight") {
     matches.opt_str("mix_weight").unwrap().parse().unwrap()
   } else {
     DEFAULT_MIX_WEIGHT
-  };
+  }; */
   let output_dir_path = matches.opt_str("o").unwrap();
   let output_dir_path = Path::new(&output_dir_path);
   let fasta_file_reader = Reader::from_file(Path::new(&input_file_path)).unwrap();
@@ -118,7 +117,6 @@ fn main() {
       offset_4_max_gap_num as u8,
       produces_struct_profs,
       produces_align_probs,
-      mix_weight,
     );
     write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &pct_align_prob_mat_pairs_with_rna_id_pairs, produces_align_probs);
   } else {
@@ -129,7 +127,6 @@ fn main() {
       offset_4_max_gap_num as u16,
       produces_struct_profs,
       produces_align_probs,
-      mix_weight,
     );
     write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &pct_align_prob_mat_pairs_with_rna_id_pairs, produces_align_probs);
   }

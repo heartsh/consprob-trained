@@ -185,14 +185,8 @@ pub struct FastaRecord {
 }
 pub type FastaRecords = Vec<FastaRecord>;
 pub type SeqPair<'a> = (SeqSlice<'a>, SeqSlice<'a>);
-pub type FreeEnergyPair = (FreeEnergy, FreeEnergy);
-pub type SparseFreeEnergyMat<T> = HashMap<PosPair<T>, FreeEnergy>;
-pub type PosPairsWithPosPairs<T> = HashMap<PosPair<T>, PosPair<T>>;
-pub type BoolsWithPosPairs<T> = HashMap<PosPair<T>, bool>;
 pub type ProbMatPair<'a, T> = (&'a SparseProbMat<T>, &'a SparseProbMat<T>);
-pub type SsFreeEnergyMatSetPair<'a, T> = (&'a SsFreeEnergyMats<T>, &'a SsFreeEnergyMats<T>);
 pub type NumOfThreads = u32;
-pub type FreeEnergySetPair<'a> = (&'a FreeEnergies, &'a FreeEnergies);
 pub struct StaProbMats<T> {
   pub bpp_mat_pair: SparseProbMatPair<T>,
   pub upp_mat_pair_4_hl: ProbSetPair,
@@ -225,12 +219,12 @@ pub type TmpPartFuncSetMatsWithPosQuadruples<T> = HashMap<PosQuadruple<T>, PartF
 pub type PartFuncSetMat<T> = HashMap<PosPair<T>, TmpPartFuncs>;
 pub type RealSeqPair = (Seq, Seq);
 #[derive(Clone)]
-pub struct AlignProbMatPair<T> {
+pub struct AlignProbMats<T> {
   pub loop_align_prob_mat: SparseProbMat<T>,
   pub basepair_align_prob_mat: Prob4dMat<T>,
   pub align_prob_mat: SparseProbMat<T>,
 }
-pub type AlignProbMatPairsWithRnaIdPairs<T> = HashMap<RnaIdPair, AlignProbMatPair<T>>;
+pub type AlignProbMatSetsWithRnaIdPairs<T> = HashMap<RnaIdPair, AlignProbMats<T>>;
 
 impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamSets<T> {
   pub fn new() -> BpScoreParamSets<T> {
@@ -1772,9 +1766,9 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
   }
 }
 
-impl<T: Hash + Clone> AlignProbMatPair<T> {
-  pub fn new() -> AlignProbMatPair<T> {
-    AlignProbMatPair {
+impl<T: Hash + Clone> AlignProbMats<T> {
+  pub fn new() -> AlignProbMats<T> {
+    AlignProbMats {
       loop_align_prob_mat: SparseProbMat::<T>::default(),
       basepair_align_prob_mat: Prob4dMat::<T>::default(),
       align_prob_mat: SparseProbMat::<T>::default(),
@@ -1782,14 +1776,13 @@ impl<T: Hash + Clone> AlignProbMatPair<T> {
   }
 }
 
-pub const DEFAULT_MIX_WEIGHT: Prob = 0.5;
 pub const MAX_GAP_NUM_4_IL: usize = 15;
 pub const MIN_GAP_NUM_4_IL: usize = 2;
 pub const MAX_GAP_NUM_4_IL_TRAIN: usize = MAX_GAP_NUM_4_IL;
 pub const MIN_GAP_NUM_4_IL_TRAIN: usize = MIN_GAP_NUM_4_IL;
 pub const DEFAULT_MIN_BPP: Prob = 0.04;
-pub const DEFAULT_MIN_BPP_4_TRAIN: Prob = 0.01;
-pub const DEFAULT_OFFSET_4_MAX_GAP_NUM: usize = 1;
+pub const DEFAULT_MIN_BPP_4_TRAIN: Prob = DEFAULT_MIN_BPP;
+pub const DEFAULT_OFFSET_4_MAX_GAP_NUM: usize = 4;
 pub const DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN: usize = DEFAULT_OFFSET_4_MAX_GAP_NUM;
 pub const NUM_OF_BASES: usize = 4;
 pub const NUM_OF_BASEPAIRINGS: usize = 6;
@@ -3360,7 +3353,9 @@ where
               let mut loop_align_prob_4_el = NEG_INFINITY;
               let term = loop_align_score + part_funcs.part_func_4_align + if is_begin {0.} else {feature_score_sets.match_2_match_count} + backward_term_4_align - global_part_func + 2. * feature_score_sets.external_loop_accessible_baseunpairing_count;
               if trains_score_params {
-                logsumexp(&mut expected_feature_count_sets.match_2_match_count, term);
+                if is_begin {
+                  logsumexp(&mut expected_feature_count_sets.match_2_match_count, term);
+                }
               }
               logsumexp(&mut loop_align_prob_4_el, term);
               let term = loop_align_score + part_funcs.part_func_4_insert + feature_score_sets.match_2_insert_count + backward_term_4_align - global_part_func + 2. * feature_score_sets.external_loop_accessible_baseunpairing_count;
@@ -3406,7 +3401,9 @@ where
               let mut insert_prob = NEG_INFINITY;
               let term = insert_score + if is_begin {0.} else {feature_score_sets.match_2_insert_count} + part_funcs.part_func_4_align + backward_term_4_insert - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if trains_score_params {
-                logsumexp(&mut expected_feature_count_sets.match_2_insert_count, term);
+                if is_begin {
+                  logsumexp(&mut expected_feature_count_sets.match_2_insert_count, term);
+                }
               }
               logsumexp(&mut insert_prob, term);
               let term = insert_score + feature_score_sets.insert_extend_count + part_funcs.part_func_4_insert + backward_term_4_insert - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
@@ -3441,7 +3438,9 @@ where
               let mut insert_prob = NEG_INFINITY;
               let term = insert_score_2 + if is_begin {0.} else {feature_score_sets.match_2_insert_count} + part_funcs.part_func_4_align + backward_term_4_insert_2 - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
               if trains_score_params {
-                logsumexp(&mut expected_feature_count_sets.match_2_insert_count, term);
+                if is_begin {
+                  logsumexp(&mut expected_feature_count_sets.match_2_insert_count, term);
+                }
               }
               logsumexp(&mut insert_prob, term);
               let term = insert_score_2 + feature_score_sets.insert_switch_count + part_funcs.part_func_4_insert + backward_term_4_insert_2 - global_part_func + feature_score_sets.external_loop_accessible_baseunpairing_count;
@@ -4450,103 +4449,6 @@ where
   pct_prob_mats
 }
 
-pub fn pct_of_align_prob_mats<T>(
-  prob_mats_with_rna_id_pairs: &StaProbMatsWithRnaIdPairs<T>,
-  rna_id_pair: &RnaIdPair,
-  num_of_rnas: usize,
-  mix_weight: Prob,
-) -> AlignProbMatPair<T>
-where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
-{
-  let weight = (1. - mix_weight) / (num_of_rnas - 2) as Prob;
-  let mut pct_align_prob_mat_pair = AlignProbMatPair::new();
-  pct_align_prob_mat_pair.loop_align_prob_mat = if num_of_rnas == 2 {prob_mats_with_rna_id_pairs[rna_id_pair].loop_align_prob_mat.clone()} else {prob_mats_with_rna_id_pairs[rna_id_pair].loop_align_prob_mat.iter().map(|(&key, &val)| (key, mix_weight * val)).collect()};
-  pct_align_prob_mat_pair.basepair_align_prob_mat = if num_of_rnas == 2 {prob_mats_with_rna_id_pairs[rna_id_pair].basepair_align_prob_mat.clone()} else {prob_mats_with_rna_id_pairs[rna_id_pair].basepair_align_prob_mat.iter().map(|(&key, &val)| (key, mix_weight * val)).collect()};
-  if num_of_rnas > 2 {
-    for rna_id in 0 .. num_of_rnas {
-      if rna_id_pair.0 == rna_id || rna_id_pair.1 == rna_id {
-        continue;
-      }
-      let rna_id_pair_2 = if rna_id_pair.0 < rna_id {
-        (rna_id_pair.0, rna_id)
-      } else {
-        (rna_id, rna_id_pair.0)
-      };
-      let ref ref_2_loop_align_prob_mat = prob_mats_with_rna_id_pairs[&rna_id_pair_2].loop_align_prob_mat;
-      let ref ref_2_basepair_align_prob_mat = prob_mats_with_rna_id_pairs[&rna_id_pair_2].basepair_align_prob_mat;
-      let rna_id_pair_3 = if rna_id_pair.1 < rna_id {
-        (rna_id_pair.1, rna_id)
-      } else {
-        (rna_id, rna_id_pair.1)
-      };
-      let ref ref_2_loop_align_prob_mat_2 = prob_mats_with_rna_id_pairs[&rna_id_pair_3].loop_align_prob_mat;
-      let ref ref_2_basepair_align_prob_mat_2 = prob_mats_with_rna_id_pairs[&rna_id_pair_3].basepair_align_prob_mat;
-      for (pos_pair, &loop_align_prob) in ref_2_loop_align_prob_mat.iter() {
-        for (pos_pair_2, &loop_align_prob_2) in ref_2_loop_align_prob_mat_2.iter() {
-          let marginalized_pos_pair = (
-            if rna_id_pair.0 < rna_id {pos_pair.1} else {pos_pair.0},
-            if rna_id_pair.1 < rna_id {pos_pair_2.1} else {pos_pair_2.0},
-            );
-          if marginalized_pos_pair.0 != marginalized_pos_pair.1 {continue;}
-          let pos_pair_3 = (
-            if rna_id_pair.0 < rna_id {pos_pair.0} else {pos_pair.1},
-            if rna_id_pair.1 < rna_id {pos_pair_2.0} else {pos_pair_2.1},
-            );
-          let weighted_loop_align_prob = weight * loop_align_prob * loop_align_prob_2;
-          match pct_align_prob_mat_pair.loop_align_prob_mat.get_mut(&pos_pair_3) {
-            Some(pct_loop_align_prob) => {
-              *pct_loop_align_prob += weighted_loop_align_prob;
-            }
-            None => {
-              pct_align_prob_mat_pair.loop_align_prob_mat.insert(pos_pair_3, weighted_loop_align_prob);
-            }
-          }
-        }
-      }
-      for (pos_quadruple, &basepair_align_prob) in ref_2_basepair_align_prob_mat.iter() {
-        for (pos_quadruple_2, &basepair_align_prob_2) in ref_2_basepair_align_prob_mat_2.iter() {
-          let pos_pair = if rna_id_pair.0 < rna_id {(pos_quadruple.0, pos_quadruple.1)} else {(pos_quadruple.2, pos_quadruple.3)};
-          let pos_pair_2 = if rna_id_pair.1 < rna_id {(pos_quadruple_2.0, pos_quadruple_2.1)} else {(pos_quadruple_2.2, pos_quadruple_2.3)};
-          let pos_quadruple_3 = (pos_pair.0, pos_pair.1, pos_pair_2.0, pos_pair_2.1);
-          let marginalized_pos_pair = if rna_id_pair.0 < rna_id {(pos_quadruple.2, pos_quadruple.3)} else {(pos_quadruple.0, pos_quadruple.1)};
-          let marginalized_pos_pair_2 = if rna_id_pair.1 < rna_id {(pos_quadruple_2.2, pos_quadruple_2.3)} else {(pos_quadruple_2.0, pos_quadruple_2.1)};
-          if marginalized_pos_pair != marginalized_pos_pair_2 {continue;}
-          let weighted_basepair_align_prob = weight * basepair_align_prob * basepair_align_prob_2;
-          match pct_align_prob_mat_pair.basepair_align_prob_mat.get_mut(&pos_quadruple_3) {
-            Some(pct_basepair_align_prob) => {
-              *pct_basepair_align_prob += weighted_basepair_align_prob;
-            }
-            None => {
-              pct_align_prob_mat_pair.basepair_align_prob_mat.insert(pos_quadruple_3, weighted_basepair_align_prob);
-            }
-          }
-        }
-      }
-    }
-  }
-  pct_align_prob_mat_pair.align_prob_mat = pct_align_prob_mat_pair.loop_align_prob_mat.clone();
-  for (pos_quadruple, &bpap) in &pct_align_prob_mat_pair.basepair_align_prob_mat {
-    let pos_pair = (pos_quadruple.0, pos_quadruple.2);
-    match pct_align_prob_mat_pair.align_prob_mat.get_mut(&pos_pair) {
-      Some(bap) => {
-        *bap += bpap;
-      }, None => {
-        pct_align_prob_mat_pair.align_prob_mat.insert(pos_pair, bpap);
-      }
-    }
-    let pos_pair = (pos_quadruple.1, pos_quadruple.3);
-    match pct_align_prob_mat_pair.align_prob_mat.get_mut(&pos_pair) {
-      Some(bap) => {
-        *bap += bpap;
-      }, None => {
-        pct_align_prob_mat_pair.align_prob_mat.insert(pos_pair, bpap);
-      }
-    }
-  }
-  pct_align_prob_mat_pair
-}
-
 pub fn get_max_bp_span<T>(sparse_bpp_mat: &SparseProbMat<T>) -> T
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
@@ -4854,8 +4756,7 @@ pub fn consprob<T>(
   offset_4_max_gap_num: T,
   produces_struct_profs: bool,
   produces_align_probs: bool,
-  mix_weight: Prob,
-) -> (ProbMatSets<T>, AlignProbMatPairsWithRnaIdPairs<T>)
+) -> (ProbMatSets<T>, AlignProbMatSetsWithRnaIdPairs<T>)
 where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send + Display,
 {
@@ -4877,9 +4778,7 @@ where
       let seq_len = fasta_record.seq.len();
       scope.execute(move || {
         *bpp_mat = mccaskill_algo(&fasta_record.seq[1..seq_len - 1], false).0;
-        // *bpp_mat = mccaskill_algo_trained(ref_2_feature_score_sets, &fasta_record.seq);
         *sparse_bpp_mat = remove_small_bpps_from_bpp_mat::<T>(bpp_mat, min_bpp);
-        // *sparse_bpp_mat = bpp_mat.iter().filter(|(_, &bpp)| bpp >= min_bpp).map(|(&(i, j), &bpp)| ((i, j), bpp)).collect();
         *max_bp_span = get_max_bp_span::<T>(sparse_bpp_mat);
         *bp_score_param_sets = BpScoreParamSets::<T>::set_curr_params(ref_2_feature_score_sets, &fasta_record.seq[..], sparse_bpp_mat);
       });
@@ -4967,28 +4866,39 @@ where
       });
     }
   });
-  let mut pct_align_prob_mat_pairs_with_rna_id_pairs = AlignProbMatPairsWithRnaIdPairs::<T>::default();
-  for rna_id_1 in 0..num_of_fasta_records {
-    for rna_id_2 in rna_id_1 + 1..num_of_fasta_records {
-      let rna_id_pair = (rna_id_1, rna_id_2);
-      pct_align_prob_mat_pairs_with_rna_id_pairs.insert(rna_id_pair, AlignProbMatPair::<T>::new());
+  let mut align_prob_mat_sets_with_rna_id_pairs = AlignProbMatSetsWithRnaIdPairs::<T>::default();
+  if produces_align_probs {
+    for rna_id_1 in 0 .. num_of_fasta_records {
+      for rna_id_2 in rna_id_1 + 1 .. num_of_fasta_records {
+        let rna_id_pair = (rna_id_1, rna_id_2);
+        let ref prob_mats = prob_mats_with_rna_id_pairs[&rna_id_pair];
+        let mut align_prob_mats = AlignProbMats::<T>::new();
+        align_prob_mats.loop_align_prob_mat = prob_mats.loop_align_prob_mat.clone();
+        align_prob_mats.basepair_align_prob_mat = prob_mats.basepair_align_prob_mat.clone();
+        align_prob_mats.align_prob_mat = align_prob_mats.loop_align_prob_mat.clone();
+        for (pos_quadruple, &bpap) in &align_prob_mats.basepair_align_prob_mat {
+          let pos_pair = (pos_quadruple.0, pos_quadruple.2);
+          match align_prob_mats.align_prob_mat.get_mut(&pos_pair) {
+            Some(bap) => {
+              *bap += bpap;
+            }, None => {
+              align_prob_mats.align_prob_mat.insert(pos_pair, bpap);
+            }
+          }
+          let pos_pair = (pos_quadruple.1, pos_quadruple.3);
+          match align_prob_mats.align_prob_mat.get_mut(&pos_pair) {
+            Some(bap) => {
+              *bap += bpap;
+            }, None => {
+              align_prob_mats.align_prob_mat.insert(pos_pair, bpap);
+            }
+          }
+        }
+        align_prob_mat_sets_with_rna_id_pairs.insert(rna_id_pair, align_prob_mats);
+      }
     }
   }
-  if produces_align_probs {
-    thread_pool.scoped(|scope| {
-      for (rna_id_pair, prob_mat_pair) in pct_align_prob_mat_pairs_with_rna_id_pairs.iter_mut() {
-        scope.execute(move || {
-          *prob_mat_pair = pct_of_align_prob_mats::<T>(
-            ref_2_prob_mats_with_rna_id_pairs,
-            &rna_id_pair,
-            num_of_fasta_records,
-            mix_weight,
-          );
-        });
-      }
-    });
-  }
-  (prob_mat_sets, pct_align_prob_mat_pairs_with_rna_id_pairs)
+  (prob_mat_sets, align_prob_mat_sets_with_rna_id_pairs)
 }
 
 pub fn constrain<'a, T>(
@@ -5576,7 +5486,7 @@ pub fn write_prob_mat_sets<T>(
   output_dir_path: &Path,
   prob_mat_sets: &ProbMatSets<T>,
   produces_struct_profs: bool,
-  pct_align_prob_mat_pairs_with_rna_id_pairs: &AlignProbMatPairsWithRnaIdPairs<T>,
+  align_prob_mat_sets_with_rna_id_pairs: &AlignProbMatSetsWithRnaIdPairs<T>,
   produces_align_probs: bool,
 ) where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Display + Ord,
@@ -5691,19 +5601,19 @@ pub fn write_prob_mat_sets<T>(
     let mut buf_4_writer_2_loop_align_prob_mat_file = String::new();
     let mut buf_4_writer_2_basepair_align_prob_mat_file = String::new();
     let mut buf_4_writer_2_align_prob_mat_file = String::new();
-    for (rna_id_pair, align_prob_mat_pair) in pct_align_prob_mat_pairs_with_rna_id_pairs.iter() {
+    for (rna_id_pair, align_prob_mats) in align_prob_mat_sets_with_rna_id_pairs.iter() {
       let mut buf_4_rna_id_pair = format!("\n\n>{},{}\n", rna_id_pair.0, rna_id_pair.1);
-      for (&(i, j), &loop_align_prob) in align_prob_mat_pair.loop_align_prob_mat.iter() {
+      for (&(i, j), &loop_align_prob) in align_prob_mats.loop_align_prob_mat.iter() {
         buf_4_rna_id_pair.push_str(&format!("{},{},{} ", i - T::one(), j - T::one(), loop_align_prob));
       }
       buf_4_writer_2_loop_align_prob_mat_file.push_str(&buf_4_rna_id_pair);
       let mut buf_4_rna_id_pair = format!("\n\n>{},{}\n", rna_id_pair.0, rna_id_pair.1);
-      for (&(i, j, k, l), &basepair_align_prob) in align_prob_mat_pair.basepair_align_prob_mat.iter() {
+      for (&(i, j, k, l), &basepair_align_prob) in align_prob_mats.basepair_align_prob_mat.iter() {
         buf_4_rna_id_pair.push_str(&format!("{},{},{},{},{} ", i - T::one(), j - T::one(), k - T::one(), l - T::one(), basepair_align_prob));
       }
       buf_4_writer_2_basepair_align_prob_mat_file.push_str(&buf_4_rna_id_pair);
       let mut buf_4_rna_id_pair = format!("\n\n>{},{}\n", rna_id_pair.0, rna_id_pair.1);
-      for (&(i, j), &align_prob) in align_prob_mat_pair.align_prob_mat.iter() {
+      for (&(i, j), &align_prob) in align_prob_mats.align_prob_mat.iter() {
         buf_4_rna_id_pair.push_str(&format!("{},{},{} ", i - T::one(), j - T::one(), align_prob));
       }
       buf_4_writer_2_align_prob_mat_file.push_str(&buf_4_rna_id_pair);
@@ -5712,179 +5622,6 @@ pub fn write_prob_mat_sets<T>(
     let _ = writer_2_basepair_align_prob_mat_file.write_all(buf_4_writer_2_basepair_align_prob_mat_file.as_bytes());
     let _ = writer_2_align_prob_mat_file.write_all(buf_4_writer_2_align_prob_mat_file.as_bytes());
   }
-}
-
-pub fn mccaskill_algo_trained<T>(feature_score_sets: &FeatureCountSets, seq: SeqSlice) -> SparseProbMat<T>
-where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer,
-{
-  let seq_len = seq.len();
-  let mut identity_mat = SparseProbMat::<T>::default();
-  for i in 1 .. seq_len - 1 {
-    let nuc = seq[i];
-    let short_i = T::from_usize(i).unwrap();
-    for j in i + 1 .. seq_len - 1 {
-      let nuc_pair = (nuc, seq[j]);
-      let short_j = T::from_usize(j).unwrap();
-      if is_canonical(&nuc_pair) {
-        identity_mat.insert((short_i, short_j), 1.);
-      }
-    }
-  }
-  let bp_score_param_sets = BpScoreParamSets::<T>::set_curr_params(feature_score_sets, seq, &identity_mat);
-  let bpp_mat = get_base_pairing_prob_mat_trained::<T>(feature_score_sets, &get_ss_part_func_mats_trained::<T>(feature_score_sets, seq_len, &bp_score_param_sets, &identity_mat), seq_len, &bp_score_param_sets);
-  bpp_mat
-}
-
-pub fn get_ss_part_func_mats_trained<T>(feature_score_sets: &FeatureCountSets, seq_len: usize, bp_score_param_sets: &BpScoreParamSets<T>, identity_mat: &SparseProbMat<T>) -> SsPartFuncMatsContra<T>
-where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer,
-{
-  let mut ss_part_func_mats = SsPartFuncMatsContra::<T>::new(seq_len);
-  let short_seq_len = T::from_usize(seq_len).unwrap();
-  for sub_seq_len in range(T::one(), short_seq_len - T::one()) {
-    for i in range(T::one(), short_seq_len - sub_seq_len) {
-      let j = i + sub_seq_len - T::one();
-      let (long_i, long_j) = (i.to_usize().unwrap(), j.to_usize().unwrap());
-      let pp_closing_loop = (i, j);
-      let long_pp_closing_loop = (long_i, long_j);
-      let mut sum = NEG_INFINITY;
-      if long_pp_closing_loop.1 - long_pp_closing_loop.0 + 1 >= CONSPROB_MIN_HAIRPIN_LOOP_SPAN && identity_mat.contains_key(&pp_closing_loop) {
-        if long_j - long_i - 1 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN {
-          let hl_fe = bp_score_param_sets.hairpin_loop_scores[&pp_closing_loop];
-          logsumexp(&mut sum, hl_fe);
-        }
-        for k in range(i + T::one(), j - T::one()) {
-          let long_k = k.to_usize().unwrap();
-          if long_k - long_i - 1 > CONSPROB_MAX_TWOLOOP_LEN {break;}
-          for l in range(k + T::one(), j).rev() {
-            let long_l = l.to_usize().unwrap();
-            if long_j - long_l - 1 + long_k - long_i - 1 > CONSPROB_MAX_TWOLOOP_LEN {break;}
-            let accessible_pp = (k, l);
-            match ss_part_func_mats.part_func_mat_4_base_pairings.get(&accessible_pp) {
-              Some(&part_func) => {
-                let twoloop_score = bp_score_param_sets.twoloop_scores[&(pp_closing_loop.0, pp_closing_loop.1, accessible_pp.0, accessible_pp.1)];
-                logsumexp(&mut sum, part_func + twoloop_score);
-              }, None => {},
-            }
-          }
-        }
-        let coefficient = bp_score_param_sets.multi_loop_closing_bp_scores[&pp_closing_loop];
-        for k in long_i + 1 .. long_j {
-          logsumexp(&mut sum, ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[long_i + 1][k - 1] + ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[k][long_j - 1] + coefficient);
-        }
-        if sum > NEG_INFINITY {
-          ss_part_func_mats.part_func_mat_4_base_pairings.insert(pp_closing_loop, sum);
-          let sum_4_el = sum + bp_score_param_sets.external_loop_accessible_bp_scores[&pp_closing_loop];
-          let sum_4_ml = sum + bp_score_param_sets.multi_loop_accessible_bp_scores[&pp_closing_loop];
-          ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_el.insert(pp_closing_loop, sum_4_el);
-          ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_mls.insert(pp_closing_loop, sum_4_ml);
-        }
-      }
-      sum = NEG_INFINITY;
-      let mut sum_2 = sum;
-      for k in range_inclusive(i + T::one(), j) {
-        let accessible_pp = (i, k);
-        match ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_el.get(&accessible_pp) {
-          Some(&part_func) => {
-            logsumexp(&mut sum, part_func + feature_score_sets.external_loop_accessible_baseunpairing_count * (j - k).to_f32().unwrap());
-            logsumexp(&mut sum_2, ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_mls[&accessible_pp] + feature_score_sets.multi_loop_accessible_baseunpairing_count * (j - k).to_f32().unwrap());
-          }, None => {},
-        }
-      }
-      ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_el[long_i][long_j] = sum;
-      ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[long_i][long_j] = sum_2;
-      sum = feature_score_sets.external_loop_accessible_baseunpairing_count * sub_seq_len.to_f32().unwrap();
-      for k in long_i .. long_j {
-        let ss_part_func_4_rightmost_base_pairings_on_el = ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_el[k][long_j];
-        if ss_part_func_4_rightmost_base_pairings_on_el == NEG_INFINITY {
-          continue;
-        }
-        let part_func = ss_part_func_mats.part_func_mat[long_i][k - 1];
-        logsumexp(&mut sum, part_func + ss_part_func_4_rightmost_base_pairings_on_el);
-      }
-      ss_part_func_mats.part_func_mat[long_i][long_j] = sum;
-      sum = ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[long_i][long_j];
-      for k in long_i + 1 .. long_j {
-        let ss_part_func_4_rightmost_base_pairings_on_mls = ss_part_func_mats.part_func_mat_4_rightmost_base_pairings_on_mls[k][long_j];
-        logsumexp(&mut sum, ss_part_func_4_rightmost_base_pairings_on_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count * (k - long_i) as FreeEnergy);
-        logsumexp(&mut sum, ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[long_i][k - 1] + ss_part_func_4_rightmost_base_pairings_on_mls);
-      }
-      ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[long_i][long_j] = sum;
-    }
-  }
-  ss_part_func_mats
-}
-
-fn get_base_pairing_prob_mat_trained<T>(feature_score_sets: &FeatureCountSets, ss_part_func_mats: &SsPartFuncMatsContra<T>, seq_len: usize, bp_score_param_sets: &BpScoreParamSets<T>) -> SparseProbMat<T>
-where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer,
-{
-  let ss_part_func = ss_part_func_mats.part_func_mat[1][seq_len - 2];
-  let mut bpp_mat = SparseProbMat::<T>::default();
-  let mut prob_mat_4_mls_1 = vec![vec![NEG_INFINITY; seq_len]; seq_len];
-  let mut prob_mat_4_mls_2 = prob_mat_4_mls_1.clone();
-  let short_seq_len = T::from_usize(seq_len).unwrap();
-  for sub_seq_len in range(T::from_usize(CONSPROB_MIN_HAIRPIN_LOOP_SPAN).unwrap(), short_seq_len - T::one()).rev() {
-    for i in range(T::one(), short_seq_len - sub_seq_len) {
-      let j = i + sub_seq_len - T::one();
-      let (long_i, long_j) = (i.to_usize().unwrap(), j.to_usize().unwrap());
-      let mut sum_1 = NEG_INFINITY;
-      let mut sum_2 = sum_1;
-      for k in range(j + T::one(), short_seq_len - T::one()) {
-        let long_k = k.to_usize().unwrap();
-        let pp_closing_loop = (i, k);
-        match ss_part_func_mats.part_func_mat_4_base_pairings.get(&pp_closing_loop) {
-          Some(&part_func) => {
-            let bpp = bpp_mat[&pp_closing_loop];
-            let coefficient = bpp + bp_score_param_sets.multi_loop_closing_bp_scores[&pp_closing_loop] - part_func;
-            logsumexp(&mut sum_1, coefficient + ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[long_j + 1][long_k - 1]);
-            logsumexp(&mut sum_2, coefficient + feature_score_sets.multi_loop_accessible_baseunpairing_count * (k - j - T::one()).to_f32().unwrap());
-          }, None => {},
-        }
-      }
-      prob_mat_4_mls_1[long_i][long_j] = sum_1;
-      prob_mat_4_mls_2[long_i][long_j] = sum_2;
-      let accessible_pp = (i, j);
-      match ss_part_func_mats.part_func_mat_4_base_pairings.get(&accessible_pp) {
-        Some(&part_func) => {
-          let part_func_pair = (
-            ss_part_func_mats.part_func_mat[1][long_i - 1],
-            ss_part_func_mats.part_func_mat[long_j + 1][seq_len - 2],
-          );
-          let mut sum = part_func_pair.0 + part_func_pair.1 + ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_el[&accessible_pp] - ss_part_func;
-          for k in range(T::one(), i).rev() {
-            let long_k = k.to_usize().unwrap();
-            if long_i - long_k - 1 > CONSPROB_MAX_TWOLOOP_LEN {break;}
-            for l in range(j + T::one(), short_seq_len - T::one()) {
-              let long_l = l.to_usize().unwrap();
-              if long_l - long_j - 1 + long_i - long_k - 1 > CONSPROB_MAX_TWOLOOP_LEN {break;}
-              let pp_closing_loop = (k, l);
-              match ss_part_func_mats.part_func_mat_4_base_pairings.get(&pp_closing_loop) {
-                Some(&part_func_2) => {
-                  let twoloop_score = bp_score_param_sets.twoloop_scores[&(pp_closing_loop.0, pp_closing_loop.1, accessible_pp.0, accessible_pp.1)];
-                  let bpp_4_2l = bpp_mat[&pp_closing_loop] + part_func - part_func_2 + twoloop_score;
-                  logsumexp(&mut sum, bpp_4_2l);
-                }, None => {},
-              }
-            }
-          }
-          let coefficient = ss_part_func_mats.part_func_mat_4_base_pairings_accessible_on_mls[&accessible_pp];
-          for k in 1 .. long_i {
-            let ss_part_func_4_at_least_1_base_pairings_on_mls = ss_part_func_mats.part_func_mat_4_at_least_1_base_pairings_on_mls[k + 1][long_i - 1];
-            logsumexp(&mut sum, coefficient + prob_mat_4_mls_2[k][long_j] + ss_part_func_4_at_least_1_base_pairings_on_mls);
-            let prob_4_mls = prob_mat_4_mls_1[k][long_j];
-            logsumexp(&mut sum, coefficient + prob_4_mls + feature_score_sets.multi_loop_accessible_baseunpairing_count * (long_i - k - 1) as FreeEnergy);
-            logsumexp(&mut sum, coefficient + prob_4_mls + ss_part_func_4_at_least_1_base_pairings_on_mls);
-          }
-          debug_assert!(NEG_INFINITY <= sum && sum <= 0.);
-          bpp_mat.insert(accessible_pp, sum);
-        }, None => {},
-      }
-    }
-  }
-  bpp_mat = bpp_mat.iter().map(|(pos_pair, &bpp)| {(*pos_pair, expf(bpp))}).collect();
-  bpp_mat
 }
 
 pub fn write_readme(output_dir_path: &Path, readme_contents: &String) {

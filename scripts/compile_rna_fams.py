@@ -16,7 +16,6 @@ from sklearn.model_selection import train_test_split
 
 bracket_pairs = [("(", ")"), ("A", "a"), ("B", "b"), ("C", "c"), ("D", "d"), ("E", "e"), ]
 sampled_seq_num = 10
-min_seq_num = sampled_seq_num
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
@@ -53,14 +52,13 @@ def main():
 
 def write_train_datum(params):
   (i, train_datum, train_data_dir_path) = params
-  if train_datum.annotations["is_predicted"] or len(train_datum) < min_seq_num:
+  if train_datum.annotations["is_predicted"]:
     return
   cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
-  align_len = len(train_datum)
-  indexes = [j for j in range(0, align_len)]
-  sampled_indexes = indexes if align_len <= sampled_seq_num else numpy.random.choice(indexes, sampled_seq_num, replace = False).tolist()
+  seq_num = len(train_datum)
+  indexes = [j for j in range(0, seq_num)]
+  sampled_indexes = indexes if seq_num <= sampled_seq_num else numpy.random.choice(indexes, sampled_seq_num, replace = False).tolist()
   recs = [train_datum[j] for j in sampled_indexes]
-  sampled_sta = AlignIO.MultipleSeqAlignment(recs)
   sampled_index_pairs = [(idx_1, idx_2) for (j, idx_1) in enumerate(sampled_indexes) for idx_2 in sampled_indexes[j + 1:]]
   for (j, sampled_index_pair) in enumerate(sampled_index_pairs):
     seq_1 = train_datum[int(sampled_index_pair[0])].seq
