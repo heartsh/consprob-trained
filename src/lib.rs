@@ -1510,6 +1510,7 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
           self.observed_feature_count_sets.match_2_insert_count += 1.;
           is_inserting = true;
         }
+        self.observed_feature_count_sets.insert_counts[char_pair.0] += 1.;
       } else if char_pair.0 == PSEUDO_BASE {
         if is_inserting_2 {
           self.observed_feature_count_sets.insert_extend_count += 1.;
@@ -1521,6 +1522,7 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
           self.observed_feature_count_sets.match_2_insert_count += 1.;
           is_inserting_2 = true;
         }
+        self.observed_feature_count_sets.insert_counts[char_pair.1] += 1.;
       } else {
         let dict_min_loop_align = get_dict_min_loop_align(&char_pair);
         self.observed_feature_count_sets.loop_align_count_mat[dict_min_loop_align.0][dict_min_loop_align.1] += 1.;
