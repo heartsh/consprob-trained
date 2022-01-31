@@ -100,7 +100,6 @@ pub struct TrainDatum<T> {
   pub backward_pos_pair_mat_set: PosPairMatSet<T>,
   pub pos_quadruple_mat: PosQuadrupleMat<T>,
   pub bp_score_param_set_pair: RealBpScoreParamSetPair<T>,
-  pub background_counts: BackgroundCounts,
 }
 #[derive(Clone, Debug)]
 pub struct FeatureCountSets {
@@ -226,7 +225,6 @@ pub struct AlignProbMats<T> {
   pub align_prob_mat: SparseProbMat<T>,
 }
 pub type AlignProbMatSetsWithRnaIdPairs<T> = HashMap<RnaIdPair, AlignProbMats<T>>;
-pub type BackgroundCounts = InsertCounts;
 
 impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamSets<T> {
   pub fn new() -> BpScoreParamSets<T> {
@@ -732,13 +730,13 @@ impl FeatureCountSets {
     *regularizers = Array1::from(regularizers_tmp);
   }
 
-  pub fn update<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&mut self, train_data: &[TrainDatum<T>], regularizers: &mut Regularizers, background_scores: &BackgroundCounts)
+  pub fn update<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&mut self, train_data: &[TrainDatum<T>], regularizers: &mut Regularizers)
   {
     let f = |_: &BfgsFeatureCounts| {
       self.get_cost(&train_data[..], regularizers) as BfgsFeatureCount
     };
     let g = |_: &BfgsFeatureCounts| {
-      convert_feature_counts_2_bfgs_feature_counts(&self.get_grad(train_data, regularizers, background_scores))
+      convert_feature_counts_2_bfgs_feature_counts(&self.get_grad(train_data, regularizers))
     };
     match bfgs(convert_feature_counts_2_bfgs_feature_counts(&convert_struct_2_vec(self, false)), f, g) {
       Ok(solution) => {
@@ -748,9 +746,7 @@ impl FeatureCountSets {
       },
     };
     self.update_regularizers(regularizers);
-    // self.accumulate(background_scores);
     self.accumulate();
-    self.consider_background_scores(background_scores);
   }
 
   pub fn accumulate(&mut self)
@@ -782,39 +778,7 @@ impl FeatureCountSets {
     }
   }
 
-  pub fn consider_background_scores(&mut self, background_scores: &BackgroundCounts)
-  {
-    let len = self.basepair_align_count_mat.len();
-    for i in 0 .. len {
-      let background_score_i = background_scores[i];
-      for j in 0 .. len {
-        if !is_canonical(&(i, j)) {continue;}
-        let background_score_j = background_scores[j];
-        for k in 0 .. len {
-          let background_score_k = background_scores[k];
-          for l in 0 .. len {
-            if !is_canonical(&(k, l)) {continue;}
-            let background_score_l = background_scores[l];
-            let background_score = background_score_i * background_score_j * background_score_k * background_score_l;
-            let count = (self.basepair_align_count_mat[i][j][k][l] / background_score).ln();
-            self.basepair_align_count_mat[i][j][k][l] = count;
-          }
-        }
-      }
-    }
-    let len = self.loop_align_count_mat.len();
-    for i in 0 .. len {
-      let background_score_i = background_scores[i];
-      for j in 0 .. len {
-        let background_score_j = background_scores[j];
-        let background_score = background_score_i * background_score_j;
-        let count = (self.loop_align_count_mat[i][j] / background_score).ln();
-        self.loop_align_count_mat[i][j] = count;
-      }
-    }
-  }
-
-  pub fn get_grad<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers, background_scores: &BackgroundCounts) -> FeatureCounts
+  pub fn get_grad<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(&self, train_data: &[TrainDatum<T>], regularizers: &Regularizers) -> FeatureCounts
   {
     let feature_scores = convert_struct_2_vec(self, false);
     let mut grad = FeatureCountSets::new(0.);
@@ -956,35 +920,25 @@ impl FeatureCountSets {
       let expect_count = expect.external_loop_accessible_baseunpairing_count;
       grad.external_loop_accessible_baseunpairing_count -= obs_count - expect_count;
       for i in 0 .. NUM_OF_BASES {
-        let background_score_i = background_scores[i];
         for j in 0 .. NUM_OF_BASES {
           if !is_canonical(&(i, j)) {continue;}
-          let background_score_j = background_scores[j];
           for k in 0 .. NUM_OF_BASES {
-            let background_score_k = background_scores[k];
             for l in 0 .. NUM_OF_BASES {
               if !is_canonical(&(k, l)) {continue;}
-              let background_score_l = background_scores[l];
               let dict_min_basepair_align = get_dict_min_basepair_align(&(i, j), &(k, l));
               let obs_count = obs.basepair_align_count_mat[dict_min_basepair_align.0.0][dict_min_basepair_align.0.1][dict_min_basepair_align.1.0][dict_min_basepair_align.1.1];
               let expect_count = expect.basepair_align_count_mat[dict_min_basepair_align.0.0][dict_min_basepair_align.0.1][dict_min_basepair_align.1.0][dict_min_basepair_align.1.1];
-              let background_score = background_score_i * background_score_j * background_score_k * background_score_l;
-              let coeff = background_score / self.basepair_align_count_mat[i][j][k][l];
-              grad.basepair_align_count_mat[i][j][k][l] -= coeff * (obs_count - expect_count);
+              grad.basepair_align_count_mat[i][j][k][l] -= obs_count - expect_count;
             }
           }
         }
       }
       for i in 0 .. NUM_OF_BASES {
-        let background_score_i = background_scores[i];
         for j in 0 .. NUM_OF_BASES {
-          let background_score_j = background_scores[j];
           let dict_min_loop_align = get_dict_min_loop_align(&(i, j));
           let obs_count = obs.loop_align_count_mat[dict_min_loop_align.0][dict_min_loop_align.1];
           let expect_count = expect.loop_align_count_mat[dict_min_loop_align.0][dict_min_loop_align.1];
-          let background_score = background_score_i * background_score_j;
-          let coeff = background_score / self.loop_align_count_mat[i][j];
-          grad.loop_align_count_mat[i][j] -= coeff * (obs_count - expect_count);
+          grad.loop_align_count_mat[i][j] -= obs_count - expect_count;
         }
       }
       let obs_count = obs.match_2_match_count;
@@ -1029,7 +983,7 @@ impl FeatureCountSets {
     - log_likelihood + product.dot(&feature_scores) / 2.
   }
 
-  pub fn rand_init(&mut self, background_scores: &BackgroundCounts) {
+  pub fn rand_init(&mut self) {
     let len = self.get_len();
     let std_deviation = 1. / (len as FeatureCount).sqrt();
     let normal = Normal::new(0., std_deviation).unwrap();
@@ -1206,7 +1160,6 @@ impl FeatureCountSets {
       }
     }
     self.accumulate();
-    self.consider_background_scores(background_scores);
   }
 
   pub fn transfer(&mut self) {
@@ -1471,7 +1424,6 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       backward_pos_pair_mat_set: PosPairMatSet::<T>::default(),
       pos_quadruple_mat: PosQuadrupleMat::<T>::default(),
       bp_score_param_set_pair: (BpScoreParamSets::<T>::new(), BpScoreParamSets::<T>::new()),
-      background_counts: [0.; NUM_OF_BASES],
     }
   }
 
@@ -1487,13 +1439,6 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       remove_gaps(&seq_pair.0),
       remove_gaps(&seq_pair.1),
       );
-    let mut background_counts = [0.; NUM_OF_BASES];
-    for &i in seq_pair_without_gaps.0.iter() {
-      background_counts[i] += 1.;
-    }
-    for &i in seq_pair_without_gaps.1.iter() {
-      background_counts[i] += 1.;
-    }
     let bpp_mat_pair = (
       remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.0[..], false).0, min_bpp),
       remove_small_bpps_from_bpp_mat::<T>(&mccaskill_algo(&seq_pair_without_gaps.1[..], false).0, min_bpp),
@@ -1527,7 +1472,6 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
       backward_pos_pair_mat_set: backward_pos_pair_mat_set,
       pos_quadruple_mat: pos_quadruple_mat,
       bp_score_param_set_pair: (BpScoreParamSets::<T>::new(), BpScoreParamSets::<T>::new()),
-      background_counts: background_counts,
     };
     train_datum.convert(&seq_pair, cons_second_struct);
     train_datum.seq_pair.0.insert(0, PSEUDO_BASE);
@@ -4960,7 +4904,6 @@ where
 pub fn constrain<'a, T>(
   thread_pool: &mut Pool,
   train_data: &mut TrainData<T>,
-  background_scores: &BackgroundCounts,
   offset_4_max_gap_num: T,
   output_file_path: &Path,
 )
@@ -4968,7 +4911,7 @@ where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send + Display,
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
-  // feature_score_sets.rand_init(background_scores);
+  // feature_score_sets.rand_init();
   feature_score_sets.transfer();
   for train_datum in train_data.iter_mut() {
     train_datum.set_curr_params(&feature_score_sets);
@@ -5019,7 +4962,7 @@ where
         });
       }
     });
-    feature_score_sets.update(&train_data, &mut regularizers, &background_scores);
+    feature_score_sets.update(&train_data, &mut regularizers);
     for train_datum in train_data.iter_mut() {
       train_datum.set_curr_params(&feature_score_sets);
     }
