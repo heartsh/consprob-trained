@@ -89,5 +89,16 @@ fn main() {
       });
     }
   });
-  constrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, output_file_path);
+  let mut background_scores = [0.; NUM_OF_BASES];
+  let mut total = 0.;
+  for train_datum in &train_data {
+    for (i, &c) in train_datum.background_counts.iter().enumerate() {
+      background_scores[i] += c;
+      total += c;
+    }
+  }
+  for c in &mut background_scores {
+    *c /= total;
+  }
+  constrain::<u16>(&mut thread_pool, &mut train_data, &background_scores, offset_4_max_gap_num, output_file_path);
 }
