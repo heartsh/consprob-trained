@@ -12,6 +12,7 @@ import datetime
 import shutil
 from os import path
 from Bio import AlignIO
+import glob
 
 gammas = [2. ** i for i in range(-7, 11)]
 
@@ -25,6 +26,7 @@ def main():
   locarna_params = []
   dafs_params = []
   sparse_params = []
+  consalign_params = []
   turbofold_params = []
   turbofold_params_4_running_time = []
   raf_dir_path = asset_dir_path + "/raf"
@@ -32,7 +34,7 @@ def main():
   dafs_dir_path = asset_dir_path + "/dafs"
   sparse_dir_path = asset_dir_path + "/sparse"
   turbofold_dir_path = asset_dir_path + "/turbofold"
-  infernal_black_list_dir_path = asset_dir_path + "/infernal_black_list"
+  consalign_dir_path = asset_dir_path + "/consalign"
   if not os.path.isdir(raf_dir_path):
     os.mkdir(raf_dir_path)
   if not os.path.isdir(locarna_dir_path):
@@ -41,6 +43,8 @@ def main():
     os.mkdir(dafs_dir_path)
   if not os.path.isdir(sparse_dir_path):
     os.mkdir(sparse_dir_path)
+  if not os.path.isdir(consalign_dir_path):
+    os.mkdir(consalign_dir_path)
   if not os.path.isdir(turbofold_dir_path):
     os.mkdir(turbofold_dir_path)
   rna_dir_path = asset_dir_path + "/test_data"
@@ -54,16 +58,15 @@ def main():
     locarna_output_file_path = os.path.join(locarna_dir_path, rna_family_name + ".fa")
     dafs_output_file_path = os.path.join(dafs_dir_path, rna_family_name + ".fa")
     sparse_output_file_path = os.path.join(sparse_dir_path, rna_family_name + ".fa")
+    consalign_output_dir_path = os.path.join(consalign_dir_path, rna_family_name)
     turbofold_output_dir_path = os.path.join(turbofold_dir_path, rna_family_name)
-    infernal_black_list_file_path = os.path.join(infernal_black_list_dir_path, rna_family_name + "_infernal.dat")
-    if os.path.isfile(infernal_black_list_file_path):
-      continue
     if not os.path.isdir(turbofold_output_dir_path):
       os.mkdir(turbofold_output_dir_path)
     raf_params.insert(0, (rna_file_path, raf_output_file_path))
     locarna_params.insert(0, (rna_file_path, locarna_output_file_path, False))
     dafs_params.insert(0, (rna_file_path, dafs_output_file_path))
     sparse_params.insert(0, (rna_file_path, sparse_output_file_path, True))
+    consalign_params.insert(0, (rna_file_path, consalign_output_dir_path))
     for gamma in gammas:
       gamma_str = str(gamma) if gamma < 1 else str(int(gamma))
       output_file = "gamma=" + gamma_str + ".fa"
@@ -71,6 +74,10 @@ def main():
       turbofold_params.insert(0, (rna_file_path, turbofold_output_file_path, gamma, temp_dir_path, rna_family_name))
       if gamma == 1.:
         turbofold_params_4_running_time.insert(0, (rna_file_path, turbofold_output_file_path, gamma, temp_dir_path, rna_family_name))
+  pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
+  begin = time.time()
+  pool.map(run_consalign, consalign_params)
+  consalign_elapsed_time = time.time() - begin
   pool = multiprocessing.Pool(num_of_threads)
   if False:
     begin = time.time()
@@ -94,6 +101,7 @@ def main():
     print("The elapsed time of LocARNA = %f [s]." % locarna_elapsed_time)
     print("The elapsed time of DAFS = %f [s]." % dafs_elapsed_time)
     print("The elapsed time of SPARSE = %f [s]." % sparse_elapsed_time)
+    print("The elapsed time of ConsAlign = %f [s]." % consalign_elapsed_time)
     print("The elapsed time of TurboFold = %f [s]." % turbofold_elapsed_time)
   shutil.rmtree(temp_dir_path)
 
@@ -160,6 +168,21 @@ def run_locarna(locarna_params):
     buf += ">%d\n%s\n\n" % (i, ss)
   locarna_output_file.write(buf)
   locarna_output_file.close()
+
+def run_consalign(consalign_params):
+  (rna_file_path, consalign_output_dir_path) = consalign_params
+  consalign_command = "consalign -i " + rna_file_path + " -o " + consalign_output_dir_path
+  utils.run_command(consalign_command)
+  for consalign_output_file in glob.glob("consalign_*.sth"):
+    consalign_output_file_path = os.path.join(consalign_output_dir_path, consalign_output_file)
+    sta = AlignIO.read(consalign_output_file_path, "stockholm")
+    sss = get_sss(sta)
+    buf = ""
+    consalign_output_file = open(consalign_output_file_path, "w+")
+    for (i, ss) in enumerate(sss):
+      buf += ">%d\n%s\n\n" % (i, ss)
+    consalign_output_file.write(buf)
+    consalign_output_file.close()
 
 def run_turbofold(turbofold_params):
   (rna_file_path, turbofold_output_file_path, gamma, temp_dir_path, rna_family_name) = turbofold_params
