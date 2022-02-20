@@ -4926,9 +4926,9 @@ where
   T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send + Display,
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
-  // feature_score_sets.rand_init();
-  feature_score_sets.transfer();
-  /* for train_datum in train_data.iter_mut() {
+  feature_score_sets.rand_init();
+  // feature_score_sets.transfer();
+  for train_datum in train_data.iter_mut() {
     train_datum.set_curr_params(&feature_score_sets);
   }
   let mut old_feature_score_sets = feature_score_sets.clone();
@@ -4991,9 +4991,9 @@ where
     old_cost = cost;
     println!("Epoch {} finished (current cost = {})", count + 1, cost);
     count += 1;
-  } */
+  }
   write_feature_score_sets_trained(&feature_score_sets);
-  // write_costs(&costs, output_file_path);
+  write_costs(&costs, output_file_path);
 }
 
 pub fn remove_gaps(seq: &Seq) -> Seq {
