@@ -15,7 +15,7 @@ from Bio.Align import MultipleSeqAlignment
 from sklearn.model_selection import train_test_split
 
 bracket_pairs = [("(", ")"), ("A", "a"), ("B", "b"), ("C", "c"), ("D", "d"), ("E", "e"), ]
-sampled_seq_num = 5
+sampled_seq_num = 10
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
