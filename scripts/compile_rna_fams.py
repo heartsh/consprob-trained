@@ -15,7 +15,7 @@ from Bio.Align import MultipleSeqAlignment
 from sklearn.model_selection import train_test_split
 
 bracket_pairs = [("(", ")"), ("A", "a"), ("B", "b"), ("C", "c"), ("D", "d"), ("E", "e"), ]
-sampled_seq_num = 10
+sampled_seq_num = 5
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
@@ -55,12 +55,13 @@ def main():
 
 def write_train_datum(params):
   (i, train_datum, train_data_dir_path, train_data_dir_path_multi) = params
-  if train_datum.annotations["is_predicted"]:
+  # if train_datum.annotations["is_predicted"]:
+  seq_num = len(train_datum)
+  if train_datum.annotations["is_predicted"] or seq_num < sampled_seq_num:
     return
   train_datum_file_path_multi = os.path.join(train_data_dir_path_multi, "train_datum_%d.sth" % i)
   AlignIO.write(train_datum, train_datum_file_path_multi, "stockholm")
   cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
-  seq_num = len(train_datum)
   indexes = [j for j in range(0, seq_num)]
   sampled_indexes = indexes if seq_num <= sampled_seq_num else numpy.random.choice(indexes, sampled_seq_num, replace = False).tolist()
   recs = [train_datum[j] for j in sampled_indexes]
