@@ -23,12 +23,12 @@ fn main() {
     "",
     "min_base_pair_prob",
     &format!(
-      "A minimum base-pairing-probability (Uses {} by default)",
+      "A minimum base-pairing probability (Uses {} by default)",
       DEFAULT_MIN_BPP
     ),
     "FLOAT",
   );
-  opts.optopt(
+  /* opts.optopt(
     "",
     "offset_4_max_gap_num",
     &format!(
@@ -36,7 +36,8 @@ fn main() {
       DEFAULT_OFFSET_4_MAX_GAP_NUM
     ),
     "UINT",
-  );
+  ); */
+  opts.optopt("", "min_align_prob", &format!("A minimum aligning probability (Uses {} by default)", DEFAULT_MIN_ALIGN_PROB), "FLOAT");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag(
     "s",
@@ -71,7 +72,12 @@ fn main() {
   } else {
     DEFAULT_MIN_BPP
   };
-  let offset_4_max_gap_num = if matches.opt_present("offset_4_max_gap_num") {
+  let min_align_prob = if matches.opt_present("min_align_prob") {
+    matches.opt_str("min_align_prob").unwrap().parse().unwrap()
+  } else {
+    DEFAULT_MIN_ALIGN_PROB
+  };
+  /* let offset_4_max_gap_num = if matches.opt_present("offset_4_max_gap_num") {
     matches
       .opt_str("offset_4_max_gap_num")
       .unwrap()
@@ -79,7 +85,7 @@ fn main() {
       .unwrap()
   } else {
     DEFAULT_OFFSET_4_MAX_GAP_NUM
-  };
+  }; */
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
@@ -114,7 +120,8 @@ fn main() {
       &mut thread_pool,
       &fasta_records,
       min_bpp,
-      offset_4_max_gap_num as u8,
+      min_align_prob,
+      // offset_4_max_gap_num as u8,
       produces_struct_profs,
       produces_align_probs,
     );
@@ -124,7 +131,8 @@ fn main() {
       &mut thread_pool,
       &fasta_records,
       min_bpp,
-      offset_4_max_gap_num as u16,
+      min_align_prob,
+      // offset_4_max_gap_num as u16,
       produces_struct_profs,
       produces_align_probs,
     );

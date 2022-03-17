@@ -1,9 +1,10 @@
-pub use rna_algos::mccaskill_algo::*;
+/* pub use rna_algos::mccaskill_algo::*;
+pub use rna_algos::durbin_algo::*;
 pub use rna_algos::utils::*;
 
 pub type InsertScores = [FreeEnergy; NUM_OF_BASES];
 
-pub const PSEUDO_BASE: Base = U + 1 as Base;
+// pub const PSEUDO_BASE: Base = U + 1 as Base;
 pub const MATCH_2_MATCH_SCORE: FreeEnergy = 2.50575671;
 pub const MATCH_2_INSERT_SCORE: FreeEnergy = 0.1970448791;
 pub const INSERT_EXTEND_SCORE: FreeEnergy = 1.014026583;
@@ -19,7 +20,7 @@ lazy_static! {
       (UA, -0.3252306723), (UC, -0.1326088918), (UG, -0.3565888168), (UU, 0.459052045),
     ].iter().map(|(base_pair, ba_score)| {(*base_pair, *ba_score)}).collect()
   };
-  pub static ref RIBOSUM_BA_SCORE_MAT: BaScoreMat = {
+  /* pub static ref RIBOSUM_BA_SCORE_MAT: BaScoreMat = {
     [
       (AA, 2.22), (AC, -1.86), (AG, -1.46), (AU, -1.39),
       (CA, -1.86), (CC, 1.16), (CG, -2.48), (CU, -1.05),
@@ -46,5 +47,5 @@ lazy_static! {
       ((UG, AA), -6.16), ((UG, AC), -6.93), ((UG, AG), -5.94), ((UG, AU), -0.51), ((UG, CA), -5.63), ((UG, CC), -8.41), ((UG, CG), 1.32), ((UG, CU), -7.36), ((UG, GA), -7.55), ((UG, GC), -0.08), ((UG, GG), -4.27), ((UG, GU), -2.09), ((UG, UA), 1.14), ((UG, UC), -4.76), ((UG, UG), 3.36), ((UG, UU), -4.28),
       ((UU, AA), -9.05), ((UU, AC), -7.83), ((UU, AG), -11.07), ((UU, AU), -2.98), ((UU, CA), -8.39), ((UU, CC), -5.41), ((UU, CG), -3.67), ((UU, CU), -5.21), ((UU, GA), -11.54), ((UU, GC), -3.90), ((UU, GG), -10.79), ((UU, GU), -4.45), ((UU, UA), -3.39), ((UU, UC), -5.97), ((UU, UG), -4.28), ((UU, UU), -0.02),
     ].iter().map(|(base_quadruple, bpa_score)| {(*base_quadruple, bpa_score / LOG2_E)}).collect()
-  };
-}
+  }; */
+} */
