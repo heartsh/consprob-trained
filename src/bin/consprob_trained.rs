@@ -116,7 +116,7 @@ fn main() {
   }
   let mut thread_pool = Pool::new(num_of_threads);
   if max_seq_len <= u8::MAX as usize {
-    let (prob_mat_sets, pct_align_prob_mat_pairs_with_rna_id_pairs) = consprob::<u8>(
+    let (prob_mat_sets, pct_align_prob_mat_sets_with_rna_id_pairs) = consprob::<u8>(
       &mut thread_pool,
       &fasta_records,
       min_bpp,
@@ -125,9 +125,9 @@ fn main() {
       produces_struct_profs,
       produces_align_probs,
     );
-    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &pct_align_prob_mat_pairs_with_rna_id_pairs, produces_align_probs);
+    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &pct_align_prob_mat_sets_with_rna_id_pairs, produces_align_probs);
   } else {
-    let (prob_mat_sets, pct_align_prob_mat_pairs_with_rna_id_pairs) = consprob::<u16>(
+    let (prob_mat_sets, pct_align_prob_mat_sets_with_rna_id_pairs) = consprob::<u16>(
       &mut thread_pool,
       &fasta_records,
       min_bpp,
@@ -136,7 +136,7 @@ fn main() {
       produces_struct_profs,
       produces_align_probs,
     );
-    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &pct_align_prob_mat_pairs_with_rna_id_pairs, produces_align_probs);
+    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &pct_align_prob_mat_sets_with_rna_id_pairs, produces_align_probs);
   }
   write_readme(output_dir_path, &String::from(README_CONTENTS));
 }

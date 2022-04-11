@@ -29,7 +29,10 @@ def get_css(css_file_path):
       char = sta[i][j]
       if char != "-":
         pos += 1
-      pos_map_sets[i].append(pos)
+      if char != "-":
+        pos_map_sets[i].append(pos)
+      else:
+        pos_map_sets[i].append(-1)
   css = []
   for i in range(num_of_rnas):
     css.append({})

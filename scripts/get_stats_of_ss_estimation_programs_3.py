@@ -13,6 +13,7 @@ import numpy
 import glob
 from Bio import AlignIO
 import pandas
+from statistics import mean
 
 seaborn.set()
 pyplot.rcParams['legend.handlelength'] = 0
@@ -255,6 +256,7 @@ def main():
   fig.tight_layout()
   fig.savefig(image_dir_path + "/rna_aligner_spss.eps", bbox_inches = "tight")
   fig.clf()
+  print(consalign_sps)
 
 def get_bin_counts(params):
   # rna_seq_lens, estimated_css, ref_css = params
@@ -350,11 +352,13 @@ def final_sum(results):
   return (final_tp, final_tn, final_fp, final_fn)
 
 def get_sps(results):
-  final_tp = final_total = 0.
-  for tp, total in results:
-    final_tp += tp
-    final_total += total
-  return final_tp / final_total
+  return mean(list(map(lambda x: x[0] / x[1], results)))
+  if False:
+    final_tp = final_total = 0.
+    for tp, total in results:
+      final_tp += tp
+      final_total += total
+    return final_tp / final_total
 
 def get_f1_score(ppv, sens):
   return 2 * ppv * sens / (ppv + sens)
