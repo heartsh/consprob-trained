@@ -19,10 +19,13 @@ def main():
     os.mkdir(image_dir_path)
   costs = read_log_losses(asset_dir_path + "/costs.dat")
   epochs = [i for i in range(1, len(costs) + 1)];
-  line_1, = pyplot.plot(epochs, costs, label = 'Dataset "train pairwise"', marker = "", linestyle = "solid")
+  line_1, = pyplot.plot(epochs, costs, label = 'Transferred from CONTRAfold & CONTRAlign', marker = "", linestyle = "solid")
+  costs_random_init = read_log_losses(asset_dir_path + "/costs_random_init.dat")
+  epochs_random_init = [i for i in range(1, len(costs_random_init) + 1)];
+  line_2, = pyplot.plot(epochs_random_init, costs_random_init, label = 'Initialized to random values', marker = "", linestyle = "solid")
   pyplot.xlabel("Epoch")
   pyplot.ylabel("Cost")
-  pyplot.legend(handles = [line_1], loc = "upper right")
+  pyplot.legend(handles = [line_1, line_2], loc = "upper right")
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/epochs_vs_costs.eps", bbox_inches = "tight")
 

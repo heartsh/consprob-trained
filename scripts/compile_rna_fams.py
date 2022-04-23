@@ -21,14 +21,11 @@ def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
   rfam_seed_sta_file_path = asset_dir_path + "/rfam_seed_stas_v14.4.sth"
   train_data_dir_path = asset_dir_path + "/train_data"
-  train_data_dir_path_multi = asset_dir_path + "/train_data_multi"
   test_data_dir_path = asset_dir_path + "/test_data"
   test_ref_ss_dir_path = asset_dir_path + "/test_ref_sss"
   test_ref_sa_dir_path = asset_dir_path + "/test_ref_sas"
   if not os.path.isdir(train_data_dir_path):
     os.mkdir(train_data_dir_path)
-  if not os.path.isdir(train_data_dir_path_multi):
-    os.mkdir(train_data_dir_path_multi)
   if not os.path.isdir(test_data_dir_path):
     os.mkdir(test_data_dir_path)
   if not os.path.isdir(test_ref_ss_dir_path):
@@ -45,7 +42,7 @@ def main():
   print("# RNA families: %d" % num_of_stas)
   train_data, test_data = train_test_split(stas, test_size = 0.5)
   param_sets = zip(list(range(0, len(train_data))), train_data)
-  param_sets = [(params[0], params[1], train_data_dir_path, train_data_dir_path_multi) for params in param_sets]
+  param_sets = [(params[0], params[1], train_data_dir_path) for params in param_sets]
   num_of_threads = multiprocessing.cpu_count()
   pool = multiprocessing.Pool(num_of_threads)
   pool.map(write_train_datum, param_sets)
@@ -54,13 +51,10 @@ def main():
   pool.map(write_test_datum, param_sets)
 
 def write_train_datum(params):
-  (i, train_datum, train_data_dir_path, train_data_dir_path_multi) = params
-  # if train_datum.annotations["is_predicted"]:
+  (i, train_datum, train_data_dir_path) = params
   seq_num = len(train_datum)
   if train_datum.annotations["is_predicted"] or seq_num < sampled_seq_num:
     return
-  train_datum_file_path_multi = os.path.join(train_data_dir_path_multi, "train_datum_%d.sth" % i)
-  AlignIO.write(train_datum, train_datum_file_path_multi, "stockholm")
   cons_second_struct = convert_css_without_pseudoknots(train_datum.column_annotations["secondary_structure"])
   indexes = [j for j in range(0, seq_num)]
   sampled_indexes = indexes if seq_num <= sampled_seq_num else numpy.random.choice(indexes, sampled_seq_num, replace = False).tolist()

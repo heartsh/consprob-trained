@@ -1,6 +1,6 @@
-extern crate consprob;
+extern crate consprob_trained;
 
-use consprob::*;
+use consprob_trained::*;
 use std::env;
 
 fn main() {
@@ -29,16 +29,8 @@ fn main() {
     "FLOAT",
   );
   opts.optopt("", "min_align_prob", &format!("A minimum aligning probability (Uses {} by default)", DEFAULT_MIN_ALIGN_PROB_TRAIN), "FLOAT");
-  /* opts.optopt(
-    "",
-    "offset_4_max_gap_num",
-    &format!(
-      "An offset for maximum numbers of gaps (Uses {} by default)",
-      DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN
-    ),
-    "UINT",
-  ); */
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
+  opts.optflag("r", "enables_random_init", "Enable the random initialization of trained alignment scoring parameters");
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
     Ok(opt) => opt,
@@ -67,15 +59,7 @@ fn main() {
   } else {
     DEFAULT_MIN_ALIGN_PROB_TRAIN
   };
-  /* let offset_4_max_gap_num = if matches.opt_present("offset_4_max_gap_num") {
-    matches
-      .opt_str("offset_4_max_gap_num")
-      .unwrap()
-      .parse()
-      .unwrap()
-  } else {
-    DEFAULT_OFFSET_4_MAX_GAP_NUM_TRAIN
-  } as u16; */
+  let enables_random_init = matches.opt_present("r");
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
@@ -91,11 +75,9 @@ fn main() {
   thread_pool.scoped(|scope| {
     for (input_file_path, train_datum) in entries.iter().zip(train_data.iter_mut()) {
       scope.execute(move || {
-        // *train_datum = TrainDatum::<u16>::new(&input_file_path.path(), min_bpp, offset_4_max_gap_num);
         *train_datum = TrainDatum::<u16>::new(&input_file_path.path(), min_bpp, min_align_prob);
       });
     }
   });
-  // constrain::<u16>(&mut thread_pool, &mut train_data, offset_4_max_gap_num, output_file_path);
-  constrain::<u16>(&mut thread_pool, &mut train_data, output_file_path);
+  constrain::<u16>(&mut thread_pool, &mut train_data, output_file_path, enables_random_init);
 }

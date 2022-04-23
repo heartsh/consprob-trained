@@ -1,6 +1,6 @@
-extern crate consprob;
+extern crate consprob_trained;
 
-use consprob::*;
+use consprob_trained::*;
 use std::env;
 
 fn main() {
@@ -28,16 +28,8 @@ fn main() {
     ),
     "FLOAT",
   );
-  /* opts.optopt(
-    "",
-    "offset_4_max_gap_num",
-    &format!(
-      "An offset for maximum numbers of gaps (Uses {} by default)",
-      DEFAULT_OFFSET_4_MAX_GAP_NUM
-    ),
-    "UINT",
-  ); */
   opts.optopt("", "min_align_prob", &format!("A minimum aligning probability (Uses {} by default)", DEFAULT_MIN_ALIGN_PROB), "FLOAT");
+  opts.optopt("u", "train_type", &format!("Choose a scoring parameter training type from trained_transfer, trained_random_init, transferred_only (Uses {} by default)", DEFAULT_TRAIN_TYPE), "STR");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
   opts.optflag(
     "s",
@@ -77,15 +69,21 @@ fn main() {
   } else {
     DEFAULT_MIN_ALIGN_PROB
   };
-  /* let offset_4_max_gap_num = if matches.opt_present("offset_4_max_gap_num") {
-    matches
-      .opt_str("offset_4_max_gap_num")
-      .unwrap()
-      .parse()
-      .unwrap()
+  let train_type = if matches.opt_present("u") {
+    let train_type_str = matches.opt_str("u").unwrap();
+    if train_type_str == "trained_transfer" {
+      TrainType::TrainedTransfer
+    } else if train_type_str == "trained_random_init" {
+      TrainType::TrainedRandomInit
+    } else if train_type_str == "transferred_only" {
+      TrainType::TransferredOnly
+    } else {
+      assert!(false);
+      TrainType::TrainedTransfer
+    }
   } else {
-    DEFAULT_OFFSET_4_MAX_GAP_NUM
-  }; */
+    TrainType::TrainedTransfer
+  };
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
@@ -93,11 +91,7 @@ fn main() {
   };
   let produces_struct_profs = matches.opt_present("s");
   let produces_align_probs = matches.opt_present("a");
-  /* let mix_weight = if matches.opt_present("mix_weight") {
-    matches.opt_str("mix_weight").unwrap().parse().unwrap()
-  } else {
-    DEFAULT_MIX_WEIGHT
-  }; */
+  let uses_transferred_params = matches.opt_present("u");
   let output_dir_path = matches.opt_str("o").unwrap();
   let output_dir_path = Path::new(&output_dir_path);
   let fasta_file_reader = Reader::from_file(Path::new(&input_file_path)).unwrap();
@@ -116,27 +110,27 @@ fn main() {
   }
   let mut thread_pool = Pool::new(num_of_threads);
   if max_seq_len <= u8::MAX as usize {
-    let (prob_mat_sets, pct_align_prob_mat_sets_with_rna_id_pairs) = consprob::<u8>(
+    let (prob_mat_sets, align_prob_mat_sets_with_rna_id_pairs) = consprob_trained::<u8>(
       &mut thread_pool,
       &fasta_records,
       min_bpp,
       min_align_prob,
-      // offset_4_max_gap_num as u8,
       produces_struct_profs,
       produces_align_probs,
+      train_type,
     );
-    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &pct_align_prob_mat_sets_with_rna_id_pairs, produces_align_probs);
+    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &align_prob_mat_sets_with_rna_id_pairs, produces_align_probs);
   } else {
-    let (prob_mat_sets, pct_align_prob_mat_sets_with_rna_id_pairs) = consprob::<u16>(
+    let (prob_mat_sets, align_prob_mat_sets_with_rna_id_pairs) = consprob_trained::<u16>(
       &mut thread_pool,
       &fasta_records,
       min_bpp,
       min_align_prob,
-      // offset_4_max_gap_num as u16,
       produces_struct_profs,
       produces_align_probs,
+      train_type,
     );
-    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &pct_align_prob_mat_sets_with_rna_id_pairs, produces_align_probs);
+    write_prob_mat_sets(&output_dir_path, &prob_mat_sets, produces_struct_profs, &align_prob_mat_sets_with_rna_id_pairs, produces_align_probs);
   }
   write_readme(output_dir_path, &String::from(README_CONTENTS));
 }
