@@ -90,15 +90,14 @@ def main():
     consalign_params_trained_random_init.insert(0, (rna_file_path, consalign_output_dir_path_trained_random_init, sub_thread_num, "trained", "trained_random_init"))
     consalign_params_transferred_only.insert(0, (rna_file_path, consalign_output_dir_path_transferred_only, sub_thread_num, "trained", "transferred_only"))
     turbofold_params.insert(0, (rna_file_path, turbofold_output_dir_path))
-  if True:
-    pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
-    begin = time.time()
-    pool.map(run_consalign, consalign_params_ensemble)
-    consalign_elapsed_time = time.time() - begin
-    pool.map(run_consalign, consalign_params_turner)
-    pool.map(run_consalign, consalign_params_trained_transfer)
-    pool.map(run_consalign, consalign_params_trained_random_init)
-    pool.map(run_consalign, consalign_params_transferred_only)
+  pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
+  begin = time.time()
+  pool.map(run_consalign, consalign_params_ensemble)
+  consalign_elapsed_time = time.time() - begin
+  pool.map(run_consalign, consalign_params_turner)
+  pool.map(run_consalign, consalign_params_trained_transfer)
+  pool.map(run_consalign, consalign_params_trained_random_init)
+  pool.map(run_consalign, consalign_params_transferred_only)
   pool = multiprocessing.Pool(num_of_threads)
   begin = time.time()
   pool.map(run_raf, raf_params)
@@ -121,7 +120,7 @@ def main():
   print("The elapsed time of SPARSE = %f [s]." % sparse_elapsed_time)
   print("The elapsed time of ConsAlign = %f [s]." % consalign_elapsed_time)
   print("The elapsed time of TurboFold = %f [s]." % turbofold_elapsed_time)
-shutil.rmtree(temp_dir_path)
+  shutil.rmtree(temp_dir_path)
 
 def run_raf(raf_params):
   (rna_file_path, raf_output_file_path) = raf_params
