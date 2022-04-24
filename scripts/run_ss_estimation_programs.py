@@ -100,31 +100,28 @@ def main():
     pool.map(run_consalign, consalign_params_trained_random_init)
     pool.map(run_consalign, consalign_params_transferred_only)
   pool = multiprocessing.Pool(num_of_threads)
-  if False:
-    begin = time.time()
-    pool.map(run_raf, raf_params)
-    raf_elapsed_time = time.time() - begin
-    begin = time.time()
-    pool.map(run_locarna, locarna_params)
-    locarna_elapsed_time = time.time() - begin
-  if False:
-    begin = time.time()
-    pool.map(run_dafs, dafs_params)
-    dafs_elapsed_time = time.time() - begin
-    begin = time.time()
-    pool.map(run_locarna, sparse_params)
-    sparse_elapsed_time = time.time() - begin
-    begin = time.time()
-    pool.map(run_turbofold, turbofold_params)
-    turbofold_elapsed_time = time.time() - begin
-  if False:
-    print("The elapsed time of RAF = %f [s]." % raf_elapsed_time)
-    print("The elapsed time of LocARNA = %f [s]." % locarna_elapsed_time)
-    print("The elapsed time of DAFS = %f [s]." % dafs_elapsed_time)
-    print("The elapsed time of SPARSE = %f [s]." % sparse_elapsed_time)
-    print("The elapsed time of ConsAlign = %f [s]." % consalign_elapsed_time)
-    print("The elapsed time of TurboFold = %f [s]." % turbofold_elapsed_time)
-  shutil.rmtree(temp_dir_path)
+  begin = time.time()
+  pool.map(run_raf, raf_params)
+  raf_elapsed_time = time.time() - begin
+  begin = time.time()
+  pool.map(run_locarna, locarna_params)
+  locarna_elapsed_time = time.time() - begin
+  begin = time.time()
+  pool.map(run_dafs, dafs_params)
+  dafs_elapsed_time = time.time() - begin
+  begin = time.time()
+  pool.map(run_locarna, sparse_params)
+  sparse_elapsed_time = time.time() - begin
+  begin = time.time()
+  pool.map(run_turbofold, turbofold_params)
+  turbofold_elapsed_time = time.time() - begin
+  print("The elapsed time of RAF = %f [s]." % raf_elapsed_time)
+  print("The elapsed time of LocARNA = %f [s]." % locarna_elapsed_time)
+  print("The elapsed time of DAFS = %f [s]." % dafs_elapsed_time)
+  print("The elapsed time of SPARSE = %f [s]." % sparse_elapsed_time)
+  print("The elapsed time of ConsAlign = %f [s]." % consalign_elapsed_time)
+  print("The elapsed time of TurboFold = %f [s]." % turbofold_elapsed_time)
+shutil.rmtree(temp_dir_path)
 
 def run_raf(raf_params):
   (rna_file_path, raf_output_file_path) = raf_params
