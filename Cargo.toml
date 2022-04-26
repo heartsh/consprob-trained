@@ -2,8 +2,8 @@
 name = "consprob-trained"
 version = "0.1.0"
 authors = ["heartsh <heartsh@heartsh.io>"]
-description = "ConsProb, which Estimates Average Posterior Probabilities on Sparse Global Pairwise RNA Structural Alignment"
-repository = "https://github.com/heartsh/consprob"
+description = "Trainable Probability Inference Engine on RNA Structural Alignment"
+repository = "https://github.com/heartsh/consprob-trained"
 readme = "README.md"
 keywords = ["bioinformatics", "rna", "structural-alignment"]
 license = "MIT"

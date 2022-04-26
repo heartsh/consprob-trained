@@ -15,7 +15,7 @@ from Bio import AlignIO
 import pandas
 from statistics import mean
 
-seaborn.set()
+seaborn.set(font_scale = 1.2)
 pyplot.rcParams['legend.handlelength'] = 0
 pyplot.rcParams['legend.fontsize'] = "x-large"
 color_palette = seaborn.color_palette()
@@ -186,23 +186,23 @@ def main():
   image_dir_path = asset_dir_path + "/images"
   if not os.path.exists(image_dir_path):
     os.mkdir(image_dir_path)
-  data = {"F1 score": consalign_f1_scores_ensemble + raf_f1_scores + locarna_f1_scores + dafs_f1_scores + sparse_f1_scores + turbofold_f1_scores, "RNA aligner": ["ConsAlign"] * len(consalign_f1_scores_ensemble) + ["RAF"] * len(raf_f1_scores) + ["LocARNA"] * len(locarna_f1_scores) + ["DAFS"] * len(dafs_f1_scores) + ["SPARSE"] * len(sparse_f1_scores) + ["Linear\nTurboFold"] * len(turbofold_f1_scores)}
+  data = {"F1 score": consalign_f1_scores_ensemble + raf_f1_scores + locarna_f1_scores + dafs_f1_scores + sparse_f1_scores + turbofold_f1_scores, "RNA structural aligner": ["ConsAlign"] * len(consalign_f1_scores_ensemble) + ["RAF"] * len(raf_f1_scores) + ["LocARNA"] * len(locarna_f1_scores) + ["DAFS"] * len(dafs_f1_scores) + ["SPARSE"] * len(sparse_f1_scores) + ["Linear\nTurboFold"] * len(turbofold_f1_scores)}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.boxplot(x = "RNA aligner", y = "F1 score", data = data_frame)
+  ax = seaborn.boxplot(x = "RNA structural aligner", y = "F1 score", data = data_frame)
   fig = ax.get_figure()
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/rna_aligner_f1_scores_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Matthews correlation coefficient": consalign_mccs_ensemble + raf_mccs + locarna_mccs + dafs_mccs + sparse_mccs + turbofold_mccs, "RNA aligner": ["ConsAlign"] * len(consalign_mccs_ensemble) + ["RAF"] * len(raf_mccs) + ["LocARNA"] * len(locarna_mccs) + ["DAFS"] * len(dafs_mccs) + ["SPARSE"] * len(sparse_mccs) + ["Linear\nTurboFold"] * len(turbofold_mccs)}
+  data = {"Matthews correlation coefficient": consalign_mccs_ensemble + raf_mccs + locarna_mccs + dafs_mccs + sparse_mccs + turbofold_mccs, "RNA structural aligner": ["ConsAlign"] * len(consalign_mccs_ensemble) + ["RAF"] * len(raf_mccs) + ["LocARNA"] * len(locarna_mccs) + ["DAFS"] * len(dafs_mccs) + ["SPARSE"] * len(sparse_mccs) + ["Linear\nTurboFold"] * len(turbofold_mccs)}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.boxplot(x = "RNA aligner", y = "Matthews correlation coefficient", data = data_frame)
+  ax = seaborn.boxplot(x = "RNA structural aligner", y = "Matthews correlation coefficient", data = data_frame)
   fig = ax.get_figure()
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/rna_aligner_mccs_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Sum-of-pairs score": consalign_spss_ensemble + raf_spss + locarna_spss + dafs_spss + sparse_spss + turbofold_spss, "RNA aligner": ["ConsAlign"] * len(consalign_spss_ensemble) + ["RAF"] * len(raf_spss) + ["LocARNA"] * len(locarna_spss) + ["DAFS"] * len(dafs_spss) + ["SPARSE"] * len(sparse_spss) + ["Linear\nTurboFold"] * len(turbofold_spss)}
+  data = {"Sum-of-pairs score": consalign_spss_ensemble + raf_spss + locarna_spss + dafs_spss + sparse_spss + turbofold_spss, "RNA structural aligner": ["ConsAlign"] * len(consalign_spss_ensemble) + ["RAF"] * len(raf_spss) + ["LocARNA"] * len(locarna_spss) + ["DAFS"] * len(dafs_spss) + ["SPARSE"] * len(sparse_spss) + ["Linear\nTurboFold"] * len(turbofold_spss)}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.boxplot(x = "RNA aligner", y = "Sum-of-pairs score", data = data_frame, sym = "")
+  ax = seaborn.boxplot(x = "RNA structural aligner", y = "Sum-of-pairs score", data = data_frame, sym = "")
   fig = ax.get_figure()
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/rna_aligner_spss_box_plot.eps", bbox_inches = "tight")
@@ -228,43 +228,43 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_sps_scoring_model_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"F1 score": consalign_f1_scores_trained + consalign_f1_scores_trained_random_init + consalign_f1_scores_transferred_only, "Scoring parameter training type": ["Transferred & trained"] * len(consalign_f1_scores_trained) + ["Initialized to random\nvalues & trained"] * len (consalign_f1_scores_trained_random_init) + ["Transferred only"] * len(consalign_f1_scores_transferred_only)}
+  data = {"F1 score": consalign_f1_scores_trained + consalign_f1_scores_trained_random_init + consalign_f1_scores_transferred_only, "Scoring parameter training type": ["Transfer-learned"] * len(consalign_f1_scores_trained) + ["Random-learned"] * len (consalign_f1_scores_trained_random_init) + ["Transferred only"] * len(consalign_f1_scores_transferred_only)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.boxplot(x = "Scoring parameter training type", y = "F1 score", data = data_frame)
   fig = ax.get_figure()
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_f1_score_train_type_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Matthews correlation coefficient": consalign_mccs_trained + consalign_mccs_trained_random_init + consalign_mccs_transferred_only, "Scoring parameter training type": ["Transferred & trained"] * len(consalign_mccs_trained) + ["Initialized to random\nvalues & trained"] * len(consalign_mccs_trained_random_init) + ["Transferred only"] * len(consalign_mccs_transferred_only)}
+  data = {"Matthews correlation coefficient": consalign_mccs_trained + consalign_mccs_trained_random_init + consalign_mccs_transferred_only, "Scoring parameter training type": ["Transfer-learned"] * len(consalign_mccs_trained) + ["Random-learned"] * len(consalign_mccs_trained_random_init) + ["Transferred only"] * len(consalign_mccs_transferred_only)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.boxplot(x = "Scoring parameter training type", y = "Matthews correlation coefficient", data = data_frame)
   fig = ax.get_figure()
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_mcc_train_type_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Sum-of-pairs score": consalign_spss_trained + consalign_spss_trained_random_init + consalign_spss_transferred_only, "Scoring parameter training type": ["Transferred & trained"] * len(consalign_spss_trained) + ["Initialized to random\nvalues & trained"] * len(consalign_spss_trained_random_init) + ["Transferred only"] * len(consalign_spss_transferred_only)}
+  data = {"Sum-of-pairs score": consalign_spss_trained + consalign_spss_trained_random_init + consalign_spss_transferred_only, "Scoring parameter training type": ["Transfer-learned"] * len(consalign_spss_trained) + ["Random-learned"] * len(consalign_spss_trained_random_init) + ["Transferred only"] * len(consalign_spss_transferred_only)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.boxplot(x = "Scoring parameter training type", y = "Sum-of-pairs score", data = data_frame, sym = "")
   fig = ax.get_figure()
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_sps_train_type_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Average F1 score": [consalign_f1_score_ensemble, raf_f1_score, locarna_f1_score, dafs_f1_score, sparse_f1_score, turbofold_f1_score], "RNA aligner": ["ConsAlign", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"]}
+  data = {"Average F1 score": [consalign_f1_score_ensemble, raf_f1_score, locarna_f1_score, dafs_f1_score, sparse_f1_score, turbofold_f1_score], "RNA structural aligner": ["ConsAlign", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"]}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.barplot(x = "RNA aligner", y = "Average F1 score", data = data_frame)
+  ax = seaborn.barplot(x = "RNA structural aligner", y = "Average F1 score", data = data_frame)
   fig = ax.get_figure()
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/rna_aligner_f1_scores.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Average Matthews correlation coefficient": [consalign_mcc_ensemble, raf_mcc, locarna_mcc, dafs_mcc, sparse_mcc, turbofold_mcc], "RNA aligner": ["ConsAlign", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"]}
+  data = {"Average MCC": [consalign_mcc_ensemble, raf_mcc, locarna_mcc, dafs_mcc, sparse_mcc, turbofold_mcc], "RNA structural aligner": ["ConsAlign", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"]}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.barplot(x = "RNA aligner", y = "Average Matthews correlation coefficient", data = data_frame)
+  ax = seaborn.barplot(x = "RNA structural aligner", y = "Average MCC", data = data_frame)
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/rna_aligner_mccs.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Average sum-of-pairs score": [consalign_sps_ensemble, raf_sps, locarna_sps, dafs_sps, sparse_sps, turbofold_sps], "RNA aligner": ["ConsAlign", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"]}
+  data = {"Average sum-of-pairs score": [consalign_sps_ensemble, raf_sps, locarna_sps, dafs_sps, sparse_sps, turbofold_sps], "RNA structural aligner": ["ConsAlign", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"]}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.barplot(x = "RNA aligner", y = "Average sum-of-pairs score", data = data_frame)
+  ax = seaborn.barplot(x = "RNA structural aligner", y = "Average sum-of-pairs score", data = data_frame)
   fig = ax.get_figure()
   fig.tight_layout()
   fig.savefig(image_dir_path + "/rna_aligner_spss.eps", bbox_inches = "tight")
@@ -278,9 +278,9 @@ def main():
   fig.savefig(image_dir_path + "/consalign_model_comparison_f1_score_scoring_model.eps", bbox_inches = "tight")
   fig.clf()
   mccs = [consalign_mcc_ensemble, consalign_mcc_turner, consalign_mcc_trained]
-  data = {"Average Matthews correlation coefficient": mccs, "Structural alignment scoring model": ["Ensemble", "Turner", "Trained"],}
+  data = {"Average MCC": mccs, "Structural alignment scoring model": ["Ensemble", "Turner", "Trained"],}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.barplot(x = "Structural alignment scoring model", y = "Average Matthews correlation coefficient", data = data_frame)
+  ax = seaborn.barplot(x = "Structural alignment scoring model", y = "Average MCC", data = data_frame)
   fig = ax.get_figure()
   fig.tight_layout()
   fig.savefig(image_dir_path + "/consalign_model_comparison_mcc_scoring_model.eps", bbox_inches = "tight")
@@ -294,7 +294,7 @@ def main():
   fig.savefig(image_dir_path + "/consalign_model_comparison_sps_scoring_model.eps", bbox_inches = "tight")
   fig.clf()
   f1_scores = [consalign_f1_score_trained, consalign_f1_score_trained_random_init, consalign_f1_score_transferred_only]
-  data = {"Average F1 score": f1_scores, "Scoring parameter training type": ["Transferred & trained", "Initialized to random\nvalues & trained", "Transferred only"],}
+  data = {"Average F1 score": f1_scores, "Scoring parameter training type": ["Transfer-learned", "Random-learned", "Transferred only"],}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.barplot(x = "Scoring parameter training type", y = "Average F1 score", data = data_frame)
   fig = ax.get_figure()
@@ -302,15 +302,15 @@ def main():
   fig.savefig(image_dir_path + "/consalign_model_comparison_f1_score_train_type.eps", bbox_inches = "tight")
   fig.clf()
   mccs = [consalign_mcc_trained, consalign_mcc_trained_random_init, consalign_mcc_transferred_only]
-  data = {"Average Matthews correlation coefficient": mccs, "Scoring parameter training type": ["Transferred & trained", "Initialized to random\nvalues & trained", "Transferred only"],}
+  data = {"Average MCC": mccs, "Scoring parameter training type": ["Transfer-learned", "Random-learned", "Transferred only"],}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.barplot(x = "Scoring parameter training type", y = "Average Matthews correlation coefficient", data = data_frame)
+  ax = seaborn.barplot(x = "Scoring parameter training type", y = "Average MCC", data = data_frame)
   fig = ax.get_figure()
   fig.tight_layout()
   fig.savefig(image_dir_path + "/consalign_model_comparison_mcc_train_type.eps", bbox_inches = "tight")
   fig.clf()
   spss = [consalign_sps_trained, consalign_sps_trained_random_init, consalign_sps_transferred_only]
-  data = {"Average sum-of-pairs score": spss, "Scoring parameter training type": ["Transferred & trained", "Initialized to random\nvalues & trained", "Transferred only"],}
+  data = {"Average sum-of-pairs score": spss, "Scoring parameter training type": ["Transfer-learned", "Random-learned", "Transferred only"],}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.barplot(x = "Scoring parameter training type", y = "Average sum-of-pairs score", data = data_frame)
   fig = ax.get_figure()

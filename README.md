@@ -1,24 +1,25 @@
-# ConsProb, which Estimates Average Posterior Probabilities on Sparse Global Pairwise RNA Structural Alignment
+# Trainable Probability Inference Engine on RNA Structural Alignment
 # Installation
-This project has been written in Rust, a systems programming language.
-You need to install the Rust components, which are rustc (the Rust compiler), cargo (the Rust package manager), and the Rust standard library.
-Visit [the Rust website](https://www.rust-lang.org) to see more about the language.
-You can install the components with one line as follows:
+This project is written in Rust, a systems programming language.
+You need to install Rust components, i.e., rustc (the Rust compiler), cargo (the Rust package manager), and the Rust standard library.
+Visit [the Rust website](https://www.rust-lang.org) to see more about Rust.
+You can install Rust components with the following one line:
 ```bash
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
-The installation is arranged by [Rustup](https://github.com/rust-lang-nursery/rustup.rs), which enables to switch easily a compiler in use.
-You can install ConsProb: 
+[Rustup](https://github.com/rust-lang-nursery/rustup.rs) arranges the above installation and enables to switch a compiler in use easily.
+You can install ConsProb:
 ```bash
-$ cargo install consprob
+$ # AVX, SSE, and MMX enabled for rustc (another example: RUSTFLAGS='--emit asm -C target-feature=+avx2 -C target-feature=+ssse3 -C target-feature=+mmx -C target-feature=+fma')
+$ RUSTFLAGS='--emit asm -C target-feature=+avx -C target-feature=+ssse3 -C target-feature=+mmx' cargo install consprob-trained
 ```
-Check if the program has been installed properly:
+Check if you have installed ConsProb properly:
 ```bash
-$ consprob # Its available command options will be displayed.
+$ consprob_trained # Its available command options will be displayed
 ```
-You can run the program with a prepared test set of sampled tRNAs:
+You can run ConsProb with a prepared test set of sampled tRNAs:
 ```bash
-$ git clone https://github.com/heartsh/consprob && cd consprob
+$ git clone https://github.com/heartsh/consprob-trained && cd consprob-trained
 $ cargo test --release -- --nocapture
 ```
 
