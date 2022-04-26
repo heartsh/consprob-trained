@@ -1,6 +1,6 @@
 extern crate consprob;
 extern crate bio;
-extern crate bfgs;
+extern crate my_bfgs as bfgs;
 extern crate ndarray;
 extern crate ndarray_rand;
 extern crate rand;

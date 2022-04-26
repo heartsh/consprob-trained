@@ -17,7 +17,7 @@ bio = "0.20"
 num_cpus = "1.0"
 itertools = "0.7"
 hashbrown = "0.3"
-bfgs = {git = "https://github.com/heartsh/bfgs"}
+my-bfgs = "0.1"
 ndarray = "0.14"
 ndarray-rand = "0.13"
 rand = "0.8"
