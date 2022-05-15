@@ -63,38 +63,41 @@ def run_command(command):
 
 def get_sss(ss_file_path):
   sss = []
-  if ss_file_path.endswith(".fa"):
-    ss_strings = []
-    ss_strings = [rec.seq for rec in SeqIO.parse(ss_file_path, "fasta")]
-    sss = []
-    for (i, ss_string) in enumerate(ss_strings):
-      sss.append({})
-      for (left, right) in bracket_pairs:
-        stack = []
-        for (j, char) in enumerate(ss_string):
-          if char == left:
-            stack.append(j)
-          elif char == right:
-            pos = stack.pop()
-            sss[i][(pos, j)] = True
-  else:
-    sss = read_bpseq_file(ss_file_path)
+  ss_strings = []
+  ss_strings = [rec.seq for rec in SeqIO.parse(ss_file_path, "fasta")]
+  sss = []
+  for (i, ss_string) in enumerate(ss_strings):
+    sss.append({})
+    for (left, right) in bracket_pairs:
+      stack = []
+      for (j, char) in enumerate(ss_string):
+        if char == left:
+          stack.append(j)
+        elif char == right:
+          pos = stack.pop()
+          sss[i][(pos, j)] = True
   return sss
 
-def read_bpseq_file(ss_file_path):
+def get_sss_ct(ss_dir_path):
   sss = []
-  idx = 0
+  for ss_file in os.listdir(ss_dir_path):
+    if not ss_file.endswith(".ct"):
+      continue
+    ss_file_path = os.path.join(ss_dir_path, ss_file)
+    ss = read_ct_file(ss_file_path)
+    sss.append(ss)
+  return sss
+
+def read_ct_file(ss_file_path):
+  ss = {}
   with open(ss_file_path) as ss_file:
     for line in ss_file.readlines():
       line = line.strip()
-      if len(line) == 0 or line.startswith("#") or "accuracy=" in line:
-        continue
-      if line.startswith("1 "):
-        sss.append({})
-        idx += 1
       splits = line.split()
-      (left_partner, right_partner) = (int(splits[0]), int(splits[2]))
+      if len(splits) != 6:
+        continue
+      (left_partner, right_partner) = (int(splits[0]), int(splits[4]))
       if right_partner == 0:
         continue
-      sss[idx - 1][(left_partner - 1, right_partner - 1)] = True
-  return sss
+      ss[(left_partner - 1, right_partner - 1)] = True
+  return ss

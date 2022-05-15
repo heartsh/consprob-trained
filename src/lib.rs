@@ -1404,7 +1404,7 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
 }
 
 pub const DEFAULT_MIN_BPP_TRAIN: Prob = DEFAULT_MIN_BPP;
-pub const DEFAULT_MIN_ALIGN_PROB_TRAIN: Prob = DEFAULT_MIN_BPP_TRAIN;
+pub const DEFAULT_MIN_ALIGN_PROB_TRAIN: Prob = DEFAULT_MIN_ALIGN_PROB;
 pub const NUM_OF_BASEPAIRINGS: usize = 6;
 pub const CONSPROB_MAX_HAIRPIN_LOOP_LEN: usize = 30;
 pub const CONSPROB_MAX_TWOLOOP_LEN: usize = CONSPROB_MAX_HAIRPIN_LOOP_LEN;
@@ -4470,7 +4470,7 @@ where
     }
     let cost = feature_score_sets.get_cost(&train_data[..], &regularizers);
     let avg_cost_update_amount = (old_cost - cost) / num_of_data;
-    if old_cost.is_finite() && avg_cost_update_amount <= LEARNING_TOLERANCE {
+    if avg_cost_update_amount < 0. {
       feature_score_sets = old_feature_score_sets.clone();
       break;
     }
@@ -4479,6 +4479,9 @@ where
     old_cost = cost;
     println!("Epoch {} finished (current cost = {}, average cost update amount = {})", count + 1, cost, avg_cost_update_amount);
     count += 1;
+    if avg_cost_update_amount <= LEARNING_TOLERANCE {
+      break;
+    }
   }
   write_feature_score_sets_trained(&feature_score_sets, enables_random_init);
   write_costs(&costs, output_file_path);

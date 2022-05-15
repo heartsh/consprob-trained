@@ -91,7 +91,6 @@ fn main() {
   };
   let produces_struct_profs = matches.opt_present("s");
   let produces_align_probs = matches.opt_present("a");
-  let uses_transferred_params = matches.opt_present("u");
   let output_dir_path = matches.opt_str("o").unwrap();
   let output_dir_path = Path::new(&output_dir_path);
   let fasta_file_reader = Reader::from_file(Path::new(&input_file_path)).unwrap();
