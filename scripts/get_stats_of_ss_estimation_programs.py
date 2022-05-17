@@ -225,8 +225,8 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/rna_aligner_scis_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
-  f1_scores = [consalign_f1_score_ensemble, consalign_f1_score_turner, consalign_f1_score_trained]
-  mccs = [consalign_mcc_ensemble, consalign_mcc_turner, consalign_mcc_trained]
+  f1_scores = [consalign_f1_score_disabled_alifold, consalign_f1_score_turner, consalign_f1_score_trained]
+  mccs = [consalign_mcc_disabled_alifold, consalign_mcc_turner, consalign_mcc_trained]
   data = {"Structure prediction accuracy": f1_scores + mccs, "Structural alignment scoring model": ["Ensemble", "Turner", "Trained"] * 2, "Structure accuracy type": ["F1 score"] * 3 + ["Matthews correlation coefficient"] * 3}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.barplot(x = "Structural alignment scoring model", y = "Structure prediction accuracy", data = data_frame, hue = "Structure accuracy type")
@@ -234,21 +234,21 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_scoring_model.eps", bbox_inches = "tight")
   pyplot.clf()
-  spss = [consalign_sps_ensemble, consalign_sps_turner, consalign_sps_trained]
+  spss = [consalign_sps_disabled_alifold, consalign_sps_turner, consalign_sps_trained]
   data = {"Sum-of-pairs score": spss, "Structural alignment scoring model": ["Ensemble", "Turner", "Trained"],}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.scatterplot(x = "Structural alignment scoring model", y = "Sum-of-pairs score", data = data_frame, zorder = 10, marker = "+", color = "white", s = 100)
-  data = {"Sum-of-pairs score": consalign_spss_ensemble + consalign_spss_turner + consalign_spss_trained, "Structural alignment scoring model": ["Ensemble"] * len(consalign_spss_ensemble) + ["Turner"] * len(consalign_spss_turner) + ["Trained"] * len(consalign_spss_trained)}
+  data = {"Sum-of-pairs score": consalign_spss_disabled_alifold + consalign_spss_turner + consalign_spss_trained, "Structural alignment scoring model": ["Ensemble"] * len(consalign_spss_disabled_alifold) + ["Turner"] * len(consalign_spss_turner) + ["Trained"] * len(consalign_spss_trained)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.boxplot(x = "Structural alignment scoring model", y = "Sum-of-pairs score", data = data_frame, sym = "")
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_spss_scoring_model_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
-  scis = [consalign_sci_ensemble, consalign_sci_turner, consalign_sci_trained]
+  scis = [consalign_sci_disabled_alifold, consalign_sci_turner, consalign_sci_trained]
   data = {"Structure conservation index": scis, "Structural alignment scoring model": ["Ensemble", "Turner", "Trained"],}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.scatterplot(x = "Structural alignment scoring model", y = "Structure conservation index", data = data_frame, zorder = 10, marker = "+", color = "white", s = 100)
-  data = {"Structure conservation index": consalign_scis_ensemble + consalign_scis_turner + consalign_scis_trained, "Structural alignment scoring model": ["Ensemble"] * len(consalign_scis_ensemble) + ["Turner"] * len(consalign_scis_turner) + ["Trained"] * len(consalign_scis_trained)}
+  data = {"Structure conservation index": consalign_scis_disabled_alifold + consalign_scis_turner + consalign_scis_trained, "Structural alignment scoring model": ["Ensemble"] * len(consalign_scis_disabled_alifold) + ["Turner"] * len(consalign_scis_turner) + ["Trained"] * len(consalign_scis_trained)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.boxplot(x = "Structural alignment scoring model", y = "Structure conservation index", data = data_frame, sym = "")
   pyplot.tight_layout()

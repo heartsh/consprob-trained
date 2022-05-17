@@ -27,6 +27,11 @@ def main():
   sparse_params = []
   consalign_params = []
   consalign_params_disabled_alifold = []
+  consalign_params_turner = []
+  consalign_params_trained = []
+  consalign_params_trained_transfer = []
+  consalign_params_trained_random_init = []
+  consalign_params_transferred_only = []
   turbofold_params = []
   raf_dir_path = asset_dir_path + "/raf_rnastralign"
   locarna_dir_path = asset_dir_path + "/locarna_rnastralign"
@@ -35,6 +40,10 @@ def main():
   turbofold_dir_path = asset_dir_path + "/turbofold_rnastralign"
   consalign_dir_path = asset_dir_path + "/consalign_rnastralign"
   consalign_dir_path_disabled_alifold = asset_dir_path + "/consalign_rnastralign_disabled_alifold"
+  consalign_dir_path_turner = asset_dir_path + "/consalign_rnastralign_turner"
+  consalign_dir_path_trained_transfer = asset_dir_path + "/consalign_rnastralign_trained_transfer"
+  consalign_dir_path_trained_random_init = asset_dir_path + "/consalign_rnastralign_trained_random_init"
+  consalign_dir_path_transferred_only = asset_dir_path + "/consalign_rnastralign_transferred_only"
   if not os.path.isdir(raf_dir_path):
     os.mkdir(raf_dir_path)
   if not os.path.isdir(locarna_dir_path):
@@ -47,6 +56,14 @@ def main():
     os.mkdir(consalign_dir_path)
   if not os.path.isdir(consalign_dir_path_disabled_alifold):
     os.mkdir(consalign_dir_path_disabled_alifold)
+  if not os.path.isdir(consalign_dir_path_turner):
+    os.mkdir(consalign_dir_path_turner)
+  if not os.path.isdir(consalign_dir_path_trained_transfer):
+    os.mkdir(consalign_dir_path_trained_transfer)
+  if not os.path.isdir(consalign_dir_path_trained_random_init):
+    os.mkdir(consalign_dir_path_trained_random_init)
+  if not os.path.isdir(consalign_dir_path_transferred_only):
+    os.mkdir(consalign_dir_path_transferred_only)
   if not os.path.isdir(turbofold_dir_path):
     os.mkdir(turbofold_dir_path)
   rna_dir_path = asset_dir_path + "/RNAStrAlign_sampled"
@@ -62,6 +79,10 @@ def main():
     turbofold_sub_dir_path = os.path.join(turbofold_dir_path, rna_sub_dir)
     consalign_sub_dir_path = os.path.join(consalign_dir_path, rna_sub_dir)
     consalign_sub_dir_path_disabled_alifold = os.path.join(consalign_dir_path_disabled_alifold, rna_sub_dir)
+    consalign_sub_dir_path_turner = os.path.join(consalign_dir_path_turner, rna_sub_dir)
+    consalign_sub_dir_path_trained_transfer = os.path.join(consalign_dir_path_trained_transfer, rna_sub_dir)
+    consalign_sub_dir_path_trained_random_init = os.path.join(consalign_dir_path_trained_random_init, rna_sub_dir)
+    consalign_sub_dir_path_transferred_only = os.path.join(consalign_dir_path_transferred_only, rna_sub_dir)
     if not os.path.isdir(raf_sub_dir_path):
       os.mkdir(raf_sub_dir_path)
     if not os.path.isdir(locarna_sub_dir_path):
@@ -74,6 +95,14 @@ def main():
       os.mkdir(consalign_sub_dir_path)
     if not os.path.isdir(consalign_sub_dir_path_disabled_alifold):
       os.mkdir(consalign_sub_dir_path_disabled_alifold)
+    if not os.path.isdir(consalign_sub_dir_path_turner):
+      os.mkdir(consalign_sub_dir_path_turner)
+    if not os.path.isdir(consalign_sub_dir_path_trained_transfer):
+      os.mkdir(consalign_sub_dir_path_trained_transfer)
+    if not os.path.isdir(consalign_sub_dir_path_trained_random_init):
+      os.mkdir(consalign_sub_dir_path_trained_random_init)
+    if not os.path.isdir(consalign_sub_dir_path_transferred_only):
+      os.mkdir(consalign_sub_dir_path_transferred_only)
     if not os.path.isdir(turbofold_sub_dir_path):
       os.mkdir(turbofold_sub_dir_path)
     raf_output_file_path = os.path.join(raf_sub_dir_path, rna_sub_dir + ".sth")
@@ -84,12 +113,20 @@ def main():
     locarna_params.insert(0, (rna_file_path, locarna_output_file_path, False))
     dafs_params.insert(0, (rna_file_path, dafs_output_file_path))
     sparse_params.insert(0, (rna_file_path, sparse_output_file_path, True))
-    consalign_params.insert(0, (rna_file_path, consalign_sub_dir_path, sub_thread_num, False))
-    consalign_params_disabled_alifold.insert(0, (rna_file_path, consalign_sub_dir_path_disabled_alifold, sub_thread_num, True))
+    consalign_params.insert(0, (rna_file_path, consalign_sub_dir_path, sub_thread_num, "ensemble", "trained_transfer", False))
+    consalign_params_disabled_alifold.insert(0, (rna_file_path, consalign_sub_dir_path_disabled_alifold, sub_thread_num, "ensemble", "trained_transfer", True))
+    consalign_params_turner.insert(0, (rna_file_path, consalign_sub_dir_path_turner, sub_thread_num, "turner", "trained_transfer", True))
+    consalign_params_trained_transfer.insert(0, (rna_file_path, consalign_sub_dir_path_trained_transfer, sub_thread_num, "trained", "trained_transfer", True))
+    consalign_params_trained_random_init.insert(0, (rna_file_path, consalign_sub_dir_path_trained_random_init, sub_thread_num, "trained", "trained_random_init", True))
+    consalign_params_transferred_only.insert(0, (rna_file_path, consalign_sub_dir_path_transferred_only, sub_thread_num, "trained", "transferred_only", True))
     turbofold_params.insert(0, (rna_file_path, turbofold_sub_dir_path))
   pool = multiprocessing.Pool(int(num_of_threads / sub_thread_num))
   pool.map(run_consalign, consalign_params)
   pool.map(run_consalign, consalign_params_disabled_alifold)
+  pool.map(run_consalign, consalign_params_turner)
+  pool.map(run_consalign, consalign_params_trained_transfer)
+  pool.map(run_consalign, consalign_params_trained_random_init)
+  pool.map(run_consalign, consalign_params_transferred_only)
   pool = multiprocessing.Pool(num_of_threads)
   pool.map(run_raf, raf_params)
   pool.map(run_locarna, locarna_params)
@@ -143,8 +180,8 @@ def run_locarna(locarna_params):
   locarna_output_file.close()
 
 def run_consalign(consalign_params):
-  (rna_file_path, consalign_output_dir_path, sub_thread_num, disables_alifold) = consalign_params
-  consalign_command = "consalign %s-t " % ("-d " if disables_alifold else "") + str(sub_thread_num) + " -i " + rna_file_path + " -o " + consalign_output_dir_path
+  (rna_file_path, consalign_output_dir_path, sub_thread_num, scoring_model, train_type, disables_alifold) = consalign_params
+  consalign_command = "consalign %s-t " % ("-d " if disables_alifold else "") + str(sub_thread_num) + " -i " + rna_file_path + " -o " + consalign_output_dir_path + " -m " + scoring_model + " -u " + train_type
   utils.run_command(consalign_command)
 
 def run_turbofold(turbofold_params):
