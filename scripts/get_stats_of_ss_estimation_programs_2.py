@@ -41,9 +41,11 @@ def main():
     for consalign_output_file in glob.glob("consalign.sth"):
       consalign_estimated_ss_file_path = os.path.join(consalign_estimated_ss_dir_path_ensemble, consalign_output_file)
       consalign_count_params_align_ensemble.insert(0, (consalign_estimated_ss_file_path, ref_sa, rna_seq_lens))
-  consalign_sps_pairs_ensemble = pool.map(get_sps_pair, consalign_count_params_align_ensemble)
-  consalign_spss_ensemble_empirical = map(lambda x: x[0], consalign_sps_pairs_ensemble)
-  consalign_spss_ensemble_expected = map(lambda x: x[1], consalign_sps_pairs_ensemble)
+  consalign_metrics_ensemble = list(pool.map(get_metrics, consalign_count_params_align_ensemble))
+  consalign_spss_ensemble_empirical = list(map(lambda x: x[0], consalign_metrics_ensemble))
+  consalign_spss_ensemble_expected = map(lambda x: x[1], consalign_metrics_ensemble)
+  consalign_gammas_bp_ensemble = list(map(lambda x: x[2], consalign_metrics_ensemble))
+  consalign_gammas_align_ensemble = map(lambda x: x[3], consalign_metrics_ensemble)
   image_dir_path = asset_dir_path + "/images"
   if not os.path.exists(image_dir_path):
     os.mkdir(image_dir_path)
@@ -55,6 +57,12 @@ def main():
   pyplot.savefig(image_dir_path + "/consalign_sps_corr.png", bbox_inches = "tight")
   pyplot.clf()
   print(data_frame.corr())
+  data = {r"$\gamma^{\rm M}$": consalign_gammas_align_ensemble, r"$\gamma^{\rm P}$": consalign_gammas_bp_ensemble}
+  data_frame = pandas.DataFrame(data = data)
+  ax = seaborn.jointplot(x = r"$\gamma^{\rm M}$", y = r"$\gamma^{\rm P}$", data = data_frame, kind = "kde", fill = True)
+  pyplot.tight_layout()
+  pyplot.savefig(image_dir_path + "/consalign_gamma_corr.png", bbox_inches = "tight")
+  pyplot.clf()
 
 def get_bin_counts(params):
   (estimated_ss_file_path, ref_css, rna_seq_lens) = params
@@ -81,7 +89,7 @@ def get_bin_counts(params):
             fn += 1
   return tp, tn, fp, fn
 
-def get_sps_pair(params):
+def get_metrics(params):
   (estimated_sa_file_path, ref_sa, rna_seq_lens) = params
   num_of_rnas = len(rna_seq_lens)
   estimated_sa = AlignIO.read(estimated_sa_file_path, "stockholm" if estimated_sa_file_path.endswith(".sth") else "fasta")
@@ -139,9 +147,14 @@ def get_sps_pair(params):
             tp += 1
   f = open(estimated_sa_file_path, "r")
   line = f.readlines()[1]
-  splits = line.split("=")
-  expected_sps = float(splits[-1])
-  return (tp / total, expected_sps)
+  splits = line.split()
+  string = splits[-1]
+  expected_sps = float(string.split("=")[-1])
+  string = splits[-2]
+  gamma_bp = float(string.split("=")[-1])
+  string = splits[-3]
+  gamma_align = float(string.split("=")[-1])
+  return (tp / total, expected_sps, gamma_bp, gamma_align)
 
 def get_sci(params):
   (estimated_sa_file_path, ref_sa, rna_seq_lens) = params
