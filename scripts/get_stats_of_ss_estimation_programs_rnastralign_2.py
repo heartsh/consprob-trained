@@ -56,7 +56,7 @@ def main():
   data = {"Empirical sum-of-pairs score": consalign_spss_empirical, "Expected sum-of-pairs score": consalign_spss_expected}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.jointplot(x = "Empirical sum-of-pairs score", y = "Expected sum-of-pairs score", data = data_frame, kind = "kde", fill = True)
-  ax.plot_joint(seaborn.regplot, marker = "", color = color_palette[1])
+  ax.plot_joint(seaborn.regplot, scatter = False, color = color_palette[1])
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_sps_corr_rnastralign.png", bbox_inches = "tight")
   pyplot.clf()

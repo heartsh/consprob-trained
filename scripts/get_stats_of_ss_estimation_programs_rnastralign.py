@@ -19,6 +19,7 @@ seaborn.set(font_scale = 1.2)
 color_palette = seaborn.color_palette()
 color_palette_2 = seaborn.color_palette("Set2")
 white = "#F2F2F2"
+meanprops = {"marker": "+", "markerfacecolor": "white", "markeredgecolor": "white"}
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
@@ -128,78 +129,56 @@ def main():
   consalign_mcc = get_mcc(results)
   consalign_spss = pool.map(get_sps, consalign_count_params_align)
   consalign_scis = pool.map(get_sci, consalign_count_params_align)
-  consalign_sps = numpy.mean(consalign_spss)
-  consalign_sci = numpy.mean(consalign_scis)
   results = numpy.sum(pool.map(get_bin_counts, consalign_count_params_disabled_alifold), axis = 0).tolist()
   consalign_f1_score_disabled_alifold = get_f1_score(results)
   consalign_mcc_disabled_alifold = get_mcc(results)
   consalign_spss_disabled_alifold = pool.map(get_sps, consalign_count_params_align_disabled_alifold)
   consalign_scis_disabled_alifold = pool.map(get_sci, consalign_count_params_align_disabled_alifold)
-  consalign_sps_disabled_alifold = numpy.mean(consalign_spss_disabled_alifold)
-  consalign_sci_disabled_alifold = numpy.mean(consalign_scis_disabled_alifold)
   results = numpy.sum(pool.map(get_bin_counts, consalign_count_params_turner), axis = 0).tolist()
   consalign_f1_score_turner = get_f1_score(results)
   consalign_mcc_turner = get_mcc(results)
   consalign_spss_turner = pool.map(get_sps, consalign_count_params_align_turner)
   consalign_scis_turner = pool.map(get_sci, consalign_count_params_align_turner)
-  consalign_sps_turner = numpy.mean(consalign_spss_turner)
-  consalign_sci_turner = numpy.mean(consalign_scis_turner)
   results = numpy.sum(pool.map(get_bin_counts, consalign_count_params_trained), axis = 0).tolist()
   consalign_f1_score_trained = get_f1_score(results)
   consalign_mcc_trained = get_mcc(results)
   consalign_spss_trained = pool.map(get_sps, consalign_count_params_align_trained)
   consalign_scis_trained = pool.map(get_sci, consalign_count_params_align_trained)
-  consalign_sps_trained = numpy.mean(consalign_spss_trained)
-  consalign_sci_trained = numpy.mean(consalign_scis_trained)
   results = numpy.sum(pool.map(get_bin_counts, consalign_count_params_trained_random_init), axis = 0).tolist()
   consalign_f1_score_trained_random_init = get_f1_score(results)
   consalign_mcc_trained_random_init = get_mcc(results)
   consalign_spss_trained_random_init = pool.map(get_sps, consalign_count_params_align_trained_random_init)
   consalign_scis_trained_random_init = pool.map(get_sci, consalign_count_params_align_trained_random_init)
-  consalign_sps_trained_random_init = numpy.mean(consalign_spss_trained_random_init)
-  consalign_sci_trained_random_init = numpy.mean(consalign_scis_trained_random_init)
   results = numpy.sum(pool.map(get_bin_counts, consalign_count_params_transferred_only), axis = 0).tolist()
   consalign_f1_score_transferred_only = get_f1_score(results)
   consalign_mcc_transferred_only = get_mcc(results)
   consalign_spss_transferred_only = pool.map(get_sps, consalign_count_params_align_transferred_only)
   consalign_scis_transferred_only = pool.map(get_sci, consalign_count_params_align_transferred_only)
-  consalign_sps_transferred_only = numpy.mean(consalign_spss_transferred_only)
-  consalign_sci_transferred_only = numpy.mean(consalign_scis_transferred_only)
   results = numpy.sum(pool.map(get_bin_counts, raf_count_params), axis = 0).tolist()
   raf_f1_score = get_f1_score(results)
   raf_mcc = get_mcc(results)
   raf_spss = pool.map(get_sps, raf_count_params_align)
   raf_scis = pool.map(get_sci, raf_count_params_align)
-  raf_sps = numpy.mean(raf_spss)
-  raf_sci = numpy.mean(raf_scis)
   results = numpy.sum(pool.map(get_bin_counts, locarna_count_params), axis = 0).tolist()
   locarna_f1_score = get_f1_score(results)
   locarna_mcc = get_mcc(results)
   locarna_spss = pool.map(get_sps, locarna_count_params_align)
   locarna_scis = pool.map(get_sci, locarna_count_params_align)
-  locarna_sps = numpy.mean(locarna_spss)
-  locarna_sci = numpy.mean(locarna_scis)
   results = numpy.sum(pool.map(get_bin_counts, dafs_count_params), axis = 0).tolist()
   dafs_f1_score = get_f1_score(results)
   dafs_mcc = get_mcc(results)
   dafs_spss = pool.map(get_sps, dafs_count_params_align)
   dafs_scis = pool.map(get_sci, dafs_count_params_align)
-  dafs_sps = numpy.mean(dafs_spss)
-  dafs_sci = numpy.mean(dafs_scis)
   results = numpy.sum(pool.map(get_bin_counts, sparse_count_params), axis = 0).tolist()
   sparse_f1_score = get_f1_score(results)
   sparse_mcc = get_mcc(results)
   sparse_spss = pool.map(get_sps, sparse_count_params_align)
   sparse_scis = pool.map(get_sci, sparse_count_params_align)
-  sparse_sps = numpy.mean(sparse_spss)
-  sparse_sci = numpy.mean(sparse_scis)
   results = numpy.sum(pool.map(get_bin_counts, turbofold_count_params), axis = 0).tolist()
   turbofold_f1_score = get_f1_score(results)
   turbofold_mcc = get_mcc(results)
   turbofold_spss = pool.map(get_sps, turbofold_count_params_align)
   turbofold_scis = pool.map(get_sci, turbofold_count_params_align)
-  turbofold_sps = numpy.mean(turbofold_spss)
-  turbofold_sci = numpy.mean(turbofold_scis)
   data = {"Structure prediction accuracy": [consalign_f1_score, raf_f1_score, locarna_f1_score, dafs_f1_score, sparse_f1_score, turbofold_f1_score] + [consalign_mcc, raf_mcc, locarna_mcc, dafs_mcc, sparse_mcc, turbofold_mcc], "RNA structural aligner": ["ConsAlign", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"] * 2, "Structure accuracy type": ["F1 score"] * 6 + ["Matthews correlation coefficient"] * 6}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.barplot(x = "RNA structural aligner", y = "Structure prediction accuracy", data = data_frame, hue = "Structure accuracy type")
@@ -207,23 +186,14 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/rna_aligner_rnastralign.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Sum-of-pairs score": [consalign_sps, raf_sps, locarna_sps, dafs_sps, sparse_sps, turbofold_sps], "RNA structural aligner": ["ConsAlign", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"]}
+  spss = consalign_spss + raf_spss + locarna_spss + dafs_spss + sparse_spss + turbofold_spss
+  scis = consalign_scis + raf_scis + locarna_scis + dafs_scis + sparse_scis + turbofold_scis
+  data = {"Matching prediction accuracy": spss + scis, "RNA structural aligner": ["ConsAlign"] * len(consalign_spss) + ["RAF"] * len(raf_spss) + ["LocARNA"] * len(locarna_spss) + ["DAFS"] * len(dafs_spss) + ["SPARSE"] * len(sparse_spss) + ["Linear\nTurboFold"] * len(turbofold_spss) + ["ConsAlign"] * len(consalign_scis) + ["RAF"] * len(raf_scis) + ["LocARNA"] * len(locarna_scis) + ["DAFS"] * len(dafs_scis) + ["SPARSE"] * len(sparse_scis) + ["Linear\nTurboFold"] * len(turbofold_scis), "Matching accuracy type": ["Sum-of-pairs score"] * len(spss) + ["Structure conservation index"] * len(scis)}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.scatterplot(x = "RNA structural aligner", y = "Sum-of-pairs score", data = data_frame, zorder = 10, marker = "+", color = "white", s = 100)
-  data = {"Sum-of-pairs score": consalign_spss + raf_spss + locarna_spss + dafs_spss + sparse_spss + turbofold_spss, "RNA structural aligner": ["ConsAlign"] * len(consalign_spss) + ["RAF"] * len(raf_spss) + ["LocARNA"] * len(locarna_spss) + ["DAFS"] * len(dafs_spss) + ["SPARSE"] * len(sparse_spss) + ["Linear\nTurboFold"] * len(turbofold_spss)}
-  data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.boxplot(x = "RNA structural aligner", y = "Sum-of-pairs score", data = data_frame, sym  = "")
+  ax = seaborn.boxplot(x = "RNA structural aligner", y = "Matching prediction accuracy", data = data_frame, sym  = "", hue = "Matching accuracy type", showmeans = True, meanprops = meanprops)
+  ax.set(ylim = (0.28, 1.32))
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/rna_aligner_spss_box_plot_rnastralign.eps", bbox_inches = "tight")
-  pyplot.clf()
-  data = {"Structure conservation index": [consalign_sci, raf_sci, locarna_sci, dafs_sci, sparse_sci, turbofold_sci], "RNA structural aligner": ["ConsAlign", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"]}
-  data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.scatterplot(x = "RNA structural aligner", y = "Structure conservation index", data = data_frame, zorder = 10, marker = "+", color = "white", s = 100)
-  data = {"Structure conservation index": consalign_scis + raf_scis + locarna_scis + dafs_scis + sparse_scis + turbofold_scis, "RNA structural aligner": ["ConsAlign"] * len(consalign_scis) + ["RAF"] * len(raf_scis) + ["LocARNA"] * len(locarna_scis) + ["DAFS"] * len(dafs_scis) + ["SPARSE"] * len(sparse_scis) + ["Linear\nTurboFold"] * len(turbofold_scis)}
-  data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.boxplot(x = "RNA structural aligner", y = "Structure conservation index", data = data_frame, sym  = "")
-  pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/rna_aligner_scis_box_plot_rnastralign.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/rna_aligner_box_plot_rnastralign.eps", bbox_inches = "tight")
   pyplot.clf()
   f1_scores = [consalign_f1_score_disabled_alifold, consalign_f1_score_turner, consalign_f1_score_trained]
   mccs = [consalign_mcc_disabled_alifold, consalign_mcc_turner, consalign_mcc_trained]
@@ -234,25 +204,14 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_scoring_model_rnastralign.eps", bbox_inches = "tight")
   pyplot.clf()
-  spss = [consalign_sps_disabled_alifold, consalign_sps_turner, consalign_sps_trained]
-  data = {"Sum-of-pairs score": spss, "Structural alignment scoring model": ["Ensemble", "Turner", "Trained"],}
+  spss = consalign_spss_disabled_alifold + consalign_spss_turner + consalign_spss_trained
+  scis = consalign_scis_disabled_alifold + consalign_scis_turner + consalign_scis_trained
+  data = {"Matching prediction accuracy": spss + scis, "Structural alignment scoring model": ["Ensemble"] * len(consalign_spss_disabled_alifold) + ["Turner"] * len(consalign_spss_turner) + ["Trained"] * len(consalign_spss_trained) + ["Ensemble"] * len(consalign_scis_disabled_alifold) + ["Turner"] * len(consalign_scis_turner) + ["Trained"] * len(consalign_scis_trained), "Matching accuracy type": ["Sum-of-pairs score"] * len(spss) + ["Structure conservation index"] * len(scis)}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.scatterplot(x = "Structural alignment scoring model", y = "Sum-of-pairs score", data = data_frame, zorder = 10, marker = "+", color = "white", s = 100)
-  data = {"Sum-of-pairs score": consalign_spss_disabled_alifold + consalign_spss_turner + consalign_spss_trained, "Structural alignment scoring model": ["Ensemble"] * len(consalign_spss_disabled_alifold) + ["Turner"] * len(consalign_spss_turner) + ["Trained"] * len(consalign_spss_trained)}
-  data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.boxplot(x = "Structural alignment scoring model", y = "Sum-of-pairs score", data = data_frame, sym = "")
+  ax = seaborn.boxplot(x = "Structural alignment scoring model", y = "Matching prediction accuracy", data = data_frame, sym = "", hue = "Matching accuracy type", showmeans = True, meanprops = meanprops)
+  ax.set(ylim = (0.43, 1.32))
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_model_comparison_spss_scoring_model_box_plot_rnastralign.eps", bbox_inches = "tight")
-  pyplot.clf()
-  scis = [consalign_sci_disabled_alifold, consalign_sci_turner, consalign_sci_trained]
-  data = {"Structure conservation index": scis, "Structural alignment scoring model": ["Ensemble", "Turner", "Trained"],}
-  data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.scatterplot(x = "Structural alignment scoring model", y = "Structure conservation index", data = data_frame, zorder = 10, marker = "+", color = "white", s = 100)
-  data = {"Structure conservation index": consalign_scis_disabled_alifold + consalign_scis_turner + consalign_scis_trained, "Structural alignment scoring model": ["Ensemble"] * len(consalign_scis_disabled_alifold) + ["Turner"] * len(consalign_scis_turner) + ["Trained"] * len(consalign_scis_trained)}
-  data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.boxplot(x = "Structural alignment scoring model", y = "Structure conservation index", data = data_frame, sym = "")
-  pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_model_comparison_scis_scoring_model_box_plot_rnastralign.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/consalign_model_comparison_scoring_model_box_plot_rnastralign.eps", bbox_inches = "tight")
   pyplot.clf()
   f1_scores = [consalign_f1_score_trained, consalign_f1_score_trained_random_init, consalign_f1_score_transferred_only]
   mccs = [consalign_mcc_trained, consalign_mcc_trained_random_init, consalign_mcc_transferred_only]
@@ -263,25 +222,14 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_train_type_rnastralign.eps", bbox_inches = "tight")
   pyplot.clf()
-  spss = [consalign_sps_trained, consalign_sps_trained_random_init, consalign_sps_transferred_only]
-  data = {"Sum-of-pairs score": spss, "Scoring parameter training type": ["Transfer-learned", "Random-learned", "Transferred only"],}
+  spss = consalign_spss_trained + consalign_spss_trained_random_init + consalign_spss_transferred_only
+  scis = consalign_scis_trained + consalign_scis_trained_random_init + consalign_scis_transferred_only
+  data = {"Matching prediction accuracy": spss + scis, "Scoring parameter training type": ["Transfer-learned"] * len(consalign_spss_trained) + ["Random-learned"] * len(consalign_spss_trained_random_init) + ["Transferred only"] * len(consalign_spss_transferred_only) + ["Transfer-learned"] * len(consalign_scis_trained) + ["Random-learned"] * len(consalign_scis_trained_random_init) + ["Transferred only"] * len(consalign_scis_transferred_only), "Matching accuracy type": ["Sum-of-pairs score"] * len(spss) + ["Structure conservation index"] * len(scis)}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.scatterplot(x = "Scoring parameter training type", y = "Sum-of-pairs score", data = data_frame, zorder = 10, marker = "+", color = "white", s = 100)
-  data = {"Sum-of-pairs score": consalign_spss_trained + consalign_spss_trained_random_init + consalign_spss_transferred_only, "Scoring parameter training type": ["Transfer-learned"] * len(consalign_spss_trained) + ["Random-learned"] * len(consalign_spss_trained_random_init) + ["Transferred only"] * len(consalign_spss_transferred_only)}
-  data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.boxplot(x = "Scoring parameter training type", y = "Sum-of-pairs score", data = data_frame, sym = "")
+  ax = seaborn.boxplot(x = "Scoring parameter training type", y = "Matching prediction accuracy", data = data_frame, sym = "", hue = "Matching accuracy type", showmeans = True, meanprops = meanprops)
+  ax.set(ylim = (0.43, 1.32))
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_model_comparison_spss_train_type_box_plot_rnastralign.eps", bbox_inches = "tight")
-  pyplot.clf()
-  scis = [consalign_sci_trained, consalign_sci_trained_random_init, consalign_sci_transferred_only]
-  data = {"Structure conservation index": scis, "Scoring parameter training type": ["Transfer-learned", "Random-learned", "Transferred only"],}
-  data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.scatterplot(x = "Scoring parameter training type", y = "Structure conservation index", data = data_frame, zorder = 10, marker = "+", color = "white", s = 100)
-  data = {"Structure conservation index": consalign_scis_trained + consalign_scis_trained_random_init + consalign_scis_transferred_only, "Scoring parameter training type": ["Transfer-learned"] * len(consalign_scis_trained) + ["Random-learned"] * len(consalign_scis_trained_random_init) + ["Transferred only"] * len(consalign_scis_transferred_only)}
-  data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.boxplot(x = "Scoring parameter training type", y = "Structure conservation index", data = data_frame, sym = "")
-  pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_model_comparison_scis_train_type_box_plot_rnastralign.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/consalign_model_comparison_train_type_box_plot_rnastralign.eps", bbox_inches = "tight")
   pyplot.clf()
 
 def get_bin_counts(params):

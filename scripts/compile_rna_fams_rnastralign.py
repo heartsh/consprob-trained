@@ -39,7 +39,6 @@ def compile_rna_fam(params):
   align_file = rna_fam_dir + ".fasta"
   align_file_path = os.path.join(rna_fam_dir_path, align_file)
   align = AlignIO.read(align_file_path, "fasta")
-  # (rna_fam_name, extension) = os.path.splitext(rna_fam_dir)
   rna_files = [rna_file for rna_file in os.listdir(rna_fam_dir_path) if rna_file.endswith(".seq")]
   num_of_rna_files = len(rna_files)
   indexes = [i for i in range(num_of_rna_files)]

@@ -17,51 +17,56 @@ from statistics import mean
 
 seaborn.set(font_scale = 1.2)
 color_palette = seaborn.color_palette()
+color_palette_2 = seaborn.color_palette("Set2")
 white = "#F2F2F2"
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
   num_of_threads = multiprocessing.cpu_count()
-  consalign_ss_dir_path_ensemble = asset_dir_path + "/consalign_ensemble"
-  rna_fam_dir_path = asset_dir_path + "/test_data"
-  ref_sa_dir_path = asset_dir_path + "/test_ref_sas"
-  pool = multiprocessing.Pool(num_of_threads)
-  consalign_count_params_align_ensemble = []
-  for rna_fam_file in os.listdir(ref_sa_dir_path):
-    if not rna_fam_file.endswith(".sth"):
-      continue
-    (rna_fam_name, extension) = os.path.splitext(rna_fam_file)
-    rna_seq_file_path = os.path.join(rna_fam_dir_path, rna_fam_name + ".fa")
-    rna_seq_lens = [len(rna_seq.seq) for rna_seq in SeqIO.parse(rna_seq_file_path, "fasta")]
-    ref_css_file_path = os.path.join(ref_sa_dir_path, rna_fam_file)
-    ref_css = utils.get_css(ref_css_file_path)
-    ref_sa = AlignIO.read(ref_css_file_path, "stockholm")
-    consalign_estimated_ss_dir_path_ensemble = os.path.join(consalign_ss_dir_path_ensemble, rna_fam_name)
-    os.chdir(consalign_estimated_ss_dir_path_ensemble)
-    for consalign_output_file in glob.glob("consalign.sth"):
-      consalign_estimated_ss_file_path = os.path.join(consalign_estimated_ss_dir_path_ensemble, consalign_output_file)
-      consalign_count_params_align_ensemble.insert(0, (consalign_estimated_ss_file_path, ref_sa, rna_seq_lens))
-  consalign_metrics_ensemble = list(pool.map(get_metrics, consalign_count_params_align_ensemble))
-  consalign_spss_ensemble_empirical = list(map(lambda x: x[0], consalign_metrics_ensemble))
-  consalign_spss_ensemble_expected = map(lambda x: x[1], consalign_metrics_ensemble)
-  consalign_gammas_bp_ensemble = list(map(lambda x: x[2], consalign_metrics_ensemble))
-  consalign_gammas_align_ensemble = map(lambda x: x[3], consalign_metrics_ensemble)
   image_dir_path = asset_dir_path + "/images"
   if not os.path.exists(image_dir_path):
     os.mkdir(image_dir_path)
-  data = {"Empirical sum-of-pairs score": consalign_spss_ensemble_empirical, "Expected sum-of-pairs score": consalign_spss_ensemble_expected}
+  consalign_ss_dir_path = asset_dir_path + "/consalign_bralibase"
+  rna_dir_path = asset_dir_path + "/data-set1_compiled"
+  pool = multiprocessing.Pool(num_of_threads)
+  consalign_count_params_align = []
+  for rna_sub_dir in os.listdir(rna_dir_path):
+    rna_sub_dir_path = os.path.join(rna_dir_path, rna_sub_dir)
+    rna_align_dir_path = os.path.join(rna_sub_dir_path, "structural")
+    rna_seq_dir_path = os.path.join(rna_sub_dir_path, "unaligned")
+    consalign_estimated_ss_dir_path = os.path.join(consalign_ss_dir_path, rna_sub_dir)
+    for rna_file in os.listdir(rna_align_dir_path):
+      (rna_name, extension) = os.path.splitext(rna_file)
+      rna_file_path = os.path.join(rna_seq_dir_path, rna_file)
+      rna_seq_lens = [len(rna_seq.seq) for rna_seq in SeqIO.parse(rna_file_path, "fasta")]
+      ref_sa_file_path = os.path.join(rna_align_dir_path, rna_file)
+      ref_sa = AlignIO.read(ref_sa_file_path, "fasta")
+      consalign_estimated_fin_ss_dir_path = os.path.join(consalign_estimated_ss_dir_path, rna_name)
+      os.chdir(consalign_estimated_fin_ss_dir_path)
+      for consalign_output_file in glob.glob("consalign.sth"):
+        consalign_estimated_ss_file_path = os.path.join(consalign_estimated_fin_ss_dir_path, consalign_output_file)
+        consalign_count_params_align.insert(0, (consalign_estimated_ss_file_path, ref_sa, rna_seq_lens))
+  consalign_metrics = list(pool.map(get_metrics, consalign_count_params_align))
+  consalign_spss_empirical = list(map(lambda x: x[0], consalign_metrics))
+  consalign_spss_expected = list(map(lambda x: x[1], consalign_metrics))
+  consalign_gammas_bp = list(map(lambda x: x[2], consalign_metrics))
+  consalign_gammas_align = list(map(lambda x: x[3], consalign_metrics))
+  image_dir_path = asset_dir_path + "/images"
+  if not os.path.exists(image_dir_path):
+    os.mkdir(image_dir_path)
+  data = {"Empirical sum-of-pairs score": consalign_spss_empirical, "Expected sum-of-pairs score": consalign_spss_expected}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.jointplot(x = "Empirical sum-of-pairs score", y = "Expected sum-of-pairs score", data = data_frame, kind = "kde", fill = True)
   ax.plot_joint(seaborn.regplot, scatter = False, color = color_palette[1])
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_sps_corr.png", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/consalign_sps_corr_bralibase.png", bbox_inches = "tight")
   pyplot.clf()
   print(data_frame.corr())
-  data = {r"$\gamma^{\rm M}$": consalign_gammas_align_ensemble, r"$\gamma^{\rm P}$": consalign_gammas_bp_ensemble}
+  data = {r"$\gamma^{\rm M}$": consalign_gammas_align, r"$\gamma^{\rm P}$": consalign_gammas_bp}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.jointplot(x = r"$\gamma^{\rm M}$", y = r"$\gamma^{\rm P}$", data = data_frame, kind = "kde", fill = True)
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_gamma_corr.png", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/consalign_gamma_corr_bralibase.png", bbox_inches = "tight")
   pyplot.clf()
 
 def get_bin_counts(params):
@@ -169,18 +174,12 @@ def get_sci(params):
 def get_f1_score(result):
   (tp, tn, fp, fn) = result
   denom = tp + 0.5 * (fp + fn)
-  if denom > 0.:
-    return tp / denom
-  else:
-    return float('-inf')
+  return tp / denom
 
 def get_mcc(result):
   (tp, tn, fp, fn) = result
   denom = sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-  if denom > 0.:
-    return (tp * tn - fp * fn) / denom
-  else:
-    return float('-inf')
+  return (tp * tn - fp * fn) / denom
 
 if __name__ == "__main__":
   main()
