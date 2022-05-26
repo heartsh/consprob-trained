@@ -16,9 +16,18 @@ import get_stats_of_ss_estimation_programs_bralibase_2
 
 def main():
   compile_rna_fams.main()
+  compile_rna_fams_rnastralign.main()
+  compile_rna_fams_bralibase.main()
   draw_epochs_vs_costs.main()
   run_ss_estimation_programs.main()
+  run_ss_estimation_programs_rnastralign.main()
+  run_ss_estimation_programs_bralibase.main()
   get_stats_of_ss_estimation_programs.main()
+  get_stats_of_ss_estimation_programs_rnastralign.main()
+  get_stats_of_ss_estimation_programs_bralibase.main()
+  get_stats_of_ss_estimation_programs_2.main()
+  get_stats_of_ss_estimation_programs_rnastralign_2.main()
+  get_stats_of_ss_estimation_programs_bralibase_2.main()
 
 if __name__ == "__main__":
   main()
