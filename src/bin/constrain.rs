@@ -10,7 +10,7 @@ fn main() {
   opts.reqopt(
     "i",
     "input_dir",
-    "A path to an input directory containing RNA structural alignments in STOCKHOLM format",
+    "A path to an input directory containing RNA structural alignments in FASTA format",
     "STR",
   );
   opts.reqopt(
