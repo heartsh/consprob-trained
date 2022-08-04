@@ -108,6 +108,7 @@ pub struct FeatureCountSets {
   pub init_insert_count: FeatureCount,
   pub insert_counts: InsertCounts,
   pub align_count_mat: AlignCountMat,
+  pub basepair_align_count_mat: BasepairAlignCount4dMat,
   pub hairpin_loop_length_counts_cumulative: HairpinLoopLengthCounts,
   pub bulge_loop_length_counts_cumulative: BulgeLoopLengthCounts,
   pub interior_loop_length_counts_cumulative: InteriorLoopLengthCounts,
@@ -204,6 +205,7 @@ impl FeatureCountSets {
       init_insert_count: init_val,
       insert_counts: init_vals,
       align_count_mat: twod_mat,
+      basepair_align_count_mat: fourd_mat,
       hairpin_loop_length_counts_cumulative: [init_val; CONSPROB_MAX_HAIRPIN_LOOP_LEN + 1],
       bulge_loop_length_counts_cumulative: [init_val; CONSPROB_MAX_TWOLOOP_LEN],
       interior_loop_length_counts_cumulative: [init_val; CONSPROB_MAX_TWOLOOP_LEN - 1],
@@ -233,6 +235,7 @@ impl FeatureCountSets {
       + CONSPROB_INSERT_TRANSITION_GROUP_SIZE
       + self.insert_counts.len()
       + self.align_count_mat.len().pow(2)
+      + self.basepair_align_count_mat.len().pow(4)
   }
 
   pub fn update_regularizers(&self, regularizers: &mut Regularizers) {
@@ -300,7 +303,7 @@ impl FeatureCountSets {
     offset += group_size;
     let len = self.stack_count_mat.len();
     let group_size = len.pow(4);
-    let effective_group_size = NUM_OF_BASEPAIRINGS * NUM_OF_BASEPAIRINGS;
+    let mut effective_group_size = 0;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
@@ -308,8 +311,11 @@ impl FeatureCountSets {
         for k in 0 .. len {
           for l in 0 .. len {
             if !is_canonical(&(k, l)) {continue;}
+            let dict_min_stack = get_dict_min_stack(&(i, j), &(k, l));
+            if ((i, j), (k, l)) != dict_min_stack {continue;}
             let count = self.stack_count_mat[i][j][k][l];
             squared_sum += count * count;
+            effective_group_size += 1;
           }
         }
       }
@@ -321,6 +327,8 @@ impl FeatureCountSets {
         for k in 0 .. len {
           for l in 0 .. len {
             if !is_canonical(&(k, l)) {continue;}
+            let dict_min_stack = get_dict_min_stack(&(i, j), &(k, l));
+            if ((i, j), (k, l)) != dict_min_stack {continue;}
             regularizers_tmp[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer;
           }
         }
@@ -416,35 +424,46 @@ impl FeatureCountSets {
     offset += group_size;
     let len = self.base_pair_count_mat.len();
     let group_size = len.pow(2);
-    let effective_group_size = NUM_OF_BASEPAIRINGS;
+    let mut effective_group_size = 0;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
         if !is_canonical(&(i, j)) {continue;}
+        let dict_min_base_pair = get_dict_min_base_pair(&(i, j));
+        if (i, j) != dict_min_base_pair {continue;}
         let count = self.base_pair_count_mat[i][j];
         squared_sum += count * count;
+        effective_group_size += 1;
       }
     }
     let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
         if !is_canonical(&(i, j)) {continue;}
+        let dict_min_base_pair = get_dict_min_base_pair(&(i, j));
+        if (i, j) != dict_min_base_pair {continue;}
         regularizers_tmp[offset + i * len + j] = regularizer;
       }
     }
     offset += group_size;
     let len = self.interior_loop_length_count_mat_explicit.len();
     let group_size = len.pow(2);
+    let mut effective_group_size = 0;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
+        let dict_min_loop_len_pair = get_dict_min_loop_len_pair(&(i, j));
+        if (i, j) != dict_min_loop_len_pair {continue;}
         let count = self.interior_loop_length_count_mat_explicit[i][j];
         squared_sum += count * count;
+        effective_group_size += 1;
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        let dict_min_loop_len_pair = get_dict_min_loop_len_pair(&(i, j));
+        if (i, j) != dict_min_loop_len_pair {continue;}
         regularizers_tmp[offset + i * len + j] = regularizer;
       }
     }
@@ -463,16 +482,22 @@ impl FeatureCountSets {
     offset += group_size;
     let len = self.interior_loop_1x1_length_count_mat.len();
     let group_size = len.pow(2);
+    let mut effective_group_size = 0;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
+        let dict_min_nuc_pair = get_dict_min_nuc_pair(&(i, j));
+        if (i, j) != dict_min_nuc_pair {continue;}
         let count = self.interior_loop_1x1_length_count_mat[i][j];
         squared_sum += count * count;
+        effective_group_size += 1;
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        let dict_min_nuc_pair = get_dict_min_nuc_pair(&(i, j));
+        if (i, j) != dict_min_nuc_pair {continue;}
         regularizers_tmp[offset + i * len + j] = regularizer;
       }
     }
@@ -529,19 +554,61 @@ impl FeatureCountSets {
     offset += group_size;
     let len = self.align_count_mat.len();
     let group_size = len.pow(2);
+    let mut effective_group_size = 0;
     let mut squared_sum = 0.;
     for i in 0 .. len {
       for j in 0 .. len {
+        let dict_min_align = get_dict_min_align(&(i, j));
+        if (i, j) != dict_min_align {continue;}
         let count = self.align_count_mat[i][j];
         squared_sum += count * count;
+        effective_group_size += 1;
       }
     }
-    let regularizer = get_regularizer(group_size, squared_sum);
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
     for i in 0 .. len {
       for j in 0 .. len {
+        let dict_min_align = get_dict_min_align(&(i, j));
+        if (i, j) != dict_min_align {continue;}
         regularizers_tmp[offset + i * len + j] = regularizer;
       }
     }
+    offset += group_size;
+    let len = self.basepair_align_count_mat.len();
+    let group_size = len.pow(4);
+    let mut effective_group_size = 0;
+    let mut squared_sum = 0.;
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let dict_min_align = get_dict_min_basepair_align(&(i, j), &(k, l));
+            if ((i, j), (k, l)) != dict_min_align {continue;}
+            let count = self.basepair_align_count_mat[i][j][k][l];
+            squared_sum += count * count;
+            effective_group_size += 1;
+          }
+        }
+      }
+    }
+    let regularizer = get_regularizer(effective_group_size, squared_sum);
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let dict_min_align = get_dict_min_basepair_align(&(i, j), &(k, l));
+            if ((i, j), (k, l)) != dict_min_align {continue;}
+            regularizers_tmp[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = regularizer;
+          }
+        }
+      }
+    }
+    offset += group_size;
+    assert!(offset == self.get_len());
     *regularizers = Array1::from(regularizers_tmp);
   }
 
@@ -561,7 +628,68 @@ impl FeatureCountSets {
       },
     };
     self.update_regularizers(regularizers);
+    self.mirror();
     self.accumulate();
+  }
+
+  pub fn mirror(&mut self)
+  {
+    for i in 0 .. NUM_OF_BASES {
+      for j in 0 .. NUM_OF_BASES {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. NUM_OF_BASES {
+          for l in 0 .. NUM_OF_BASES {
+            if !is_canonical(&(k, l)) {continue;}
+            let dict_min_stack = get_dict_min_stack(&(i, j), &(k, l));
+            if ((i, j), (k, l)) == dict_min_stack {continue;}
+            self.stack_count_mat[i][j][k][l] = self.stack_count_mat[dict_min_stack.0.0][dict_min_stack.0.1][dict_min_stack.1.0][dict_min_stack.1.1];
+          }
+        }
+      }
+    }
+    for i in 0 .. NUM_OF_BASES {
+      for j in 0 .. NUM_OF_BASES {
+        if !is_canonical(&(i, j)) {continue;}
+        let dict_min_base_pair = get_dict_min_base_pair(&(i, j));
+        if (i, j) == dict_min_base_pair {continue;}
+        self.base_pair_count_mat[i][j] = self.base_pair_count_mat[dict_min_base_pair.0][dict_min_base_pair.1];
+      }
+    }
+    let len = self.interior_loop_length_count_mat_explicit.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        let dict_min_loop_len_pair = get_dict_min_loop_len_pair(&(i, j));
+        if (i, j) == dict_min_loop_len_pair {continue;}
+        self.interior_loop_length_count_mat_explicit[i][j] = self.interior_loop_length_count_mat_explicit[dict_min_loop_len_pair.0][dict_min_loop_len_pair.1];
+      }
+    }
+    for i in 0 .. NUM_OF_BASES {
+      for j in 0 .. NUM_OF_BASES {
+        let dict_min_nuc_pair = get_dict_min_nuc_pair(&(i, j));
+        if (i, j) == dict_min_nuc_pair {continue;}
+        self.interior_loop_1x1_length_count_mat[i][j] = self.interior_loop_1x1_length_count_mat[dict_min_nuc_pair.0][dict_min_nuc_pair.1];
+      }
+    }
+    for i in 0 .. NUM_OF_BASES {
+      for j in 0 .. NUM_OF_BASES {
+        let dict_min_align = get_dict_min_align(&(i, j));
+        if (i, j) == dict_min_align {continue;}
+        self.align_count_mat[i][j] = self.align_count_mat[dict_min_align.0][dict_min_align.1];
+      }
+    }
+    for i in 0 .. NUM_OF_BASES {
+      for j in 0 .. NUM_OF_BASES {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. NUM_OF_BASES {
+          for l in 0 .. NUM_OF_BASES {
+            if !is_canonical(&(k, l)) {continue;}
+            let dict_min_align = get_dict_min_basepair_align(&(i, j), &(k, l));
+            if ((i, j), (k, l)) == dict_min_align {continue;}
+            self.basepair_align_count_mat[i][j][k][l] = self.basepair_align_count_mat[dict_min_align.0.0][dict_min_align.0.1][dict_min_align.1.0][dict_min_align.1.1];
+          }
+        }
+      }
+    }
   }
 
   pub fn accumulate(&mut self)
@@ -600,39 +728,45 @@ impl FeatureCountSets {
     for train_datum in train_data {
       let ref obs = train_datum.observed_feature_count_sets;
       let ref expect = train_datum.expected_feature_count_sets;
-      for i in 0 .. obs.hairpin_loop_length_counts.len() {
-        for j in 0 .. i + 1 {
-          grad.hairpin_loop_length_counts[j] -= obs.hairpin_loop_length_counts[i] - expect.hairpin_loop_length_counts[i];
-        }
+      let len = obs.hairpin_loop_length_counts.len();
+      let mut sum = 0.;
+      for i in (0 .. len).rev() {
+        let obs_count = obs.hairpin_loop_length_counts[i];
+        let expect_count = expect.hairpin_loop_length_counts[i];
+        sum -= obs_count - expect_count;
+        grad.hairpin_loop_length_counts[i] += sum;
       }
-      for i in 0 .. obs.bulge_loop_length_counts.len() {
-        for j in 0 .. i + 1 {
-          grad.bulge_loop_length_counts[j] -= obs.bulge_loop_length_counts[i] - expect.bulge_loop_length_counts[i];
-        }
+      let len = obs.bulge_loop_length_counts.len();
+      let mut sum = 0.;
+      for i in (0 .. len).rev() {
+        let obs_count = obs.bulge_loop_length_counts[i];
+        let expect_count = expect.bulge_loop_length_counts[i];
+        sum -= obs_count - expect_count;
+        grad.bulge_loop_length_counts[i] += sum;
       }
       let len = obs.interior_loop_length_counts.len();
-      for i in 0 .. len {
+      let mut sum = 0.;
+      for i in (0 .. len).rev() {
         let obs_count = obs.interior_loop_length_counts[i];
         let expect_count = expect.interior_loop_length_counts[i];
-        for j in 0 .. i + 1 {
-          grad.interior_loop_length_counts[j] -= obs_count - expect_count;
-        }
+        sum -= obs_count - expect_count;
+        grad.interior_loop_length_counts[i] += sum;
       }
       let len = obs.interior_loop_length_counts_symm.len();
-      for i in 0 .. len {
+      let mut sum = 0.;
+      for i in (0 .. len).rev() {
         let obs_count = obs.interior_loop_length_counts_symm[i];
         let expect_count = expect.interior_loop_length_counts_symm[i];
-        for j in 0 .. i + 1 {
-          grad.interior_loop_length_counts_symm[j] -= obs_count - expect_count;
-        }
+        sum -= obs_count - expect_count;
+        grad.interior_loop_length_counts_symm[i] += sum;
       }
       let len = obs.interior_loop_length_counts_asymm.len();
-      for i in 0 .. len {
+      let mut sum = 0.;
+      for i in (0 .. len).rev() {
         let obs_count = obs.interior_loop_length_counts_asymm[i];
         let expect_count = expect.interior_loop_length_counts_asymm[i];
-        for j in 0 .. i + 1 {
-          grad.interior_loop_length_counts_asymm[j] -= obs_count - expect_count;
-        }
+        sum -= obs_count - expect_count;
+        grad.interior_loop_length_counts_asymm[i] += sum;
       }
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
@@ -641,8 +775,9 @@ impl FeatureCountSets {
             for l in 0 .. NUM_OF_BASES {
               if !is_canonical(&(k, l)) {continue;}
               let dict_min_stack = get_dict_min_stack(&(i, j), &(k, l));
-              let obs_count = obs.stack_count_mat[dict_min_stack.0.0][dict_min_stack.0.1][dict_min_stack.1.0][dict_min_stack.1.1];
-              let expect_count = expect.stack_count_mat[dict_min_stack.0.0][dict_min_stack.0.1][dict_min_stack.1.0][dict_min_stack.1.1];
+              if ((i, j), (k, l)) != dict_min_stack {continue;}
+              let obs_count = obs.stack_count_mat[i][j][k][l];
+              let expect_count = expect.stack_count_mat[i][j][k][l];
               grad.stack_count_mat[i][j][k][l] -= obs_count - expect_count;
             }
           }
@@ -692,8 +827,9 @@ impl FeatureCountSets {
         for j in 0 .. NUM_OF_BASES {
           if !is_canonical(&(i, j)) {continue;}
           let dict_min_base_pair = get_dict_min_base_pair(&(i, j));
-          let obs_count = obs.base_pair_count_mat[dict_min_base_pair.0][dict_min_base_pair.1];
-          let expect_count = expect.base_pair_count_mat[dict_min_base_pair.0][dict_min_base_pair.1];
+          if (i, j) != dict_min_base_pair {continue;}
+          let obs_count = obs.base_pair_count_mat[i][j];
+          let expect_count = expect.base_pair_count_mat[i][j];
           grad.base_pair_count_mat[i][j] -= obs_count - expect_count;
         }
       }
@@ -701,8 +837,9 @@ impl FeatureCountSets {
       for i in 0 .. len {
         for j in 0 .. len {
           let dict_min_loop_len_pair = get_dict_min_loop_len_pair(&(i, j));
-          let obs_count = obs.interior_loop_length_count_mat_explicit[dict_min_loop_len_pair.0][dict_min_loop_len_pair.1];
-          let expect_count = expect.interior_loop_length_count_mat_explicit[dict_min_loop_len_pair.0][dict_min_loop_len_pair.1];
+          if (i, j) != dict_min_loop_len_pair {continue;}
+          let obs_count = obs.interior_loop_length_count_mat_explicit[i][j];
+          let expect_count = expect.interior_loop_length_count_mat_explicit[i][j];
           grad.interior_loop_length_count_mat_explicit[i][j] -= obs_count - expect_count;
         }
       }
@@ -714,8 +851,9 @@ impl FeatureCountSets {
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
           let dict_min_nuc_pair = get_dict_min_nuc_pair(&(i, j));
-          let obs_count = obs.interior_loop_1x1_length_count_mat[dict_min_nuc_pair.0][dict_min_nuc_pair.1];
-          let expect_count = expect.interior_loop_1x1_length_count_mat[dict_min_nuc_pair.0][dict_min_nuc_pair.1];
+          if (i, j) != dict_min_nuc_pair {continue;}
+          let obs_count = obs.interior_loop_1x1_length_count_mat[i][j];
+          let expect_count = expect.interior_loop_1x1_length_count_mat[i][j];
           grad.interior_loop_1x1_length_count_mat[i][j] -= obs_count - expect_count;
         }
       }
@@ -757,9 +895,25 @@ impl FeatureCountSets {
       for i in 0 .. NUM_OF_BASES {
         for j in 0 .. NUM_OF_BASES {
           let dict_min_align = get_dict_min_align(&(i, j));
-          let obs_count = obs.align_count_mat[dict_min_align.0][dict_min_align.1];
-          let expect_count = expect.align_count_mat[dict_min_align.0][dict_min_align.1];
+          if (i, j) != dict_min_align {continue;}
+          let obs_count = obs.align_count_mat[i][j];
+          let expect_count = expect.align_count_mat[i][j];
           grad.align_count_mat[i][j] -= obs_count - expect_count;
+        }
+      }
+      for i in 0 .. NUM_OF_BASES {
+        for j in 0 .. NUM_OF_BASES {
+          if !is_canonical(&(i, j)) {continue;}
+          for k in 0 .. NUM_OF_BASES {
+            for l in 0 .. NUM_OF_BASES {
+              if !is_canonical(&(k, l)) {continue;}
+              let dict_min_align = get_dict_min_basepair_align(&(i, j), &(k, l));
+              if ((i, j), (k, l)) != dict_min_align {continue;}
+              let obs_count = obs.basepair_align_count_mat[i][j][k][l];
+              let expect_count = expect.basepair_align_count_mat[i][j][k][l];
+              grad.basepair_align_count_mat[i][j][k][l] -= obs_count - expect_count;
+            }
+          }
         }
       }
     }
@@ -926,6 +1080,24 @@ impl FeatureCountSets {
         }
       }
     }
+    let len = self.basepair_align_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            let v = normal.sample(&mut thread_rng);
+            if self.basepair_align_count_mat[i][j][k][l] == 0. {
+              self.basepair_align_count_mat[i][j][k][l] = v;
+            }
+            if self.basepair_align_count_mat[k][l][i][j] == 0. {
+              self.basepair_align_count_mat[k][l][i][j] = v;
+            }
+          }
+        }
+      }
+    }
     self.accumulate();
   }
 
@@ -1035,6 +1207,18 @@ impl FeatureCountSets {
         self.align_count_mat[i][j] = MATCH_SCORE_MAT[i][j];
       }
     }
+    let len = self.align_count_mat.len();
+    for i in 0 .. len {
+      for j in 0 .. len {
+        if !is_canonical(&(i, j)) {continue;}
+        for k in 0 .. len {
+          for l in 0 .. len {
+            if !is_canonical(&(k, l)) {continue;}
+            self.basepair_align_count_mat[i][j][k][l] = RIBOSUM_BPA_SCORE_MAT[&((i, j), (k, l))];
+          }
+        }
+      }
+    }
     self.accumulate();
   }
 }
@@ -1114,8 +1298,6 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
     for i in 0 .. align_len {
       let char_pair = (seq_pair.0[i], seq_pair.1[i]);
       if dot_bracket_notation[i] != UNPAIRING_BASE {
-        let dict_min_align = get_dict_min_align(&char_pair);
-        self.observed_feature_count_sets.align_count_mat[dict_min_align.0][dict_min_align.1] += 1.;
         if i == 0 {
           self.observed_feature_count_sets.init_match_count += 1.;
         } else {
@@ -1195,6 +1377,8 @@ impl<T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync
         self.observed_feature_count_sets.base_pair_count_mat[dict_min_base_pair_1.0][dict_min_base_pair_1.1] += 1.;
         let dict_min_base_pair_2 = get_dict_min_base_pair(&base_pair_2);
         self.observed_feature_count_sets.base_pair_count_mat[dict_min_base_pair_2.0][dict_min_base_pair_2.1] += 1.;
+        let dict_min_basepair_align = get_dict_min_basepair_align(&base_pair_1, &base_pair_2);
+        self.observed_feature_count_sets.basepair_align_count_mat[dict_min_basepair_align.0.0][dict_min_basepair_align.0.1][dict_min_basepair_align.1.0][dict_min_basepair_align.1.1] += 1.;
       }
     }
     let mut loop_struct = HashMap::<(usize, usize), Vec<(usize, usize)>>::default();
@@ -1492,6 +1676,7 @@ pub const CONSPROB_MATCH_TRANSITION_GROUP_SIZE: usize = 3;
 pub const CONSPROB_INSERT_TRANSITION_GROUP_SIZE: usize = 2;
 pub const GAMMA_DIST_ALPHA: FeatureCount = 0.;
 pub const GAMMA_DIST_BETA: FeatureCount = 1.;
+pub const LEARNING_TOLERANCE: FeatureCount = 0.17;
 pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH: &'static str = "../src/trained_feature_score_sets.rs";
 pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH_RANDOM_INIT: &'static str = "../src/trained_feature_score_sets_random_init.rs";
 pub const README_FILE_NAME: &str = "README.md";
@@ -1621,7 +1806,7 @@ where
               matchable_pos_sets_2,
             );
             let mut sum = NEG_INFINITY;
-            let basepair_align_score = feature_score_sets.align_count_mat[base_pair.0][base_pair_2.0] + feature_score_sets.align_count_mat[base_pair.1][base_pair_2.1];
+            let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair.0][base_pair.1][base_pair_2.0][base_pair_2.1];
             if substr_len_1.to_usize().unwrap() - 2 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN && substr_len_2.to_usize().unwrap() - 2 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN {
               let hairpin_loop_score = bp_score_param_set_pair.0.hairpin_loop_scores[&(i, j)];
               let hairpin_loop_score_2 = bp_score_param_set_pair.1.hairpin_loop_scores[&(k, l)];
@@ -2697,7 +2882,7 @@ where
                                 }
                                 None => {}
                               }
-                              let basepair_align_score = feature_score_sets.align_count_mat[base_pair_3.0][base_pair_4.0] + feature_score_sets.align_count_mat[base_pair_3.1][base_pair_4.1];
+                              let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair_3.0][base_pair_3.1][base_pair_4.0][base_pair_4.1];
                               let twoloop_score = bp_score_param_set_pair.0.twoloop_scores[&(m, n, i, j)];
                               let twoloop_score_2 = bp_score_param_set_pair.1.twoloop_scores[&(o, p, k, l)];
                               let coefficient = basepair_align_score + twoloop_score + twoloop_score_2 + part_func;
@@ -2949,10 +3134,8 @@ where
                     logsumexp(&mut expected_feature_count_sets.base_pair_count_mat[dict_min_base_pair.0][dict_min_base_pair.1], bpap);
                     logsumexp(&mut expected_feature_count_sets.base_pair_count_mat[dict_min_base_pair_2.0][dict_min_base_pair_2.1], bpap);
                     // Count alignments.
-                    let dict_min_align = get_dict_min_align(&(base_pair.0, base_pair_2.0));
-                    logsumexp(&mut expected_feature_count_sets.align_count_mat[dict_min_align.0][dict_min_align.1], bpap);
-                    let dict_min_align = get_dict_min_align(&(base_pair.1, base_pair_2.1));
-                    logsumexp(&mut expected_feature_count_sets.align_count_mat[dict_min_align.0][dict_min_align.1], bpap);
+                    let dict_min_align = get_dict_min_basepair_align(&base_pair, &base_pair_2);
+                    logsumexp(&mut expected_feature_count_sets.basepair_align_count_mat[dict_min_align.0.0][dict_min_align.0.1][dict_min_align.1.0][dict_min_align.1.1], bpap);
                   }
                   match sta_prob_mats.bpp_mat_pair.0.get_mut(&(i, j)) {
                     Some(bpp) => {
@@ -2974,7 +3157,7 @@ where
                   logsumexp(&mut sta_prob_mats.bpp_mat_pair_2.0[long_j], bpap);
                   logsumexp(&mut sta_prob_mats.bpp_mat_pair_2.1[long_k], bpap);
                   logsumexp(&mut sta_prob_mats.bpp_mat_pair_2.1[long_l], bpap);
-                  let basepair_align_score = feature_score_sets.align_count_mat[base_pair.0][base_pair_2.0] + feature_score_sets.align_count_mat[base_pair.1][base_pair_2.1];
+                  let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair.0][base_pair.1][base_pair_2.0][base_pair_2.1];
                   let multi_loop_closing_basepairing_score = bp_score_param_set_pair.0.multi_loop_closing_bp_scores[&(i, j)];
                   let multi_loop_closing_basepairing_score_2 = bp_score_param_set_pair.1.multi_loop_closing_bp_scores[&(k, l)];
                   if trains_score_params {
@@ -3298,7 +3481,7 @@ where
       let hairpin_loop_score_2 = if l - k - T::one() <= T::from_usize(CONSPROB_MAX_HAIRPIN_LOOP_LEN).unwrap() {bp_score_param_set_pair.1.hairpin_loop_scores[&(k, l)]} else {NEG_INFINITY};
       let multi_loop_closing_basepairing_score = bp_score_param_set_pair.0.multi_loop_closing_bp_scores[&(i, j)];
       let multi_loop_closing_basepairing_score_2 = bp_score_param_set_pair.1.multi_loop_closing_bp_scores[&(k, l)];
-      let basepair_align_score = feature_score_sets.align_count_mat[base_pair.0][base_pair_2.0] + feature_score_sets.align_count_mat[base_pair.1][base_pair_2.1];
+      let basepair_align_score = feature_score_sets.basepair_align_count_mat[base_pair.0][base_pair.1][base_pair_2.0][base_pair_2.1];
       let prob_coeff = part_func_4_bpa - global_part_func + basepair_align_score;
       let ref forward_tmp_part_func_set_mat =
         sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs[&(i, k)];
@@ -3849,6 +4032,15 @@ where
           *count = expf(*count);
         }
       }
+      for count_3d_mat in expected_feature_count_sets.basepair_align_count_mat.iter_mut() {
+        for count_2d_mat in count_3d_mat.iter_mut() {
+          for counts in count_2d_mat.iter_mut() {
+            for count in counts.iter_mut() {
+              *count = expf(*count);
+            }
+          }
+        }
+      }
     }
   }
   sta_prob_mats
@@ -4211,7 +4403,6 @@ where
   }
   let mut old_feature_score_sets = feature_score_sets.clone();
   let mut old_cost = INFINITY;
-  let mut old_update_amount = old_cost;
   let mut costs = Probs::new();
   let mut count = 0;
   let mut regularizers = Regularizers::from(vec![1.; feature_score_sets.get_len()]);
@@ -4266,12 +4457,11 @@ where
     old_feature_score_sets = feature_score_sets.clone();
     println!("Epoch {} finished (current cost = {}, average cost update amount = {})", count + 1, cost, avg_cost_update_amount);
     count += 1;
-    if avg_cost_update_amount > old_update_amount {
-      println!("Current average cost update {} > old average cost update {} is true; training finished", avg_cost_update_amount, old_update_amount);
+    if avg_cost_update_amount <= LEARNING_TOLERANCE {
+      println!("Average cost update amount {} <= learning tolerance {} is true; training finished", avg_cost_update_amount, LEARNING_TOLERANCE);
       break;
     }
     old_cost = cost;
-    old_update_amount = avg_cost_update_amount;
   }
   write_feature_score_sets_trained(&feature_score_sets, enables_random_init);
   write_costs(&costs, output_file_path);
@@ -4424,8 +4614,12 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   let len = f.stack_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       for k in 0 .. len {
         for l in 0 .. len {
+          if !is_canonical(&(k, l)) {continue;}
+          let dict_min_stack = get_dict_min_stack(&(i, j), &(k, l));
+          if ((i, j), (k, l)) != dict_min_stack {continue;}
           f.stack_count_mat[i][j][k][l] = feature_counts[offset + i * len.pow(3) + j * len.pow(2) + k * len + l];
         }
       }
@@ -4435,6 +4629,7 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   let len = f.terminal_mismatch_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       for k in 0 .. len {
         for l in 0 .. len {
           f.terminal_mismatch_count_mat[i][j][k][l] = feature_counts[offset + i * len.pow(3) + j * len.pow(2) + k * len + l];
@@ -4446,6 +4641,7 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   let len = f.left_dangle_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       for k in 0 .. len {
         f.left_dangle_count_mat[i][j][k] = feature_counts[offset + i * len.pow(2) + j * len + k];
       }
@@ -4455,6 +4651,7 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   let len = f.right_dangle_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       for k in 0 .. len {
         f.right_dangle_count_mat[i][j][k] = feature_counts[offset + i * len.pow(2) + j * len + k];
       }
@@ -4464,6 +4661,7 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   let len = f.helix_end_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       f.helix_end_count_mat[i][j] = feature_counts[offset + i * len + j];
     }
   }
@@ -4471,6 +4669,9 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   let len = f.base_pair_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
+      let dict_min_base_pair = get_dict_min_base_pair(&(i, j));
+      if (i, j) != dict_min_base_pair {continue;}
       f.base_pair_count_mat[i][j] = feature_counts[offset + i * len + j];
     }
   }
@@ -4478,6 +4679,8 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   let len = f.interior_loop_length_count_mat_explicit.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      let dict_min_loop_len_pair = get_dict_min_loop_len_pair(&(i, j));
+      if (i, j) != dict_min_loop_len_pair {continue;}
       f.interior_loop_length_count_mat_explicit[i][j] = feature_counts[offset + i * len + j];
     }
   }
@@ -4490,6 +4693,8 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   let len = f.interior_loop_1x1_length_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      let dict_min_nuc_pair = get_dict_min_nuc_pair(&(i, j));
+      if (i, j) != dict_min_nuc_pair {continue;}
       f.interior_loop_1x1_length_count_mat[i][j] = feature_counts[offset + i * len + j];
     }
   }
@@ -4522,10 +4727,27 @@ pub fn convert_vec_2_struct(feature_counts: &FeatureCounts, uses_cumulative_feat
   let len = f.align_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      let dict_min_align = get_dict_min_align(&(i, j));
+      if (i, j) != dict_min_align {continue;}
       f.align_count_mat[i][j] = feature_counts[offset + i * len + j];
     }
   }
   offset += len.pow(2);
+  let len = f.basepair_align_count_mat.len();
+  for i in 0 .. len {
+    for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
+      for k in 0 .. len {
+        for l in 0 .. len {
+          if !is_canonical(&(k, l)) {continue;}
+          let dict_min_align = get_dict_min_basepair_align(&(i, j), &(k, l));
+          if ((i, j), (k, l)) != dict_min_align {continue;}
+          f.basepair_align_count_mat[i][j][k][l] = feature_counts[offset + i * len.pow(3) + j * len.pow(2) + k * len + l];
+        }
+      }
+    }
+  }
+  offset += len.pow(4);
   assert!(offset == f.get_len());
   f
 }
@@ -4582,8 +4804,12 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   let len = f.stack_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       for k in 0 .. len {
         for l in 0 .. len {
+          if !is_canonical(&(k, l)) {continue;}
+          let dict_min_stack = get_dict_min_stack(&(i, j), &(k, l));
+          if ((i, j), (k, l)) != dict_min_stack {continue;}
           feature_counts[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = f.stack_count_mat[i][j][k][l];
         }
       }
@@ -4593,6 +4819,7 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   let len = f.terminal_mismatch_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       for k in 0 .. len {
         for l in 0 .. len {
           feature_counts[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = f.terminal_mismatch_count_mat[i][j][k][l];
@@ -4604,6 +4831,7 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   let len = f.left_dangle_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       for k in 0 .. len {
         feature_counts[offset + i * len.pow(2) + j * len + k] = f.left_dangle_count_mat[i][j][k];
       }
@@ -4613,6 +4841,7 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   let len = f.right_dangle_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       for k in 0 .. len {
         feature_counts[offset + i * len.pow(2) + j * len + k] = f.right_dangle_count_mat[i][j][k];
       }
@@ -4622,6 +4851,7 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   let len = f.helix_end_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
       feature_counts[offset + i * len + j] = f.helix_end_count_mat[i][j];
     }
   }
@@ -4629,6 +4859,9 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   let len = f.base_pair_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
+      let dict_min_base_pair = get_dict_min_base_pair(&(i, j));
+      if (i, j) != dict_min_base_pair {continue;}
       feature_counts[offset + i * len + j] = f.base_pair_count_mat[i][j];
     }
   }
@@ -4636,6 +4869,8 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   let len = f.interior_loop_length_count_mat_explicit.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      let dict_min_loop_len_pair = get_dict_min_loop_len_pair(&(i, j));
+      if (i, j) != dict_min_loop_len_pair {continue;}
       feature_counts[offset + i * len + j] = f.interior_loop_length_count_mat_explicit[i][j];
     }
   }
@@ -4648,6 +4883,8 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   let len = f.interior_loop_1x1_length_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      let dict_min_nuc_pair = get_dict_min_nuc_pair(&(i, j));
+      if (i, j) != dict_min_nuc_pair {continue;}
       feature_counts[offset + i * len + j] = f.interior_loop_1x1_length_count_mat[i][j];
     }
   }
@@ -4680,10 +4917,27 @@ pub fn convert_struct_2_vec(feature_count_sets: &FeatureCountSets, uses_cumulati
   let len = f.align_count_mat.len();
   for i in 0 .. len {
     for j in 0 .. len {
+      let dict_min_align = get_dict_min_align(&(i, j));
+      if (i, j) != dict_min_align {continue;}
       feature_counts[offset + i * len + j] = f.align_count_mat[i][j];
     }
   }
   offset += len.pow(2);
+  let len = f.basepair_align_count_mat.len();
+  for i in 0 .. len {
+    for j in 0 .. len {
+      if !is_canonical(&(i, j)) {continue;}
+      for k in 0 .. len {
+        for l in 0 .. len {
+          if !is_canonical(&(k, l)) {continue;}
+          let dict_min_align = get_dict_min_basepair_align(&(i, j), &(k, l));
+          if ((i, j), (k, l)) != dict_min_align {continue;}
+          feature_counts[offset + i * len.pow(3) + j * len.pow(2) + k * len + l] = f.basepair_align_count_mat[i][j][k][l];
+        }
+      }
+    }
+  }
+  offset += len.pow(4);
   assert!(offset == f.get_len());
   Array::from(feature_counts)
 }
@@ -4730,7 +4984,8 @@ pub fn write_feature_score_sets_trained(feature_score_sets: &FeatureCountSets, e
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninit_insert_count: ", feature_score_sets.init_match_count));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninsert_counts: ", feature_score_sets.init_insert_count));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\nalign_count_mat: ", feature_score_sets.insert_counts));
-  buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\nhairpin_loop_length_counts_cumulative: ", feature_score_sets.align_count_mat));
+  buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\nbasepair_align_count_mat: ", feature_score_sets.align_count_mat));
+  buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\nhairpin_loop_length_counts_cumulative: ", feature_score_sets.basepair_align_count_mat));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\nbulge_loop_length_counts_cumulative: ", &feature_score_sets.hairpin_loop_length_counts_cumulative));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts_cumulative: ", &feature_score_sets.bulge_loop_length_counts_cumulative));
   buf_4_writer_2_trained_feature_score_sets_file.push_str(&format!("{:?},\ninterior_loop_length_counts_symm_cumulative: ", &feature_score_sets.interior_loop_length_counts_cumulative));
