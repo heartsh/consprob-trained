@@ -17,10 +17,10 @@ def main():
   image_dir_path = asset_dir_path + "/images"
   if not os.path.exists(image_dir_path):
     os.mkdir(image_dir_path)
-  costs = read_log_losses(asset_dir_path + "/costs.dat")
+  costs, accs = read_train_logs(asset_dir_path + "/train_logs.dat")
   epochs = [i for i in range(1, len(costs) + 1)];
   line_1, = pyplot.plot(epochs, costs, label = 'Transferred from CONTRAfold & CONTRAlign', marker = "", linestyle = "solid")
-  costs_random_init = read_log_losses(asset_dir_path + "/costs_random_init.dat")
+  costs_random_init, accs_random_init = read_train_logs(asset_dir_path + "/train_logs_random_init.dat")
   epochs_random_init = [i for i in range(1, len(costs_random_init) + 1)];
   line_2, = pyplot.plot(epochs_random_init, costs_random_init, label = 'Initialized to random values', marker = "", linestyle = "solid")
   pyplot.xlabel("Epoch")
@@ -28,11 +28,20 @@ def main():
   pyplot.legend(handles = [line_1, line_2], loc = "upper right")
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/epochs_vs_costs.eps", bbox_inches = "tight")
+  pyplot.clf()
+  line_1, = pyplot.plot(epochs, accs, label = 'Transferred from CONTRAfold & CONTRAlign', marker = "", linestyle = "solid")
+  line_2, = pyplot.plot(epochs_random_init, accs_random_init, label = 'Initialized to random values', marker = "", linestyle = "solid")
+  pyplot.xlabel("Epoch")
+  pyplot.ylabel("Average expected SPS")
+  pyplot.tight_layout()
+  pyplot.savefig(image_dir_path + "/epochs_vs_accs.eps", bbox_inches = "tight")
 
-def read_log_losses(log_loss_file_path):
-  log_loss_file = open(log_loss_file_path, "r")
-  log_losses = [float(log_loss) for log_loss in log_loss_file.readlines() if len(log_loss) > 0]
-  return log_losses
+def read_train_logs(train_log_file_path):
+  train_log_file = open(train_log_file_path, "r")
+  lines = [line.split(",") for line in train_log_file.readlines() if len(line) > 0]
+  costs = list(map(lambda x: float(x[0]), lines))
+  accs = list(map(lambda x: float(x[1]), lines))
+  return costs, accs
 
 def get_pos_neg_counts(params):
   (estimated_ss_file_path, ref_sss_and_flat_sss, rna_seq_lens) = params

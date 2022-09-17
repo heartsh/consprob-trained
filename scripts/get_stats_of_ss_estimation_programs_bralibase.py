@@ -28,8 +28,8 @@ def main():
   if not os.path.exists(image_dir_path):
     os.mkdir(image_dir_path)
   consalign_ss_dir_path = asset_dir_path + "/consalign_bralibase"
-  consalign_ss_dir_path_disabled_alifold = asset_dir_path + "/consalign_bralibase_disabled_alifold"
   consalign_ss_dir_path_turner = asset_dir_path + "/consalign_bralibase_turner"
+  consalign_ss_dir_path_turner_disabled_transplant = asset_dir_path + "/consalign_bralibase_turner_disabled_transplant"
   consalign_ss_dir_path_trained = asset_dir_path + "/consalign_bralibase_trained_transfer"
   consalign_ss_dir_path_trained_random_init = asset_dir_path + "/consalign_bralibase_trained_random_init"
   consalign_ss_dir_path_transferred_only = asset_dir_path + "/consalign_bralibase_transferred_only"
@@ -42,8 +42,8 @@ def main():
   pool = multiprocessing.Pool(num_of_threads)
   pair_identity_params = []
   consalign_count_params_align = []
-  consalign_count_params_align_disabled_alifold = []
   consalign_count_params_align_turner = []
+  consalign_count_params_align_turner_disabled_transplant = []
   consalign_count_params_align_trained = []
   consalign_count_params_align_trained_random_init = []
   consalign_count_params_align_transferred_only = []
@@ -57,8 +57,8 @@ def main():
     rna_align_dir_path = os.path.join(rna_sub_dir_path, "structural")
     rna_seq_dir_path = os.path.join(rna_sub_dir_path, "unaligned")
     consalign_estimated_ss_dir_path = os.path.join(consalign_ss_dir_path, rna_sub_dir)
-    consalign_estimated_ss_dir_path_disabled_alifold = os.path.join(consalign_ss_dir_path_disabled_alifold, rna_sub_dir)
     consalign_estimated_ss_dir_path_turner = os.path.join(consalign_ss_dir_path_turner, rna_sub_dir)
+    consalign_estimated_ss_dir_path_turner_disabled_transplant = os.path.join(consalign_ss_dir_path_turner_disabled_transplant, rna_sub_dir)
     consalign_estimated_ss_dir_path_trained = os.path.join(consalign_ss_dir_path_trained, rna_sub_dir)
     consalign_estimated_ss_dir_path_trained_random_init = os.path.join(consalign_ss_dir_path_trained_random_init, rna_sub_dir)
     consalign_estimated_ss_dir_path_transferred_only = os.path.join(consalign_ss_dir_path_transferred_only, rna_sub_dir)
@@ -79,16 +79,16 @@ def main():
       for consalign_output_file in glob.glob("consalign.sth"):
         consalign_estimated_ss_file_path = os.path.join(consalign_estimated_fin_ss_dir_path, consalign_output_file)
         consalign_count_params_align.insert(0, (consalign_estimated_ss_file_path, ref_sa, rna_seq_lens))
-      consalign_estimated_fin_ss_dir_path_disabled_alifold = os.path.join(consalign_estimated_ss_dir_path_disabled_alifold, rna_name)
-      os.chdir(consalign_estimated_fin_ss_dir_path_disabled_alifold)
-      for consalign_output_file in glob.glob("consalign.sth"):
-        consalign_estimated_ss_file_path_disabled_alifold = os.path.join(consalign_estimated_fin_ss_dir_path_disabled_alifold, consalign_output_file)
-        consalign_count_params_align_disabled_alifold.insert(0, (consalign_estimated_ss_file_path_disabled_alifold, ref_sa, rna_seq_lens))
       consalign_estimated_fin_ss_dir_path_turner = os.path.join(consalign_estimated_ss_dir_path_turner, rna_name)
       os.chdir(consalign_estimated_fin_ss_dir_path_turner)
       for consalign_output_file in glob.glob("consalign.sth"):
         consalign_estimated_ss_file_path_turner = os.path.join(consalign_estimated_fin_ss_dir_path_turner, consalign_output_file)
         consalign_count_params_align_turner.insert(0, (consalign_estimated_ss_file_path_turner, ref_sa, rna_seq_lens))
+      consalign_estimated_fin_ss_dir_path_turner_disabled_transplant = os.path.join(consalign_estimated_ss_dir_path_turner_disabled_transplant, rna_name)
+      os.chdir(consalign_estimated_fin_ss_dir_path_turner_disabled_transplant)
+      for consalign_output_file in glob.glob("consalign.sth"):
+        consalign_estimated_ss_file_path_turner_disabled_transplant = os.path.join(consalign_estimated_fin_ss_dir_path_turner_disabled_transplant, consalign_output_file)
+        consalign_count_params_align_turner_disabled_transplant.insert(0, (consalign_estimated_ss_file_path_turner_disabled_transplant, ref_sa, rna_seq_lens))
       consalign_estimated_fin_ss_dir_path_trained = os.path.join(consalign_estimated_ss_dir_path_trained, rna_name)
       os.chdir(consalign_estimated_fin_ss_dir_path_trained)
       for consalign_output_file in glob.glob("consalign.sth"):
@@ -118,10 +118,10 @@ def main():
   pair_identities = pool.map(get_pair_identity, pair_identity_params)
   consalign_spss = pool.map(get_sps, consalign_count_params_align)
   consalign_scis = pool.map(get_sci, consalign_count_params_align)
-  consalign_spss_disabled_alifold = pool.map(get_sps, consalign_count_params_align_disabled_alifold)
-  consalign_scis_disabled_alifold = pool.map(get_sci, consalign_count_params_align_disabled_alifold)
   consalign_spss_turner = pool.map(get_sps, consalign_count_params_align_turner)
   consalign_scis_turner = pool.map(get_sci, consalign_count_params_align_turner)
+  consalign_spss_turner_disabled_transplant = pool.map(get_sps, consalign_count_params_align_turner_disabled_transplant)
+  consalign_scis_turner_disabled_transplant = pool.map(get_sci, consalign_count_params_align_turner_disabled_transplant)
   consalign_spss_trained = pool.map(get_sps, consalign_count_params_align_trained)
   consalign_scis_trained = pool.map(get_sci, consalign_count_params_align_trained)
   consalign_spss_trained_random_init = pool.map(get_sps, consalign_count_params_align_trained_random_init)
@@ -159,21 +159,21 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/rna_aligner_box_plot_bralibase.eps", bbox_inches = "tight")
   pyplot.clf()
-  spss = consalign_spss_disabled_alifold + consalign_spss_turner + consalign_spss_trained
-  scis = consalign_scis_disabled_alifold + consalign_scis_turner + consalign_scis_trained
-  data = {"Pairwise sequence identity": pair_identities * 3, "Sum-of-pairs score": spss, "Structural alignment scoring model": ["Ensemble"] * len(consalign_spss_disabled_alifold) + ["Turner"] * len(consalign_spss_turner) + ["Trained"] * len(consalign_spss_trained)}
+  spss = consalign_spss + consalign_spss_turner + consalign_spss_turner_disabled_transplant + consalign_spss_trained
+  scis = consalign_scis + consalign_scis_turner + consalign_scis_turner_disabled_transplant + consalign_scis_trained
+  data = {"Pairwise sequence identity": pair_identities * 4, "Sum-of-pairs score": spss, "Structural alignment scoring model": ["Ensemble"] * len(consalign_spss) + ["Turner"] * len(consalign_spss_turner) + ["Turner*"] * len(consalign_spss_turner_disabled_transplant) + ["Trained"] * len(consalign_spss_trained)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.lmplot(x = "Pairwise sequence identity", y = "Sum-of-pairs score", data = data_frame, lowess = True, hue = "Structural alignment scoring model", scatter = False)
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_scoring_model_reg_plot_sps_bralibase.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Pairwise sequence identity": pair_identities * 3, "Structure conservation index": scis, "Structural alignment scoring model": ["Ensemble"] * len(consalign_scis_disabled_alifold) + ["Turner"] * len(consalign_scis_turner) + ["Trained"] * len(consalign_scis_trained)}
+  data = {"Pairwise sequence identity": pair_identities * 4, "Structure conservation index": scis, "Structural alignment scoring model": ["Ensemble"] * len(consalign_scis) + ["Turner"] * len(consalign_scis_turner) + ["Turner*"] * len(consalign_scis_turner_disabled_transplant) + ["Trained"] * len(consalign_scis_trained)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.lmplot(x = "Pairwise sequence identity", y = "Structure conservation index", data = data_frame, lowess = True, hue = "Structural alignment scoring model", scatter = False, legend = False)
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_scoring_model_reg_plot_sci_bralibase.eps", bbox_inches = "tight")
   pyplot.clf()
-  data = {"Matching prediction accuracy": spss + scis, "Structural alignment scoring model": ["Ensemble"] * len(consalign_spss_disabled_alifold) + ["Turner"] * len(consalign_spss_turner) + ["Trained"] * len(consalign_spss_trained) + ["Ensemble"] * len(consalign_scis_disabled_alifold) + ["Turner"] * len(consalign_scis_turner) + ["Trained"] * len(consalign_scis_trained), "Matching accuracy type": ["Sum-of-pairs score"] * len(spss) + ["Structure conservation index"] * len(scis)}
+  data = {"Matching prediction accuracy": spss + scis, "Structural alignment scoring model": ["Ensemble"] * len(consalign_spss) + ["Turner"] * len(consalign_spss_turner) + ["Turner*"] * len(consalign_spss_turner_disabled_transplant) + ["Trained"] * len(consalign_spss_trained) + ["Ensemble"] * len(consalign_scis) + ["Turner"] * len(consalign_scis_turner) + ["Turner*"] * len(consalign_scis_turner_disabled_transplant) + ["Trained"] * len(consalign_scis_trained), "Matching accuracy type": ["Sum-of-pairs score"] * len(spss) + ["Structure conservation index"] * len(scis)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.boxplot(x = "Structural alignment scoring model", y = "Matching prediction accuracy", data = data_frame, sym = "", hue = "Matching accuracy type", showmeans = True, meanprops = meanprops)
   ax.set(ylim = (0., 1.5))

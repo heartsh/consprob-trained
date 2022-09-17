@@ -16,21 +16,22 @@ fn main() {
   opts.reqopt(
     "o",
     "output_file_path",
-    "A path to an output file to record intermediate training log likelihoods",
+    "A path to an output file to record intermediate training logs",
     "STR",
   );
   opts.optopt(
     "",
     "min_base_pair_prob",
     &format!(
-      "A minimum base-pairing-probability (Uses {} by default)",
+      "A minimum base-pairing probability (Uses {} by default)",
       DEFAULT_MIN_BPP_TRAIN
     ),
     "FLOAT",
   );
   opts.optopt("", "min_align_prob", &format!("A minimum aligning probability (Uses {} by default)", DEFAULT_MIN_ALIGN_PROB_TRAIN), "FLOAT");
+  opts.optopt("", "learning_tolerance", &format!("The lower threshold of training accuracy change to quit learning (Uses {} by default)", DEFAULT_LEARNING_TOLERANCE), "FLOAT");
   opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Uses the number of the threads of this computer by default)", "UINT");
-  opts.optflag("r", "enables_random_init", "Enable the random initialization of trained alignment scoring parameters");
+  opts.optflag("r", "enables_random_init", "Enable the random initialization of alignment scoring parameters to be trained");
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
     Ok(opt) => opt,
@@ -59,6 +60,11 @@ fn main() {
   } else {
     DEFAULT_MIN_ALIGN_PROB_TRAIN
   };
+  let learning_tolerance = if matches.opt_present("learning_tolerance") {
+    matches.opt_str("learning_tolerance").unwrap().parse().unwrap()
+  } else {
+    DEFAULT_LEARNING_TOLERANCE
+  };
   let enables_random_init = matches.opt_present("r");
   let num_of_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
@@ -68,16 +74,20 @@ fn main() {
   println!("# threads = {}", num_of_threads);
   let output_file_path = matches.opt_str("o").unwrap();
   let output_file_path = Path::new(&output_file_path);
+  print_train_info(&FeatureCountSets::new(0.));
   let entries: Vec<DirEntry> = read_dir(input_dir_path).unwrap().map(|x| x.unwrap()).collect();
   let num_of_entries = entries.len();
   let mut train_data = vec![TrainDatum::origin(); num_of_entries];
   let mut thread_pool = Pool::new(num_of_threads);
+  let mut align_feature_score_sets = AlignFeatureCountSets::new(0.);
+  align_feature_score_sets.transfer();
+  let ref ref_2_align_feature_score_sets = align_feature_score_sets;
   thread_pool.scoped(|scope| {
     for (input_file_path, train_datum) in entries.iter().zip(train_data.iter_mut()) {
       scope.execute(move || {
-        *train_datum = TrainDatum::<u16>::new(&input_file_path.path(), min_bpp, min_align_prob);
+        *train_datum = TrainDatum::<u16>::new(&input_file_path.path(), min_bpp, min_align_prob, ref_2_align_feature_score_sets);
       });
     }
   });
-  constrain::<u16>(&mut thread_pool, &mut train_data, output_file_path, enables_random_init);
+  constrain::<u16>(&mut thread_pool, &mut train_data, output_file_path, enables_random_init, learning_tolerance);
 }

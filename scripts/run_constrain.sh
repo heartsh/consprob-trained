@@ -11,5 +11,5 @@
 #$ -M heartsh@heartsh.io
 #$ -cwd
 
-time constrain -i ../assets/train_data -o ../assets/costs.dat
-time constrain -i ../assets/train_data -o ../assets/costs_random_init.dat -r
+time constrain -i ../assets/train_data -o ../assets/train_logs.dat
+time constrain -i ../assets/train_data -o ../assets/train_logs_random_init.dat -r
