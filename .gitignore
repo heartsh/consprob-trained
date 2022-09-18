@@ -6,6 +6,7 @@ target
 !*.sh
 !*.tar.bz2
 !Cargo.toml
+!rustfmt.toml
 !.gitignore
 !README.md
 !rfam_seed_stas_v14.4.sth
