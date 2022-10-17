@@ -19,6 +19,7 @@ seaborn.set(font_scale = 1.2)
 color_palette = seaborn.color_palette()
 color_palette_2 = seaborn.color_palette("Set2")
 white = "#F2F2F2"
+pyplot.rcParams["figure.dpi"] = 600
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
@@ -36,6 +37,8 @@ def main():
     rna_seq_dir_path = os.path.join(rna_sub_dir_path, "unaligned")
     consalign_estimated_ss_dir_path = os.path.join(consalign_ss_dir_path, rna_sub_dir)
     for rna_file in os.listdir(rna_align_dir_path):
+      if not rna_file.endswith(".fa"):
+        continue
       (rna_name, extension) = os.path.splitext(rna_file)
       rna_file_path = os.path.join(rna_seq_dir_path, rna_file)
       rna_seq_lens = [len(rna_seq.seq) for rna_seq in SeqIO.parse(rna_file_path, "fasta")]

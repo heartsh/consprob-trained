@@ -11,6 +11,10 @@ from math import sqrt
 import multiprocessing
 
 seaborn.set()
+color_palette = seaborn.color_palette()
+color_palette_2 = seaborn.color_palette("Set2")
+white = "#F2F2F2"
+pyplot.rcParams["figure.dpi"] = 600
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()

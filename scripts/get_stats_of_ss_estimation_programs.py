@@ -14,15 +14,22 @@ import glob
 from Bio import AlignIO
 import pandas
 from statistics import mean
+from scipy import stats
+import matplotlib
 
 seaborn.set(font_scale = 1.2)
 color_palette = seaborn.color_palette()
 white = "#F2F2F2"
 meanprops = {"marker": "+", "markerfacecolor": "white", "markeredgecolor": "white"}
+pyplot.rcParams["figure.dpi"] = 600
+matplotlib.use('Agg')
 
 def main():
   (current_work_dir_path, asset_dir_path, program_dir_path, conda_program_dir_path) = utils.get_dir_paths()
   num_of_threads = multiprocessing.cpu_count()
+  image_dir_path = asset_dir_path + "/images"
+  if not os.path.exists(image_dir_path):
+    os.mkdir(image_dir_path)
   consalign_ss_dir_path_ensemble = asset_dir_path + "/consalign_ensemble"
   consalign_ss_dir_path_disabled_alifold = asset_dir_path + "/consalign_disabled_alifold"
   consalign_ss_dir_path_turner = asset_dir_path + "/consalign_turner"
@@ -133,6 +140,15 @@ def main():
     turbofold_estimated_sa_file_path = os.path.join(turbofold_estimated_ss_dir_path, "output.aln")
     turbofold_count_params_align.insert(0, (turbofold_estimated_sa_file_path, ref_sa, rna_seq_lens))
   pair_identities = pool.map(get_pair_identity, pair_identity_params)
+  data = {"Pairwise sequence identity": pair_identities}
+  data_frame = pandas.DataFrame(data = data)
+  num_of_range_low = len(data_frame.query("`Pairwise sequence identity` < 0.6"))
+  num_of_range_mid = len(data_frame.query("0.6 <= `Pairwise sequence identity` < 0.8"))
+  num_of_range_high = len(data_frame.query("0.8 <= `Pairwise sequence identity`"))
+  ax = pyplot.pie([num_of_range_low, num_of_range_mid, num_of_range_high], labels = ["Low", "Medium", "High"], counterclock = False, startangle = 90, autopct = '%1.1f%%', pctdistance = 0.7)
+  pyplot.tight_layout()
+  pyplot.savefig(image_dir_path + "/pair_identity_dist.eps", bbox_inches = "tight")
+  pyplot.clf()
   results = numpy.sum(pool.map(get_bin_counts, consalign_count_params_ensemble), axis = 0).tolist()
   consalign_f1_score_ensemble = get_f1_score(results)
   consalign_mcc_ensemble = get_mcc(results)
@@ -193,9 +209,6 @@ def main():
   turbofold_mcc = get_mcc(results)
   turbofold_spss = pool.map(get_sps, turbofold_count_params_align)
   turbofold_scis = pool.map(get_sci, turbofold_count_params_align)
-  image_dir_path = asset_dir_path + "/images"
-  if not os.path.exists(image_dir_path):
-    os.mkdir(image_dir_path)
   data = {"Structure prediction accuracy": [consalign_f1_score_ensemble, consalign_f1_score_disabled_alifold, raf_f1_score, locarna_f1_score, dafs_f1_score, sparse_f1_score, turbofold_f1_score] + [consalign_mcc_ensemble, consalign_mcc_disabled_alifold, raf_mcc, locarna_mcc, dafs_mcc, sparse_mcc, turbofold_mcc], "RNA structural aligner": ["Cons\nAlign", "Cons\nAlign*", "RAF", "LocARNA ", "DAFS", "SPARSE", "Linear\nTurboFold"] * 2, "Structure accuracy type": ["F1 score"] * 7 + ["Matthews correlation coefficient"] * 7}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.barplot(x = "RNA structural aligner", y = "Structure prediction accuracy", data = data_frame, hue = "Structure accuracy type")
@@ -205,6 +218,16 @@ def main():
   pyplot.clf()
   spss = consalign_spss_ensemble + raf_spss + locarna_spss + dafs_spss + sparse_spss + turbofold_spss
   scis = consalign_scis_ensemble + raf_scis + locarna_scis + dafs_scis + sparse_scis + turbofold_scis
+  print("SPS-based paired t-test (ConsAlign vs RAF):", stats.ttest_rel(consalign_spss_ensemble, raf_spss))
+  print("SCI-based paired t-test (ConsAlign vs RAF):", stats.ttest_rel(consalign_scis_ensemble, raf_scis))
+  print("SPS-based paired t-test (ConsAlign vs LocARNA):", stats.ttest_rel(consalign_spss_ensemble, locarna_spss))
+  print("SCI-based paired t-test (ConsAlign vs LocARNA):", stats.ttest_rel(consalign_scis_ensemble, locarna_scis))
+  print("SPS-based paired t-test (ConsAlign vs DAFS):", stats.ttest_rel(consalign_spss_ensemble, dafs_spss))
+  print("SCI-based paired t-test (ConsAlign vs DAFS):", stats.ttest_rel(consalign_scis_ensemble, dafs_scis))
+  print("SPS-based paired t-test (ConsAlign vs SPARSE):", stats.ttest_rel(consalign_spss_ensemble, sparse_spss))
+  print("SCI-based paired t-test (ConsAlign vs SPARSE):", stats.ttest_rel(consalign_scis_ensemble, sparse_scis))
+  print("SPS-based paired t-test (ConsAlign vs LinearTurboFold):", stats.ttest_rel(consalign_spss_ensemble, turbofold_spss))
+  print("SCI-based paired t-test (ConsAlign vs LinearTurboFold):", stats.ttest_rel(consalign_scis_ensemble, turbofold_scis))
   data = {"Pairwise sequence identity": pair_identities * 6, "Sum-of-pairs score": spss, "RNA structural aligner": ["ConsAlign"] * len(consalign_spss_ensemble) + ["RAF"] * len(raf_spss) + ["LocARNA"] * len(locarna_spss) + ["DAFS"] * len(dafs_spss) + ["SPARSE"] * len(sparse_spss) + ["LinearTurboFold"] * len(turbofold_spss)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.lmplot(x = "Pairwise sequence identity", y = "Sum-of-pairs score", data = data_frame, lowess = True, hue = "RNA structural aligner", scatter = False)
@@ -242,6 +265,7 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_scoring_model_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
+  seaborn.set(font_scale = 1.4)
   data = {"Pairwise sequence identity": pair_identities * 4, "Sum-of-pairs score": spss, "Structural alignment scoring model": ["Ensemble"] * len(consalign_spss_disabled_alifold) + ["Turner"] * len(consalign_spss_turner) + ["Turner*"] * len(consalign_spss_turner_disabled_transplant) + ["Trained"] * len(consalign_spss_trained)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.lmplot(x = "Pairwise sequence identity", y = "Sum-of-pairs score", data = data_frame, lowess = True, hue = "Structural alignment scoring model", scatter = False)
@@ -273,7 +297,7 @@ def main():
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/consalign_model_comparison_train_type_box_plot.eps", bbox_inches = "tight")
   pyplot.clf()
-  seaborn.set(font_scale = 1.2)
+  seaborn.set(font_scale = 1.4)
   data = {"Pairwise sequence identity": pair_identities * 3, "Sum-of-pairs score": spss, "Scoring parameter training type": ["Transfer-learned"] * len(consalign_spss_trained) + ["Random-learned"] * len(consalign_spss_trained_random_init) + ["Transferred only"] * len(consalign_spss_transferred_only)}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.lmplot(x = "Pairwise sequence identity", y = "Sum-of-pairs score", data = data_frame, lowess = True, hue = "Scoring parameter training type", scatter = False)
@@ -389,7 +413,7 @@ def get_sps(params):
 
 def get_sci(params):
   (estimated_sa_file_path, ref_sa, rna_seq_lens) = params
-  rnaalifold_command = "RNAalifold %s --sci" % estimated_sa_file_path
+  rnaalifold_command = "RNAalifold %s --sci -q" % estimated_sa_file_path
   (output, _, _) = utils.run_command(rnaalifold_command)
   output = str(output)
   splits = output.split("sci = ")

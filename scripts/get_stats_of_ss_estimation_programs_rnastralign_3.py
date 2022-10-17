@@ -27,47 +27,38 @@ def main():
   image_dir_path = asset_dir_path + "/images"
   if not os.path.exists(image_dir_path):
     os.mkdir(image_dir_path)
-  consalign_ss_dir_path = asset_dir_path + "/consalign_rnastralign"
-  rna_dir_path = asset_dir_path + "/RNAStrAlign_sampled"
-  pool = multiprocessing.Pool(num_of_threads)
-  consalign_count_params = []
-  consalign_count_params_align = []
-  for rna_sub_dir in os.listdir(rna_dir_path):
-    rna_sub_dir_path = os.path.join(rna_dir_path, rna_sub_dir)
-    rna_file_path = os.path.join(rna_sub_dir_path, "sampled_seqs.fa")
-    if not os.path.isfile(rna_file_path):
-      continue
-    rna_seq_lens = [len(rna_seq.seq) for rna_seq in SeqIO.parse(rna_file_path, "fasta")]
-    seq_num = len(rna_seq_lens)
-    ref_sss = utils.get_sss_ct(rna_sub_dir_path, seq_num)
-    ref_sa_file_path = os.path.join(rna_sub_dir_path, "%s.aln" % rna_sub_dir)
-    ref_sa = AlignIO.read(ref_sa_file_path, "clustal")
-    consalign_estimated_ss_dir_path = os.path.join(consalign_ss_dir_path, rna_sub_dir)
-    os.chdir(consalign_estimated_ss_dir_path)
-    for consalign_output_file in glob.glob("consalign.sth"):
-      consalign_estimated_ss_file_path = os.path.join(consalign_estimated_ss_dir_path, consalign_output_file)
-      consalign_count_params_align.insert(0, (consalign_estimated_ss_file_path, ref_sa, rna_seq_lens))
-  consalign_metrics = list(pool.map(get_metrics, consalign_count_params_align))
-  consalign_spss_empirical = list(map(lambda x: x[0], consalign_metrics))
-  consalign_spss_expected = list(map(lambda x: x[1], consalign_metrics))
-  consalign_gammas_bp = list(map(lambda x: x[2], consalign_metrics))
-  consalign_gammas_align = list(map(lambda x: x[3], consalign_metrics))
+  consalign_elapsed_time_data_file_path = asset_dir_path + "/consalign_elapsed_time_data_rnastralign.dat"
+  raf_elapsed_time_data_file_path = asset_dir_path + "/raf_elapsed_time_data_rnastralign.dat"
+  locarna_elapsed_time_data_file_path = asset_dir_path + "/locarna_elapsed_time_data_rnastralign.dat"
+  dafs_elapsed_time_data_file_path = asset_dir_path + "/dafs_elapsed_time_data_rnastralign.dat"
+  sparse_elapsed_time_data_file_path = asset_dir_path + "/sparse_elapsed_time_data_rnastralign.dat"
+  turbofold_elapsed_time_data_file_path = asset_dir_path + "/turbofold_elapsed_time_data_rnastralign.dat"
   image_dir_path = asset_dir_path + "/images"
   if not os.path.exists(image_dir_path):
     os.mkdir(image_dir_path)
-  data = {"Empirical sum-of-pairs score": consalign_spss_empirical, "Expected sum-of-pairs score": consalign_spss_expected}
+  seq_lens_avg, _, consalign_elapsed_times = utils.read_elapsed_time_data(consalign_elapsed_time_data_file_path)
+  data = {"Average RNA sequence length": seq_lens_avg}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.jointplot(x = "Empirical sum-of-pairs score", y = "Expected sum-of-pairs score", data = data_frame, kind = "kde", fill = True)
-  ax.plot_joint(seaborn.regplot, scatter = False, color = color_palette[1])
+  num_of_range_short = len(data_frame.query("`Average RNA sequence length` < 100."))
+  num_of_range_mid = len(data_frame.query("100. <= `Average RNA sequence length` < 200."))
+  num_of_range_long = len(data_frame.query("200. <= `Average RNA sequence length`"))
+  print("# entries in RNAStralign = %d" % (num_of_range_short + num_of_range_mid + num_of_range_long))
+  ax = pyplot.pie([num_of_range_short, num_of_range_mid, num_of_range_long], labels = ["Short", "Medium", "Long"], counterclock = False, startangle = 90, autopct = '%1.1f%%', pctdistance = 0.7)
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_sps_corr_rnastralign.png", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/avg_seq_len_dist_rnastralign.eps", bbox_inches = "tight")
   pyplot.clf()
-  print(data_frame.corr())
-  data = {r"$\gamma^{\rm M}$": consalign_gammas_align, r"$\gamma^{\rm P}$": consalign_gammas_bp}
+  _, _, raf_elapsed_times = utils.read_elapsed_time_data(raf_elapsed_time_data_file_path)
+  _, _, locarna_elapsed_times = utils.read_elapsed_time_data(locarna_elapsed_time_data_file_path)
+  _, _, dafs_elapsed_times = utils.read_elapsed_time_data(dafs_elapsed_time_data_file_path)
+  _, _, sparse_elapsed_times = utils.read_elapsed_time_data(sparse_elapsed_time_data_file_path)
+  _, _, turbofold_elapsed_times = utils.read_elapsed_time_data(turbofold_elapsed_time_data_file_path)
+  elapsed_times = consalign_elapsed_times + raf_elapsed_times + locarna_elapsed_times + dafs_elapsed_times + sparse_elapsed_times + turbofold_elapsed_times
+  data = {"Average RNA sequence length": seq_lens_avg * 6, "Running time": elapsed_times, "RNA structural aligner": ["ConsAlign"] * len(consalign_elapsed_times) + ["RAF"] * len(raf_elapsed_times) + ["LocARNA"] * len(locarna_elapsed_times) + ["DAFS"] * len(dafs_elapsed_times) + ["SPARSE"] * len(sparse_elapsed_times) + ["LinearTurboFold"] * len(turbofold_elapsed_times)}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.jointplot(x = r"$\gamma^{\rm M}$", y = r"$\gamma^{\rm P}$", data = data_frame, kind = "kde", fill = True)
+  ax = seaborn.lmplot(x = "Average RNA sequence length", y = "Running time", data = data_frame, lowess = True, hue = "RNA structural aligner", scatter = False)
+  seaborn.move_legend(ax, "upper right", bbox_to_anchor = (1.3, 1))
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_gamma_corr_rnastralign.png", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/rna_aligner_reg_plot_elapsed_time_rnastralign.eps", bbox_inches = "tight")
   pyplot.clf()
 
 def get_bin_counts(params):
