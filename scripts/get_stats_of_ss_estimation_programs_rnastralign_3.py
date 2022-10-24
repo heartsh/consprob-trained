@@ -53,9 +53,9 @@ def main():
   _, _, sparse_elapsed_times = utils.read_elapsed_time_data(sparse_elapsed_time_data_file_path)
   _, _, turbofold_elapsed_times = utils.read_elapsed_time_data(turbofold_elapsed_time_data_file_path)
   elapsed_times = consalign_elapsed_times + raf_elapsed_times + locarna_elapsed_times + dafs_elapsed_times + sparse_elapsed_times + turbofold_elapsed_times
-  data = {"Average RNA sequence length": seq_lens_avg * 6, "Running time": elapsed_times, "RNA structural aligner": ["ConsAlign"] * len(consalign_elapsed_times) + ["RAF"] * len(raf_elapsed_times) + ["LocARNA"] * len(locarna_elapsed_times) + ["DAFS"] * len(dafs_elapsed_times) + ["SPARSE"] * len(sparse_elapsed_times) + ["LinearTurboFold"] * len(turbofold_elapsed_times)}
+  data = {"Average RNA sequence length": seq_lens_avg * 6, "Running time (s)": elapsed_times, "RNA structural aligner": ["ConsAlign"] * len(consalign_elapsed_times) + ["RAF"] * len(raf_elapsed_times) + ["LocARNA"] * len(locarna_elapsed_times) + ["DAFS"] * len(dafs_elapsed_times) + ["SPARSE"] * len(sparse_elapsed_times) + ["LinearTurboFold"] * len(turbofold_elapsed_times)}
   data_frame = pandas.DataFrame(data = data)
-  ax = seaborn.lmplot(x = "Average RNA sequence length", y = "Running time", data = data_frame, lowess = True, hue = "RNA structural aligner", scatter = False)
+  ax = seaborn.lmplot(x = "Average RNA sequence length", y = "Running time (s)", data = data_frame, lowess = True, hue = "RNA structural aligner", scatter = False)
   seaborn.move_legend(ax, "upper right", bbox_to_anchor = (1.3, 1))
   pyplot.tight_layout()
   pyplot.savefig(image_dir_path + "/rna_aligner_reg_plot_elapsed_time_rnastralign.eps", bbox_inches = "tight")
