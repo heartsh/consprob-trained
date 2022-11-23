@@ -1,6 +1,6 @@
 [package]
 name = "consprob-trained"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["heartsh <heartsh@heartsh.io>"]
 description = "Trainable Probability Inference Engine on RNA Structural Alignment"
 repository = "https://github.com/heartsh/consprob-trained"

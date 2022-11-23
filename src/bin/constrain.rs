@@ -46,7 +46,12 @@ fn main() {
     ),
     "FLOAT",
   );
-  opts.optopt("t", "num_of_threads", "The number of threads in multithreading (Use all the threads of this computer by default)", "UINT");
+  opts.optopt(
+    "t",
+    "num_of_threads",
+    "The number of threads in multithreading (Use all the threads of this computer by default)",
+    "UINT",
+  );
   opts.optflag(
     "r",
     "enable_random_init",

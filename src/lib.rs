@@ -1411,10 +1411,7 @@ impl FeatureCountSets {
   }
 }
 
-impl<
-    T: HashIndex,
-  > TrainDatum<T>
-{
+impl<T: HashIndex> TrainDatum<T> {
   pub fn origin() -> TrainDatum<T> {
     TrainDatum {
       seq_pair: (Seq::new(), Seq::new()),
@@ -2125,10 +2122,7 @@ impl InsertScoreRangeSets {
   }
 }
 
-impl<
-    T: HashIndex,
-  > PairAlign<T>
-{
+impl<T: HashIndex> PairAlign<T> {
   pub fn new() -> PairAlign<T> {
     PairAlign {
       aligned_pos_pair_mat: SparsePosMat::<T>::default(),
