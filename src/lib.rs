@@ -119,7 +119,7 @@ pub struct InsertScoreRangeSets {
   pub insert_scores_range_4_ml_2: FeatureCountMat,
 }
 
-impl<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord> BpScoreParamSets<T> {
+impl<T: HashIndex> BpScoreParamSets<T> {
   pub fn new() -> BpScoreParamSets<T> {
     BpScoreParamSets {
       hairpin_loop_scores: BpScores::<T>::default(),
@@ -752,7 +752,7 @@ impl FeatureCountSets {
     *regularizers = Array1::from(regularizers_tmp);
   }
 
-  pub fn update<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(
+  pub fn update<T: HashIndex>(
     &mut self,
     train_data: &[TrainDatum<T>],
     regularizers: &mut Regularizers,
@@ -877,7 +877,7 @@ impl FeatureCountSets {
     }
   }
 
-  pub fn get_grad<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(
+  pub fn get_grad<T: HashIndex>(
     &self,
     train_data: &[TrainDatum<T>],
     regularizers: &Regularizers,
@@ -1088,7 +1088,7 @@ impl FeatureCountSets {
     convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
   }
 
-  pub fn get_cost<T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord>(
+  pub fn get_cost<T: HashIndex>(
     &self,
     train_data: &[TrainDatum<T>],
     regularizers: &Regularizers,
@@ -1412,7 +1412,7 @@ impl FeatureCountSets {
 }
 
 impl<
-    T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync + Send + Display,
+    T: HashIndex,
   > TrainDatum<T>
 {
   pub fn origin() -> TrainDatum<T> {
@@ -2126,7 +2126,7 @@ impl InsertScoreRangeSets {
 }
 
 impl<
-    T: Hash + Clone + Unsigned + PrimInt + FromPrimitive + Integer + Ord + Sync + Send + Display,
+    T: HashIndex,
   > PairAlign<T>
 {
   pub fn new() -> PairAlign<T> {
@@ -2174,7 +2174,7 @@ pub fn get_sps_expected<T>(
   prob_mats: &StaProbMats<T>,
 ) -> FeatureCount
 where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
+  T: HashIndex,
 {
   let mut align_prob_mat = prob_mats.loop_align_prob_mat.clone();
   for (pos_quadruple, &bpap) in &prob_mats.basepair_align_prob_mat {
@@ -2248,7 +2248,7 @@ pub fn io_algo_4_prob_mats<T>(
   matchable_pos_sets_2: &SparsePosSets<T>,
 ) -> (StaProbMats<T>, Prob)
 where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
+  T: HashIndex,
 {
   let insert_score_range_sets = InsertScoreRangeSets::new(seq_pair, feature_score_sets);
   let (sta_part_func_mats, global_part_func) = get_sta_inside_part_func_mats::<T>(
@@ -2304,7 +2304,7 @@ pub fn get_sta_inside_part_func_mats<T>(
   matchable_pos_sets_2: &SparsePosSets<T>,
 ) -> (StaPartFuncMats<T>, PartFunc)
 where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
+  T: HashIndex,
 {
   let seq_len_pair = (
     T::from_usize(seq_pair.0.len()).unwrap(),
@@ -2880,7 +2880,7 @@ pub fn get_tmp_part_func_set_mat<T>(
   matchable_pos_sets_2: &SparsePosSets<T>,
 ) -> (PartFunc, PartFunc)
 where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
+  T: HashIndex,
 {
   let &(i, j, k, l) = pos_quadruple;
   let leftmost_pos_pair = if is_forward {
@@ -3274,7 +3274,7 @@ pub fn get_part_func_mat_2loop<T>(
   matchable_pos_sets_2: &SparsePosSets<T>,
 ) -> (SparsePartFuncMat<T>, SparsePartFuncMat<T>)
 where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
+  T: HashIndex,
 {
   let &(i, j, k, l) = pos_quadruple;
   let leftmost_pos_pair = if is_forward {
@@ -3477,7 +3477,7 @@ pub fn get_sta_prob_mats<T>(
   matchable_pos_sets_2: &SparsePosSets<T>,
 ) -> StaProbMats<T>
 where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord,
+  T: HashIndex,
 {
   let seq_len_pair = (
     T::from_usize(seq_pair.0.len()).unwrap(),
@@ -4367,9 +4367,9 @@ where
   for bpp in sta_prob_mats.bpp_mat_pair.1.values_mut() {
     *bpp = expf(*bpp);
   }
-  let needs_twoloop_part_funcs = produce_align_probs || train_score_params;
-  let needs_indel_info = produce_struct_profs || train_score_params;
-  if produce_struct_profs || needs_twoloop_part_funcs {
+  let need_twoloop_part_funcs = produce_align_probs || train_score_params;
+  let need_indel_info = produce_struct_profs || train_score_params;
+  if produce_struct_profs || need_twoloop_part_funcs {
     let mut upp_mat_pair_4_el_range =
       (SparseProbMat::<T>::default(), SparseProbMat::<T>::default());
     let mut upp_mat_pair_4_hl_range =
@@ -4467,7 +4467,7 @@ where
             }
           }
         }
-        if needs_indel_info {
+        if need_indel_info {
           match sta_part_func_mats
             .forward_part_func_mat_4_external_loop
             .get(&pos_pair)
@@ -4668,7 +4668,7 @@ where
       let ref backward_tmp_part_func_set_mat_decode =
         sta_part_func_mats.backward_tmp_part_func_set_mats_with_pos_pairs_decode[&(j, l)];
       let (forward_part_func_mat_4_2loop, forward_part_func_mat_4_2loop_decode) =
-        if needs_twoloop_part_funcs {
+        if need_twoloop_part_funcs {
           get_part_func_mat_2loop(
             seq_pair,
             feature_score_sets,
@@ -4689,7 +4689,7 @@ where
           )
         };
       let (backward_part_func_mat_4_2loop, backward_part_func_mat_4_2loop_decode) =
-        if needs_twoloop_part_funcs {
+        if need_twoloop_part_funcs {
           get_part_func_mat_2loop(
             seq_pair,
             feature_score_sets,
@@ -4741,7 +4741,7 @@ where
             Some(part_funcs) => {
               let part_func = part_funcs.part_func_on_sa;
               logsumexp(&mut backward_term_on_sa, part_func);
-              if needs_twoloop_part_funcs {
+              if need_twoloop_part_funcs {
                 let part_func = part_funcs.part_func_4_ml;
                 logsumexp(&mut backward_term_4_ml, part_func);
                 let part_func = part_funcs.part_func_4_bpas_on_mls;
@@ -4752,7 +4752,7 @@ where
             }
             None => {}
           }
-          if needs_twoloop_part_funcs {
+          if need_twoloop_part_funcs {
             match backward_part_func_mat_4_2loop_decode.get(&pos_pair_2) {
               Some(&part_func) => {
                 logsumexp(&mut backward_term_4_2loop, part_func);
@@ -4777,7 +4777,7 @@ where
                 let part_func = part_funcs.part_func_on_sa;
                 let term = prob_coeff_4_hl + loop_align_score + part_func + backward_term_on_sa;
                 logsumexp(&mut loop_align_prob_4_hairpin_loop, term);
-                if needs_twoloop_part_funcs {
+                if need_twoloop_part_funcs {
                   let part_func = part_funcs.part_func_on_sa_4_ml;
                   let term = prob_coeff_4_ml + loop_align_score_ml + part_func + backward_term_4_ml;
                   logsumexp(&mut loop_align_prob_4_multi_loop, term);
@@ -4851,7 +4851,7 @@ where
                 if train_score_params {
                   logsumexp(&mut expected_feature_count_sets.match_2_match_count, term);
                 }
-                if needs_twoloop_part_funcs {
+                if need_twoloop_part_funcs {
                   let part_func = part_funcs.part_func_on_sa_4_ml;
                   let term = prob_coeff_4_ml
                     + loop_align_score_ml
@@ -4892,7 +4892,7 @@ where
               }
               None => {}
             }
-            if needs_indel_info {
+            if need_indel_info {
               match forward_tmp_part_func_set_mat.get(&pos_pair) {
                 Some(part_funcs) => {
                   let forward_term_on_sa =
@@ -5198,7 +5198,7 @@ where
         }
       }
     }
-    if needs_indel_info {
+    if need_indel_info {
       for (pos_pair, &upp) in &upp_mat_pair_range.0 {
         for i in range_inclusive(pos_pair.0, pos_pair.1) {
           let long_i = i.to_usize().unwrap();
@@ -5687,7 +5687,7 @@ pub fn consprob_trained<T>(
   train_type: TrainType,
 ) -> (ProbMatSets<T>, AlignProbMatSetsWithRnaIdPairs<T>)
 where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send + Display,
+  T: HashIndex,
 {
   let trained = FeatureCountSets::load_trained_score_params();
   let mut align_feature_score_sets = AlignFeatureCountSets::new(0.);
@@ -5869,7 +5869,7 @@ pub fn constrain<'a, T>(
   enable_random_init: bool,
   learning_tolerance: FeatureCount,
 ) where
-  T: Unsigned + PrimInt + Hash + FromPrimitive + Integer + Ord + Sync + Send + Display,
+  T: HashIndex,
 {
   let mut feature_score_sets = FeatureCountSets::new(0.);
   if enable_random_init {
@@ -6999,7 +6999,6 @@ pub fn print_train_info(feature_score_sets: &FeatureCountSets) {
   num_of_groups += 1;
   println!("-----------------------------------");
   println!("Groups from the CONTRAlign model...");
-  num_of_groups += 1;
   println!(
     "Match transition (group size {})",
     CONSPROB_MATCH_TRANSITION_GROUP_SIZE
