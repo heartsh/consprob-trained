@@ -1,7 +1,6 @@
 extern crate bio;
 extern crate consprob;
 extern crate my_bfgs as bfgs;
-extern crate ndarray;
 extern crate ndarray_rand;
 extern crate rand;
 pub mod trained_feature_score_sets;
@@ -11,8 +10,6 @@ pub use bfgs::bfgs;
 pub use bio::io::fasta::*;
 pub use bio::utils::*;
 pub use consprob::*;
-pub use ndarray::prelude::*;
-pub use ndarray::Array;
 pub use ndarray_rand::rand_distr::{Distribution, Normal};
 pub use ndarray_rand::RandomExt;
 pub use rand::thread_rng;
@@ -1085,7 +1082,7 @@ impl FeatureCountSets {
         }
       }
     }
-    convert_struct_2_vec(&grad, false) + regularizers.clone() * feature_scores
+    convert_struct_2_vec(&grad, false) + regularizers * &feature_scores
   }
 
   pub fn get_cost<T: HashIndex>(
@@ -1101,7 +1098,7 @@ impl FeatureCountSets {
       log_likelihood -= train_datum.part_func;
     }
     let feature_scores = convert_struct_2_vec(self, false);
-    let product = regularizers.clone() * feature_scores.clone();
+    let product = regularizers * &feature_scores;
     -log_likelihood + product.dot(&feature_scores) / 2.
   }
 
@@ -2170,30 +2167,10 @@ pub fn get_sps_expected<T>(
 where
   T: HashIndex,
 {
-  let mut align_prob_mat = prob_mats.loop_align_prob_mat.clone();
-  for (pos_quadruple, &bpap) in &prob_mats.basepair_align_prob_mat {
-    let pos_pair = (pos_quadruple.0, pos_quadruple.2);
-    match align_prob_mat.get_mut(&pos_pair) {
-      Some(bap) => {
-        *bap += bpap;
-      }
-      None => {
-        align_prob_mat.insert(pos_pair, bpap);
-      }
-    }
-    let pos_pair = (pos_quadruple.1, pos_quadruple.3);
-    match align_prob_mat.get_mut(&pos_pair) {
-      Some(bap) => {
-        *bap += bpap;
-      }
-      None => {
-        align_prob_mat.insert(pos_pair, bpap);
-      }
-    }
-  }
+  let ref align_prob_mat = prob_mats.align_prob_mat.clone();
   let seq_len_pair = (seq_pair.0.len(), seq_pair.1.len());
   let mut insert_probs_pair = (vec![1.; seq_len_pair.0], vec![1.; seq_len_pair.1]);
-  for (pos_pair, &align_prob) in &align_prob_mat {
+  for (pos_pair, &align_prob) in align_prob_mat {
     let long_pos_pair = (
       pos_pair.0.to_usize().unwrap(),
       pos_pair.1.to_usize().unwrap(),
@@ -3478,7 +3455,7 @@ where
     T::from_usize(seq_pair.1.len()).unwrap(),
   );
   let mut sta_outside_part_func_4d_mat_4_bpas = PartFunc4dMat::<T>::default();
-  let mut sta_prob_mats = StaProbMats::<T>::new(&seq_len_pair);
+  let mut sta_prob_mats = StaProbMats::<T>::new(&(seq_len_pair.0.to_usize().unwrap(), seq_len_pair.1.to_usize().unwrap()));
   let leftmost_pos_pair = (T::zero(), T::zero());
   let rightmost_pos_pair = (seq_len_pair.0 - T::one(), seq_len_pair.1 - T::one());
   let mut prob_coeff_mat_4_ml = PartFunc4dMat::<T>::default();
@@ -3735,17 +3712,43 @@ where
                                 logsumexp(&mut sum, part_func_4_2l);
                                 let bpap_4_2l = prob_coeff + part_func_4_2l;
                                 if produce_struct_profs {
+                                  let loop_len_pair = (long_i - long_m - 1, long_n - long_j - 1);
+                                  let is_bulge_loop =
+                                    (loop_len_pair.0 == 0) ^ (loop_len_pair.1 == 0);
+                                  let is_interior_loop =
+                                    loop_len_pair.0 > 0 && loop_len_pair.1 > 0;
                                   for q in long_m + 1..long_i {
-                                    logsumexp(&mut sta_prob_mats.upp_mat_pair_4_2l.0[q], bpap_4_2l);
+                                    if is_bulge_loop {
+                                      logsumexp(&mut sta_prob_mats.context_set_pair.0[(q, CONTEXT_FEATURE_INDEX_BL)], bpap_4_2l);
+                                    } else if is_interior_loop {
+                                      logsumexp(&mut sta_prob_mats.context_set_pair.0[(q, CONTEXT_FEATURE_INDEX_IL)], bpap_4_2l);
+                                    }
                                   }
                                   for q in long_j + 1..long_n {
-                                    logsumexp(&mut sta_prob_mats.upp_mat_pair_4_2l.0[q], bpap_4_2l);
+                                    if is_bulge_loop {
+                                      logsumexp(&mut sta_prob_mats.context_set_pair.0[(q, CONTEXT_FEATURE_INDEX_BL)], bpap_4_2l);
+                                    } else if is_interior_loop {
+                                      logsumexp(&mut sta_prob_mats.context_set_pair.0[(q, CONTEXT_FEATURE_INDEX_IL)], bpap_4_2l);
+                                    }
                                   }
+                                  let loop_len_pair = (long_k - long_o - 1, long_p - long_l - 1);
+                                  let is_bulge_loop =
+                                    (loop_len_pair.0 == 0) ^ (loop_len_pair.1 == 0);
+                                  let is_interior_loop =
+                                    loop_len_pair.0 > 0 && loop_len_pair.1 > 0;
                                   for q in long_o + 1..long_k {
-                                    logsumexp(&mut sta_prob_mats.upp_mat_pair_4_2l.1[q], bpap_4_2l);
+                                    if is_bulge_loop {
+                                      logsumexp(&mut sta_prob_mats.context_set_pair.1[(q, CONTEXT_FEATURE_INDEX_BL)], bpap_4_2l);
+                                    } else if is_interior_loop {
+                                      logsumexp(&mut sta_prob_mats.context_set_pair.1[(q, CONTEXT_FEATURE_INDEX_IL)], bpap_4_2l);
+                                    }
                                   }
                                   for q in long_l + 1..long_p {
-                                    logsumexp(&mut sta_prob_mats.upp_mat_pair_4_2l.1[q], bpap_4_2l);
+                                    if is_bulge_loop {
+                                      logsumexp(&mut sta_prob_mats.context_set_pair.1[(q, CONTEXT_FEATURE_INDEX_BL)], bpap_4_2l);
+                                    } else if is_interior_loop {
+                                      logsumexp(&mut sta_prob_mats.context_set_pair.1[(q, CONTEXT_FEATURE_INDEX_IL)], bpap_4_2l);
+                                    }
                                   }
                                 }
                                 if train_score_params {
@@ -4110,6 +4113,28 @@ where
                     sta_prob_mats
                       .basepair_align_prob_mat
                       .insert(pos_quadruple, bpap);
+                    match sta_prob_mats
+                      .align_prob_mat
+                      .get_mut(&(i, k)) {
+                        Some(align_prob) => {
+                          logsumexp(align_prob, bpap);
+                        }, None => {
+                          sta_prob_mats
+                            .align_prob_mat
+                            .insert((i, k), bpap);
+                        },
+                      }
+                    match sta_prob_mats
+                      .align_prob_mat
+                      .get_mut(&(j, l)) {
+                        Some(align_prob) => {
+                          logsumexp(align_prob, bpap);
+                        }, None => {
+                          sta_prob_mats
+                            .align_prob_mat
+                            .insert((j, l), bpap);
+                        },
+                      }
                   }
                   if train_score_params {
                     // Count base pairs.
@@ -4155,10 +4180,12 @@ where
                       sta_prob_mats.bpp_mat_pair.1.insert((k, l), bpap);
                     }
                   }
-                  logsumexp(&mut sta_prob_mats.bpp_mat_pair_2.0[long_i], bpap);
-                  logsumexp(&mut sta_prob_mats.bpp_mat_pair_2.0[long_j], bpap);
-                  logsumexp(&mut sta_prob_mats.bpp_mat_pair_2.1[long_k], bpap);
-                  logsumexp(&mut sta_prob_mats.bpp_mat_pair_2.1[long_l], bpap);
+                  if produce_struct_profs {
+                    logsumexp(&mut sta_prob_mats.context_set_pair.0[(long_i, CONTEXT_FEATURE_INDEX_BP)], bpap);
+                    logsumexp(&mut sta_prob_mats.context_set_pair.0[(long_j, CONTEXT_FEATURE_INDEX_BP)], bpap);
+                    logsumexp(&mut sta_prob_mats.context_set_pair.1[(long_k, CONTEXT_FEATURE_INDEX_BP)], bpap);
+                    logsumexp(&mut sta_prob_mats.context_set_pair.1[(long_l, CONTEXT_FEATURE_INDEX_BP)], bpap);
+                  }
                   let basepair_align_score = feature_score_sets.align_count_mat[base_pair.0]
                     [base_pair_2.0]
                     + feature_score_sets.align_count_mat[base_pair.1][base_pair_2.1];
@@ -4408,14 +4435,8 @@ where
             None => {}
           }
           if produce_struct_profs {
-            logsumexp(
-              &mut sta_prob_mats.upp_mat_pair_4_el.0[long_u],
-              loop_align_prob_4_el,
-            );
-            logsumexp(
-              &mut sta_prob_mats.upp_mat_pair_4_el.1[long_v],
-              loop_align_prob_4_el,
-            );
+            logsumexp(&mut sta_prob_mats.context_set_pair.0[(long_u, CONTEXT_FEATURE_INDEX_EL)], loop_align_prob_4_el);
+            logsumexp(&mut sta_prob_mats.context_set_pair.1[(long_v, CONTEXT_FEATURE_INDEX_EL)], loop_align_prob_4_el);
           }
           if produce_align_probs {
             match sta_prob_mats.loop_align_prob_mat.get_mut(&pos_pair) {
@@ -4791,14 +4812,8 @@ where
               None => {}
             }
             if produce_struct_profs {
-              logsumexp(
-                &mut sta_prob_mats.upp_mat_pair_4_hl.0[long_u],
-                loop_align_prob_4_hairpin_loop,
-              );
-              logsumexp(
-                &mut sta_prob_mats.upp_mat_pair_4_hl.1[long_v],
-                loop_align_prob_4_hairpin_loop,
-              );
+              logsumexp(&mut sta_prob_mats.context_set_pair.0[(long_u, CONTEXT_FEATURE_INDEX_HL)], loop_align_prob_4_hairpin_loop);
+              logsumexp(&mut sta_prob_mats.context_set_pair.1[(long_v, CONTEXT_FEATURE_INDEX_HL)], loop_align_prob_4_hairpin_loop);
             }
             if produce_align_probs || train_score_params {
               match forward_part_func_mat_4_2loop_decode.get(&pos_pair_4_loop_align) {
@@ -5212,68 +5227,45 @@ where
       for (pos_pair, &upp_4_el) in &upp_mat_pair_4_el_range.0 {
         for i in range_inclusive(pos_pair.0, pos_pair.1) {
           let long_i = i.to_usize().unwrap();
-          logsumexp(&mut sta_prob_mats.upp_mat_pair_4_el.0[long_i], upp_4_el);
+          logsumexp(&mut sta_prob_mats.context_set_pair.0[(long_i, CONTEXT_FEATURE_INDEX_EL)], upp_4_el);
         }
       }
       for (pos_pair, &upp_4_el) in &upp_mat_pair_4_el_range.1 {
         for i in range_inclusive(pos_pair.0, pos_pair.1) {
           let long_i = i.to_usize().unwrap();
-          logsumexp(&mut sta_prob_mats.upp_mat_pair_4_el.1[long_i], upp_4_el);
+          logsumexp(&mut sta_prob_mats.context_set_pair.1[(long_i, CONTEXT_FEATURE_INDEX_EL)], upp_4_el);
         }
       }
       for (pos_pair, &upp_4_hl) in &upp_mat_pair_4_hl_range.0 {
         for i in range_inclusive(pos_pair.0, pos_pair.1) {
           let long_i = i.to_usize().unwrap();
-          logsumexp(&mut sta_prob_mats.upp_mat_pair_4_hl.0[long_i], upp_4_hl);
+          logsumexp(&mut sta_prob_mats.context_set_pair.0[(long_i, CONTEXT_FEATURE_INDEX_HL)], upp_4_hl);
         }
       }
       for (pos_pair, &upp_4_hl) in &upp_mat_pair_4_hl_range.1 {
         for i in range_inclusive(pos_pair.0, pos_pair.1) {
           let long_i = i.to_usize().unwrap();
-          logsumexp(&mut sta_prob_mats.upp_mat_pair_4_hl.1[long_i], upp_4_hl);
+          logsumexp(&mut sta_prob_mats.context_set_pair.1[(long_i, CONTEXT_FEATURE_INDEX_HL)], upp_4_hl);
         }
       }
-      for (i, upp) in sta_prob_mats.upp_mat_pair_4_ml.0.iter_mut().enumerate() {
-        let mut sum = sta_prob_mats.upp_mat_pair_4_hl.0[i];
-        logsumexp(&mut sum, sta_prob_mats.upp_mat_pair_4_2l.0[i]);
-        logsumexp(&mut sum, sta_prob_mats.upp_mat_pair_4_el.0[i]);
-        logsumexp(&mut sum, sta_prob_mats.bpp_mat_pair_2.0[i]);
-        *upp = 1. - expf(sum);
-      }
-      for (i, upp) in sta_prob_mats.upp_mat_pair_4_ml.1.iter_mut().enumerate() {
-        let mut sum = sta_prob_mats.upp_mat_pair_4_hl.1[i];
-        logsumexp(&mut sum, sta_prob_mats.upp_mat_pair_4_2l.1[i]);
-        logsumexp(&mut sum, sta_prob_mats.upp_mat_pair_4_el.1[i]);
-        logsumexp(&mut sum, sta_prob_mats.bpp_mat_pair_2.1[i]);
-        *upp = 1. - expf(sum);
-      }
-      for upp in sta_prob_mats.upp_mat_pair_4_hl.0.iter_mut() {
-        *upp = expf(*upp);
-      }
-      for upp in sta_prob_mats.upp_mat_pair_4_hl.1.iter_mut() {
-        *upp = expf(*upp);
-      }
-      for upp in sta_prob_mats.upp_mat_pair_4_2l.0.iter_mut() {
-        *upp = expf(*upp);
-      }
-      for upp in sta_prob_mats.upp_mat_pair_4_2l.1.iter_mut() {
-        *upp = expf(*upp);
-      }
-      for upp in sta_prob_mats.upp_mat_pair_4_el.0.iter_mut() {
-        *upp = expf(*upp);
-      }
-      for upp in sta_prob_mats.upp_mat_pair_4_el.1.iter_mut() {
-        *upp = expf(*upp);
-      }
-      for bpp in sta_prob_mats.bpp_mat_pair_2.0.iter_mut() {
-        *bpp = expf(*bpp);
-      }
-      for bpp in sta_prob_mats.bpp_mat_pair_2.1.iter_mut() {
-        *bpp = expf(*bpp);
-      }
+      sta_prob_mats.context_set_pair.0.slice_mut(s![.., ..CONTEXT_FEATURE_INDEX_ML]).mapv_inplace(expf);
+      let fold = 1. - sta_prob_mats.context_set_pair.0.slice_mut(s![.., ..CONTEXT_FEATURE_INDEX_ML]).sum_axis(Axis(1));
+      sta_prob_mats.context_set_pair.0.slice_mut(s![.., CONTEXT_FEATURE_INDEX_ML]).assign(&fold);
+      sta_prob_mats.context_set_pair.1.slice_mut(s![.., ..CONTEXT_FEATURE_INDEX_ML]).mapv_inplace(expf);
+      let fold = 1. - sta_prob_mats.context_set_pair.1.slice_mut(s![.., ..CONTEXT_FEATURE_INDEX_ML]).sum_axis(Axis(1));
+      sta_prob_mats.context_set_pair.1.slice_mut(s![.., CONTEXT_FEATURE_INDEX_ML]).assign(&fold);
     }
     if produce_align_probs {
-      for loop_align_prob in sta_prob_mats.loop_align_prob_mat.values_mut() {
+      for (pos_pair, loop_align_prob) in sta_prob_mats.loop_align_prob_mat.iter_mut() {
+        match sta_prob_mats.align_prob_mat.get_mut(pos_pair) {
+          Some(align_prob) => {
+            logsumexp(align_prob, *loop_align_prob);
+            *align_prob = expf(*align_prob);
+          }
+          None => {
+            sta_prob_mats.align_prob_mat.insert(*pos_pair, expf(*loop_align_prob));
+          }
+        }
         *loop_align_prob = expf(*loop_align_prob);
       }
       for basepair_align_prob in sta_prob_mats.basepair_align_prob_mat.values_mut() {
@@ -5671,9 +5663,9 @@ pub fn get_num_of_externalloop_baseunpairing_nucs(
   count
 }
 
-pub fn consprob_trained<T>(
+pub fn consprob_trained<'a, T>(
   thread_pool: &mut Pool,
-  fasta_records: &FastaRecords,
+  seqs: &SeqSlices<'a>,
   min_bpp: Prob,
   min_align_prob: Prob,
   produce_struct_profs: bool,
@@ -5699,22 +5691,22 @@ where
     transferred.transfer();
     transferred
   };
-  let num_of_fasta_records = fasta_records.len();
-  let mut sparse_bpp_mats = vec![SparseProbMat::<T>::new(); num_of_fasta_records];
-  let mut max_bp_spans = vec![T::zero(); num_of_fasta_records];
-  let mut bp_score_param_set_seqs = vec![BpScoreParamSets::<T>::new(); num_of_fasta_records];
+  let num_of_seqs = seqs.len();
+  let mut sparse_bpp_mats = vec![SparseProbMat::<T>::new(); num_of_seqs];
+  let mut max_bp_spans = vec![T::zero(); num_of_seqs];
+  let mut bp_score_param_set_seqs = vec![BpScoreParamSets::<T>::new(); num_of_seqs];
   let ref ref_2_feature_score_sets = feature_score_sets;
   thread_pool.scoped(|scope| {
-    for (sparse_bpp_mat, max_bp_span, fasta_record, bp_score_param_sets) in multizip((
+    for (sparse_bpp_mat, max_bp_span, seq, bp_score_param_sets) in multizip((
       sparse_bpp_mats.iter_mut(),
       max_bp_spans.iter_mut(),
-      fasta_records.iter(),
+      seqs.iter(),
       bp_score_param_set_seqs.iter_mut(),
     )) {
-      let seq_len = fasta_record.seq.len();
+      let seq_len = seq.len();
       scope.execute(move || {
         let bpp_mat = mccaskill_algo(
-          &fasta_record.seq[1..seq_len - 1],
+          &seq[1..seq_len - 1],
           true,
           false,
           ref_2_struct_feature_score_sets,
@@ -5724,7 +5716,7 @@ where
         *max_bp_span = get_max_bp_span::<T>(sparse_bpp_mat);
         *bp_score_param_sets = BpScoreParamSets::<T>::set_curr_params(
           ref_2_feature_score_sets,
-          &fasta_record.seq[..],
+          seq,
           sparse_bpp_mat,
         );
       });
@@ -5732,8 +5724,8 @@ where
   });
   let mut prob_mats_with_rna_id_pairs = StaProbMatsWithRnaIdPairs::<T>::default();
   let mut align_prob_mats_with_rna_id_pairs = SparseProbMatsWithRnaIdPairs::<T>::default();
-  for rna_id_1 in 0..num_of_fasta_records {
-    for rna_id_2 in rna_id_1 + 1..num_of_fasta_records {
+  for rna_id_1 in 0..num_of_seqs {
+    for rna_id_2 in rna_id_1 + 1..num_of_seqs {
       let rna_id_pair = (rna_id_1, rna_id_2);
       prob_mats_with_rna_id_pairs.insert(rna_id_pair, StaProbMats::<T>::origin());
       align_prob_mats_with_rna_id_pairs.insert(rna_id_pair, SparseProbMat::<T>::default());
@@ -5742,8 +5734,8 @@ where
   thread_pool.scoped(|scope| {
     for (rna_id_pair, align_prob_mat) in align_prob_mats_with_rna_id_pairs.iter_mut() {
       let seq_pair = (
-        &fasta_records[rna_id_pair.0].seq[..],
-        &fasta_records[rna_id_pair.1].seq[..],
+        seqs[rna_id_pair.0],
+        seqs[rna_id_pair.1],
       );
       scope.execute(move || {
         *align_prob_mat = sparsify_align_prob_mat(
@@ -5756,8 +5748,8 @@ where
   thread_pool.scoped(|scope| {
     for (rna_id_pair, prob_mats) in prob_mats_with_rna_id_pairs.iter_mut() {
       let seq_pair = (
-        &fasta_records[rna_id_pair.0].seq[..],
-        &fasta_records[rna_id_pair.1].seq[..],
+        seqs[rna_id_pair.0],
+        seqs[rna_id_pair.1],
       );
       let seq_len_pair = (
         T::from_usize(seq_pair.0.len()).unwrap(),
@@ -5804,15 +5796,15 @@ where
     }
   });
   let ref ref_2_prob_mats_with_rna_id_pairs = prob_mats_with_rna_id_pairs;
-  let mut prob_mat_sets = vec![PctStaProbMats::<T>::origin(); num_of_fasta_records];
+  let mut prob_mat_sets = vec![PctStaProbMats::<T>::origin(); num_of_seqs];
   thread_pool.scoped(|scope| {
     for (rna_id, prob_mats) in prob_mat_sets.iter_mut().enumerate() {
-      let seq_len = fasta_records[rna_id].seq.len();
+      let seq_len = seqs[rna_id].len();
       scope.execute(move || {
         *prob_mats = pct_of_prob_mats::<T>(
           ref_2_prob_mats_with_rna_id_pairs,
           rna_id,
-          num_of_fasta_records,
+          num_of_seqs,
           seq_len,
           produce_struct_profs,
         );
@@ -5821,34 +5813,14 @@ where
   });
   let mut align_prob_mat_sets_with_rna_id_pairs = AlignProbMatSetsWithRnaIdPairs::<T>::default();
   if produce_align_probs {
-    for rna_id_1 in 0..num_of_fasta_records {
-      for rna_id_2 in rna_id_1 + 1..num_of_fasta_records {
+    for rna_id_1 in 0..num_of_seqs {
+      for rna_id_2 in rna_id_1 + 1..num_of_seqs {
         let rna_id_pair = (rna_id_1, rna_id_2);
         let ref prob_mats = prob_mats_with_rna_id_pairs[&rna_id_pair];
         let mut align_prob_mats = AlignProbMats::<T>::new();
         align_prob_mats.loop_align_prob_mat = prob_mats.loop_align_prob_mat.clone();
         align_prob_mats.basepair_align_prob_mat = prob_mats.basepair_align_prob_mat.clone();
-        align_prob_mats.align_prob_mat = align_prob_mats.loop_align_prob_mat.clone();
-        for (pos_quadruple, &bpap) in &align_prob_mats.basepair_align_prob_mat {
-          let pos_pair = (pos_quadruple.0, pos_quadruple.2);
-          match align_prob_mats.align_prob_mat.get_mut(&pos_pair) {
-            Some(bap) => {
-              *bap += bpap;
-            }
-            None => {
-              align_prob_mats.align_prob_mat.insert(pos_pair, bpap);
-            }
-          }
-          let pos_pair = (pos_quadruple.1, pos_quadruple.3);
-          match align_prob_mats.align_prob_mat.get_mut(&pos_pair) {
-            Some(bap) => {
-              *bap += bpap;
-            }
-            None => {
-              align_prob_mats.align_prob_mat.insert(pos_pair, bpap);
-            }
-          }
-        }
+        align_prob_mats.align_prob_mat = prob_mats.align_prob_mat.clone();
         align_prob_mat_sets_with_rna_id_pairs.insert(rna_id_pair, align_prob_mats);
       }
     }

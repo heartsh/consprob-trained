@@ -116,10 +116,11 @@ fn main() {
     fasta_records.push(FastaRecord::new(String::from(fasta_record.id()), seq));
   }
   let mut thread_pool = Pool::new(num_of_threads);
+  let seqs = fasta_records.iter().map(|x| &x.seq[..]).collect();
   if max_seq_len <= u8::MAX as usize {
     let (prob_mat_sets, align_prob_mat_sets_with_rna_id_pairs) = consprob_trained::<u8>(
       &mut thread_pool,
-      &fasta_records,
+      &seqs,
       min_bpp,
       min_align_prob,
       produce_struct_profs,
@@ -136,7 +137,7 @@ fn main() {
   } else {
     let (prob_mat_sets, align_prob_mat_sets_with_rna_id_pairs) = consprob_trained::<u16>(
       &mut thread_pool,
-      &fasta_records,
+      &seqs,
       min_bpp,
       min_align_prob,
       produce_struct_profs,
