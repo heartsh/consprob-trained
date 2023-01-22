@@ -1,5 +1,5 @@
-#!/bin/zsh
-#$ -S /bin/zsh
+#!/bin/sh
+#$ -S /bin/sh
 #$ -l epyc -l s_vmem=128G -l mem_req=128G
 #$ -N run_constrain
 #$ -V

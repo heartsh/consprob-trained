@@ -14,3 +14,4 @@ target
 !train_logs_random_init.dat
 !sampled_trnas.fa
 !*_elapsed_time_data*.dat
+!assets/raf_trained_weights.dat

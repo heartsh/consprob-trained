@@ -45,7 +45,7 @@ def main():
   print("# entries in RNAStralign = %d" % (num_of_range_short + num_of_range_mid + num_of_range_long))
   ax = pyplot.pie([num_of_range_short, num_of_range_mid, num_of_range_long], labels = ["Short", "Medium", "Long"], counterclock = False, startangle = 90, autopct = '%1.1f%%', pctdistance = 0.7)
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/avg_seq_len_dist_rnastralign.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/avg_seq_len_dist_rnastralign.svg", bbox_inches = "tight")
   pyplot.clf()
   _, _, raf_elapsed_times = utils.read_elapsed_time_data(raf_elapsed_time_data_file_path)
   _, _, locarna_elapsed_times = utils.read_elapsed_time_data(locarna_elapsed_time_data_file_path)
@@ -58,7 +58,7 @@ def main():
   ax = seaborn.lmplot(x = "Average RNA sequence length", y = "Running time (s)", data = data_frame, lowess = True, hue = "RNA structural aligner", scatter = False)
   seaborn.move_legend(ax, "upper right", bbox_to_anchor = (1.3, 1))
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/rna_aligner_reg_plot_elapsed_time_rnastralign.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/rna_aligner_reg_plot_elapsed_time_rnastralign.svg", bbox_inches = "tight")
   pyplot.clf()
 
 def get_bin_counts(params):

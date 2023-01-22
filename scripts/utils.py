@@ -20,7 +20,7 @@ def get_dir_paths():
 def run_raf(raf_params):
   (rna_file_path, raf_output_file_path) = raf_params
   seq_length_avg, seq_num = get_seq_info(rna_file_path)
-  raf_command = "raf predict " + rna_file_path
+  raf_command = "raf predict " + rna_file_path + " --weights $(cat ../assets/raf_trained_weights.dat)"
   begin = time.time()
   (output, _, _) = run_command(raf_command)
   elapsed_time = time.time() - begin
@@ -85,7 +85,7 @@ def run_consalign(consalign_params):
 def run_turbofold(turbofold_params):
   (rna_file_path, turbofold_output_dir_path) = turbofold_params
   seq_length_avg, seq_num = get_seq_info(rna_file_path)
-  turbofold_command = "python2 /usr/local/linear_turbofold/linearturbofold -i %s -o %s" % (rna_file_path, turbofold_output_dir_path)
+  turbofold_command = "linearturbofold -i %s -o %s" % (rna_file_path, turbofold_output_dir_path)
   begin = time.time()
   run_command(turbofold_command)
   elapsed_time = time.time() - begin

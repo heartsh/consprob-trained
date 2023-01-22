@@ -31,14 +31,14 @@ def main():
   pyplot.ylabel("Cost")
   pyplot.legend(handles = [line_1, line_2], loc = "upper right")
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/epochs_vs_costs.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/epochs_vs_costs.svg", bbox_inches = "tight")
   pyplot.clf()
   line_1, = pyplot.plot(epochs, accs, label = 'Transferred from CONTRAfold & CONTRAlign', marker = "", linestyle = "solid")
   line_2, = pyplot.plot(epochs_random_init, accs_random_init, label = 'Initialized to random values', marker = "", linestyle = "solid")
   pyplot.xlabel("Epoch")
   pyplot.ylabel("Average expected SPS")
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/epochs_vs_accs.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/epochs_vs_accs.svg", bbox_inches = "tight")
 
 def read_train_logs(train_log_file_path):
   train_log_file = open(train_log_file_path, "r")

@@ -55,14 +55,14 @@ def main():
   ax = seaborn.jointplot(x = "Empirical sum-of-pairs score", y = "Expected sum-of-pairs score", data = data_frame, kind = "kde", fill = True)
   ax.plot_joint(seaborn.regplot, scatter = False, color = color_palette[1])
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_sps_corr.png", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/consalign_sps_corr.svg", bbox_inches = "tight")
   pyplot.clf()
   print(data_frame.corr())
   data = {r"$\gamma^{\rm M}$": consalign_gammas_align_ensemble, r"$\gamma^{\rm P}$": consalign_gammas_bp_ensemble}
   data_frame = pandas.DataFrame(data = data)
   ax = seaborn.jointplot(x = r"$\gamma^{\rm M}$", y = r"$\gamma^{\rm P}$", data = data_frame, kind = "kde", fill = True)
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/consalign_gamma_corr.png", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/consalign_gamma_corr.svg", bbox_inches = "tight")
   pyplot.clf()
 
 def get_bin_counts(params):

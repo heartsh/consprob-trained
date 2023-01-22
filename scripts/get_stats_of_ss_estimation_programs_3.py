@@ -45,7 +45,7 @@ def main():
   print("# entries in Rfam = %d" % (num_of_range_short + num_of_range_mid + num_of_range_long))
   ax = pyplot.pie([num_of_range_short, num_of_range_mid, num_of_range_long], labels = ["Short", "Medium", "Long"], counterclock = False, startangle = 90, autopct = '%1.1f%%', pctdistance = 0.7)
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/avg_seq_len_dist.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/avg_seq_len_dist.svg", bbox_inches = "tight")
   pyplot.clf()
   data = {"Number of RNA sequences": seq_nums}
   data_frame = pandas.DataFrame(data = data)
@@ -54,7 +54,7 @@ def main():
   num_of_range_many = len(data_frame.query("11 <= `Number of RNA sequences`"))
   ax = pyplot.pie([num_of_range_few, num_of_range_mid, num_of_range_many], labels = ["Few", "Medium", "Many"], counterclock = False, startangle = 90, autopct = '%1.1f%%', pctdistance = 0.7)
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/seq_num_dist.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/seq_num_dist.svg", bbox_inches = "tight")
   pyplot.clf()
   _, _, raf_elapsed_times = utils.read_elapsed_time_data(raf_elapsed_time_data_file_path)
   _, _, locarna_elapsed_times = utils.read_elapsed_time_data(locarna_elapsed_time_data_file_path)
@@ -67,11 +67,11 @@ def main():
   ax = seaborn.lmplot(x = "Average RNA sequence length", y = "Running time (s)", data = data_frame, lowess = True, hue = "RNA structural aligner", scatter = False)
   seaborn.move_legend(ax, "upper right", bbox_to_anchor = (1.3, 1))
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/rna_aligner_reg_plot_elapsed_time.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/rna_aligner_reg_plot_elapsed_time.svg", bbox_inches = "tight")
   pyplot.clf()
   ax = seaborn.lmplot(x = "# RNA sequences", y = "Running time (s)", data = data_frame, lowess = True, hue = "RNA structural aligner", scatter = False, legend = False)
   pyplot.tight_layout()
-  pyplot.savefig(image_dir_path + "/rna_aligner_reg_plot_elapsed_time_seq_num.eps", bbox_inches = "tight")
+  pyplot.savefig(image_dir_path + "/rna_aligner_reg_plot_elapsed_time_seq_num.svg", bbox_inches = "tight")
   pyplot.clf()
 
 def get_bin_counts(params):

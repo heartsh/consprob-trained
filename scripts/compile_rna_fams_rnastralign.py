@@ -82,7 +82,7 @@ def compile_rna_fam(params):
           seq = "".join(seq)
           row.seq = Seq(seq)
     sampled_align = AlignIO.MultipleSeqAlignment(sampled_align)
-    if not (is_valid(sampled_align) and len(sampled_align[0]) <= max_sa_len):
+    if not (is_valid(sampled_align) and len(sampled_align[0]) <= max_sa_len and len(sampled_align) >= 2):
       continue
     if not os.path.isdir(output_rna_dir_path):
       os.mkdir(output_rna_dir_path)
