@@ -23,6 +23,14 @@ $ git clone https://github.com/heartsh/consprob-trained && cd consprob-trained
 $ cargo test --release -- --nocapture
 ```
 
+# Docker Playground <img src="./assets/images_fixed/docker_logo.png" width="40">
+I offer [my Docker-based playground for RNA software and its instruction](https://github.com/heartsh/rna-playground) to replay my computational experiments easily.
+
+# Method Digest
+[ConsProb-Turner](https://github.com/heartsh/consprob) can compute a variety of sparse posterior probabilities on RNA pairwise structural alignment using [Turner's model](https://github.com/heartsh/rna-ss-params).
+This repository offers ConsProb-trained, a machine-learning counterpart of ConsProb-Turner.
+This repository also includes a ConsTrain, structural alignment-based machine-learning method for ConsProb-trained.
+
 # Author
 [Heartsh](https://github.com/heartsh)
 
