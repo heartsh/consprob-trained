@@ -21,6 +21,13 @@ my-bfgs = "0.1"
 ndarray-rand = "0.13"
 rand = "0.8"
 
+[dev-dependencies]
+criterion = "0.3"
+
 [lib]
 path = "src/lib.rs"
 name = "consprob_trained"
+
+[[bench]]
+name = "benches"
+harness = false

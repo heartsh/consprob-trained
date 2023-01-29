@@ -6,6 +6,7 @@ target
 !*.sh
 !*.tar.bz2
 !*.png
+!*.yml
 !Cargo.toml
 !rustfmt.toml
 !.gitignore

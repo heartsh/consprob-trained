@@ -1,0 +1,17 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - "master"
+
+jobs:
+  test:
+    name: CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          cargo test --release
