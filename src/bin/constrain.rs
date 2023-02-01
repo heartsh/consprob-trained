@@ -22,17 +22,13 @@ fn main() {
   opts.optopt(
     "",
     "min_base_pair_prob",
-    &format!(
-      "A minimum base-pairing probability (Use {DEFAULT_MIN_BPP_TRAIN} by default)"
-    ),
+    &format!("A minimum base-pairing probability (Use {DEFAULT_MIN_BPP_TRAIN} by default)"),
     "FLOAT",
   );
   opts.optopt(
     "",
     "min_align_prob",
-    &format!(
-      "A minimum aligning probability (Use {DEFAULT_MIN_ALIGN_PROB_TRAIN} by default)"
-    ),
+    &format!("A minimum aligning probability (Use {DEFAULT_MIN_ALIGN_PROB_TRAIN} by default)"),
     "FLOAT",
   );
   opts.optopt(

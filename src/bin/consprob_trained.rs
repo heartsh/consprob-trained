@@ -17,17 +17,13 @@ fn main() {
   opts.optopt(
     "",
     "min_base_pair_prob",
-    &format!(
-      "A minimum base-pairing probability (Use {DEFAULT_MIN_BPP} by default)"
-    ),
+    &format!("A minimum base-pairing probability (Use {DEFAULT_MIN_BPP} by default)"),
     "FLOAT",
   );
   opts.optopt(
     "",
     "min_align_prob",
-    &format!(
-      "A minimum aligning probability (Use {DEFAULT_MIN_ALIGN_PROB} by default)"
-    ),
+    &format!("A minimum aligning probability (Use {DEFAULT_MIN_ALIGN_PROB} by default)"),
     "FLOAT",
   );
   opts.optopt("u", "train_type", &format!("Choose a scoring parameter training type from trained_transfer, trained_random_init, transferred_only (Use {DEFAULT_TRAIN_TYPE} by default)"), "STR");
