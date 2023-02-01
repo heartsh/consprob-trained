@@ -23,8 +23,7 @@ fn main() {
     "",
     "min_base_pair_prob",
     &format!(
-      "A minimum base-pairing probability (Use {} by default)",
-      DEFAULT_MIN_BPP_TRAIN
+      "A minimum base-pairing probability (Use {DEFAULT_MIN_BPP_TRAIN} by default)"
     ),
     "FLOAT",
   );
@@ -32,8 +31,7 @@ fn main() {
     "",
     "min_align_prob",
     &format!(
-      "A minimum aligning probability (Use {} by default)",
-      DEFAULT_MIN_ALIGN_PROB_TRAIN
+      "A minimum aligning probability (Use {DEFAULT_MIN_ALIGN_PROB_TRAIN} by default)"
     ),
     "FLOAT",
   );
@@ -41,8 +39,7 @@ fn main() {
     "",
     "learning_tolerance",
     &format!(
-      "The lower threshold of training accuracy change to quit learning (Use {} by default)",
-      DEFAULT_LEARNING_TOLERANCE
+      "The lower threshold of training accuracy change to quit learning (Use {DEFAULT_LEARNING_TOLERANCE} by default)"
     ),
     "FLOAT",
   );
@@ -100,7 +97,7 @@ fn main() {
   } else {
     num_cpus::get() as NumOfThreads
   };
-  println!("# threads = {}", num_of_threads);
+  println!("# threads = {num_of_threads}");
   let output_file_path = matches.opt_str("o").unwrap();
   let output_file_path = Path::new(&output_file_path);
   print_train_info(&FeatureCountSets::new(0.));
@@ -113,7 +110,7 @@ fn main() {
   let mut thread_pool = Pool::new(num_of_threads);
   let mut align_feature_score_sets = AlignFeatureCountSets::new(0.);
   align_feature_score_sets.transfer();
-  let ref ref_2_align_feature_score_sets = align_feature_score_sets;
+  let ref_2_align_feature_score_sets = &align_feature_score_sets;
   thread_pool.scoped(|scope| {
     for (input_file_path, train_datum) in entries.iter().zip(train_data.iter_mut()) {
       scope.execute(move || {

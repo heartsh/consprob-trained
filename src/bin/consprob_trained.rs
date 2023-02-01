@@ -18,8 +18,7 @@ fn main() {
     "",
     "min_base_pair_prob",
     &format!(
-      "A minimum base-pairing probability (Use {} by default)",
-      DEFAULT_MIN_BPP
+      "A minimum base-pairing probability (Use {DEFAULT_MIN_BPP} by default)"
     ),
     "FLOAT",
   );
@@ -27,12 +26,11 @@ fn main() {
     "",
     "min_align_prob",
     &format!(
-      "A minimum aligning probability (Use {} by default)",
-      DEFAULT_MIN_ALIGN_PROB
+      "A minimum aligning probability (Use {DEFAULT_MIN_ALIGN_PROB} by default)"
     ),
     "FLOAT",
   );
-  opts.optopt("u", "train_type", &format!("Choose a scoring parameter training type from trained_transfer, trained_random_init, transferred_only (Use {} by default)", DEFAULT_TRAIN_TYPE), "STR");
+  opts.optopt("u", "train_type", &format!("Choose a scoring parameter training type from trained_transfer, trained_random_init, transferred_only (Use {DEFAULT_TRAIN_TYPE} by default)"), "STR");
   opts.optopt(
     "t",
     "num_of_threads",
@@ -42,12 +40,12 @@ fn main() {
   opts.optflag(
     "s",
     "produce_struct_profs",
-    &format!("Also compute RNA structural context profiles"),
+    "Also compute RNA structural context profiles",
   );
   opts.optflag(
     "a",
     "produce_align_probs",
-    &format!("Also compute nucleotide alignment probabilities"),
+    "Also compute nucleotide alignment probabilities",
   );
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
@@ -128,7 +126,7 @@ fn main() {
       train_type,
     );
     write_prob_mat_sets(
-      &output_dir_path,
+      output_dir_path,
       &prob_mat_sets,
       produce_struct_profs,
       &align_prob_mat_sets_with_rna_id_pairs,
@@ -145,7 +143,7 @@ fn main() {
       train_type,
     );
     write_prob_mat_sets(
-      &output_dir_path,
+      output_dir_path,
       &prob_mat_sets,
       produce_struct_profs,
       &align_prob_mat_sets_with_rna_id_pairs,

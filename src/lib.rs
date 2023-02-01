@@ -755,7 +755,7 @@ impl FeatureCountSets {
     regularizers: &mut Regularizers,
   ) {
     let f =
-      |_: &BfgsFeatureCounts| self.get_cost(&train_data[..], regularizers) as BfgsFeatureCount;
+      |_: &BfgsFeatureCounts| self.get_cost(train_data, regularizers) as BfgsFeatureCount;
     let g = |_: &BfgsFeatureCounts| {
       convert_feature_counts_2_bfgs_feature_counts(&self.get_grad(train_data, regularizers))
     };
@@ -882,8 +882,8 @@ impl FeatureCountSets {
     let feature_scores = convert_struct_2_vec(self, false);
     let mut grad = FeatureCountSets::new(0.);
     for train_datum in train_data {
-      let ref obs = train_datum.observed_feature_count_sets;
-      let ref expect = train_datum.expected_feature_count_sets;
+      let obs = &train_datum.observed_feature_count_sets;
+      let expect = &train_datum.expected_feature_count_sets;
       let mut sum = 0.;
       let len = obs.hairpin_loop_length_counts.len();
       for i in (0..len).rev() {
@@ -1093,7 +1093,7 @@ impl FeatureCountSets {
     let mut log_likelihood = 0.;
     let feature_scores_cumulative = convert_struct_2_vec(self, true);
     for train_datum in train_data {
-      let ref obs = train_datum.observed_feature_count_sets;
+      let obs = &train_datum.observed_feature_count_sets;
       log_likelihood += feature_scores_cumulative.dot(&convert_struct_2_vec(obs, false));
       log_likelihood -= train_datum.part_func;
     }
@@ -1443,8 +1443,8 @@ impl<T: HashIndex> TrainDatum<T> {
       .collect();
     let cons_second_struct = fasta_records[2].seq();
     let seq_pair = (
-      convert_with_gaps(&fasta_records[0].seq()),
-      convert_with_gaps(&fasta_records[1].seq()),
+      convert_with_gaps(fasta_records[0].seq()),
+      convert_with_gaps(fasta_records[1].seq()),
     );
     let mut seq_pair_without_gaps = (remove_gaps(&seq_pair.0), remove_gaps(&seq_pair.1));
     let bpp_mat_pair = (
@@ -1505,16 +1505,16 @@ impl<T: HashIndex> TrainDatum<T> {
       seq_pair_with_gaps: seq_pair,
       observed_feature_count_sets: FeatureCountSets::new(0.),
       expected_feature_count_sets: FeatureCountSets::new(NEG_INFINITY),
-      bpp_mat_pair: bpp_mat_pair,
-      max_bp_span_pair: max_bp_span_pair,
+      bpp_mat_pair,
+      max_bp_span_pair,
       part_func: NEG_INFINITY,
-      forward_pos_pair_mat_set: forward_pos_pair_mat_set,
-      backward_pos_pair_mat_set: backward_pos_pair_mat_set,
-      pos_quadruple_mat_with_len_pairs: pos_quadruple_mat_with_len_pairs,
-      matchable_pos_sets_1: matchable_pos_sets_1,
-      matchable_pos_sets_2: matchable_pos_sets_2,
+      forward_pos_pair_mat_set,
+      backward_pos_pair_mat_set,
+      pos_quadruple_mat_with_len_pairs,
+      matchable_pos_sets_1,
+      matchable_pos_sets_2,
       bp_score_param_set_pair: (BpScoreParamSets::<T>::new(), BpScoreParamSets::<T>::new()),
-      align_prob_mat: align_prob_mat,
+      align_prob_mat,
       align: PairAlign::<T>::new(),
       acc: NEG_INFINITY,
     };
@@ -1526,7 +1526,7 @@ impl<T: HashIndex> TrainDatum<T> {
     let align_len = dot_bracket_notation.len();
     let mut is_inserting = false;
     let mut is_inserting_2 = is_inserting;
-    let ref seq_pair = self.seq_pair_with_gaps;
+    let seq_pair = &self.seq_pair_with_gaps;
     let mut pos_pair = (T::one(), T::one());
     for i in 0..align_len {
       let char_pair = (seq_pair.0[i], seq_pair.1[i]);
@@ -1535,12 +1535,10 @@ impl<T: HashIndex> TrainDatum<T> {
         self.observed_feature_count_sets.align_count_mat[dict_min_align.0][dict_min_align.1] += 1.;
         if i == 0 {
           self.observed_feature_count_sets.init_match_count += 1.;
+        } else if is_inserting || is_inserting_2 {
+          self.observed_feature_count_sets.match_2_insert_count += 1.;
         } else {
-          if is_inserting || is_inserting_2 {
-            self.observed_feature_count_sets.match_2_insert_count += 1.;
-          } else {
-            self.observed_feature_count_sets.match_2_match_count += 1.;
-          }
+          self.observed_feature_count_sets.match_2_match_count += 1.;
         }
         is_inserting = false;
         is_inserting_2 = is_inserting;
@@ -1560,16 +1558,14 @@ impl<T: HashIndex> TrainDatum<T> {
       if char_pair.1 == PSEUDO_BASE {
         if i == 0 {
           self.observed_feature_count_sets.init_insert_count += 1.;
+        } else if is_inserting {
+          self.observed_feature_count_sets.insert_extend_count += 1.;
+        } else if is_inserting_2 {
+          is_inserting = true;
+          is_inserting_2 = false;
         } else {
-          if is_inserting {
-            self.observed_feature_count_sets.insert_extend_count += 1.;
-          } else if is_inserting_2 {
-            is_inserting = true;
-            is_inserting_2 = false;
-          } else {
-            self.observed_feature_count_sets.match_2_insert_count += 1.;
-            is_inserting = true;
-          }
+          self.observed_feature_count_sets.match_2_insert_count += 1.;
+          is_inserting = true;
         }
         self.observed_feature_count_sets.insert_counts[char_pair.0] += 1.;
         self.align.inserted_poss.insert(pos_pair.0);
@@ -1578,16 +1574,14 @@ impl<T: HashIndex> TrainDatum<T> {
         if i == 0 {
           self.observed_feature_count_sets.init_insert_count += 1.;
           is_inserting_2 = true;
+        } else if is_inserting_2 {
+          self.observed_feature_count_sets.insert_extend_count += 1.;
+        } else if is_inserting {
+          is_inserting_2 = true;
+          is_inserting = false;
         } else {
-          if is_inserting_2 {
-            self.observed_feature_count_sets.insert_extend_count += 1.;
-          } else if is_inserting {
-            is_inserting_2 = true;
-            is_inserting = false;
-          } else {
-            self.observed_feature_count_sets.match_2_insert_count += 1.;
-            is_inserting_2 = true;
-          }
+          self.observed_feature_count_sets.match_2_insert_count += 1.;
+          is_inserting_2 = true;
         }
         self.observed_feature_count_sets.insert_counts[char_pair.1] += 1.;
         self.align.deleted_poss.insert(pos_pair.1);
@@ -1597,12 +1591,10 @@ impl<T: HashIndex> TrainDatum<T> {
         self.observed_feature_count_sets.align_count_mat[dict_min_align.0][dict_min_align.1] += 1.;
         if i == 0 {
           self.observed_feature_count_sets.init_match_count += 1.;
+        } else if is_inserting || is_inserting_2 {
+          self.observed_feature_count_sets.match_2_insert_count += 1.;
         } else {
-          if is_inserting || is_inserting_2 {
-            self.observed_feature_count_sets.match_2_insert_count += 1.;
-          } else {
-            self.observed_feature_count_sets.match_2_match_count += 1.;
-          }
+          self.observed_feature_count_sets.match_2_match_count += 1.;
         }
         is_inserting = false;
         is_inserting_2 = is_inserting;
@@ -1670,12 +1662,12 @@ impl<T: HashIndex> TrainDatum<T> {
         seq_pair.1[pos_pair_closing_loop.0],
         seq_pair.1[pos_pair_closing_loop.1],
       );
-      let mismatch_pair = get_mismatch_pair(&seq_pair.0[..], &pos_pair_closing_loop, true);
-      let mismatch_pair_2 = get_mismatch_pair(&seq_pair.1[..], &pos_pair_closing_loop, true);
+      let mismatch_pair = get_mismatch_pair(&seq_pair.0[..], pos_pair_closing_loop, true);
+      let mismatch_pair_2 = get_mismatch_pair(&seq_pair.1[..], pos_pair_closing_loop, true);
       if num_of_basepairings_in_loop == 0 {
         let hairpin_loop_length_pair = (
-          get_hairpin_loop_length(&seq_pair.0[..], &pos_pair_closing_loop),
-          get_hairpin_loop_length(&seq_pair.1[..], &pos_pair_closing_loop),
+          get_hairpin_loop_length(&seq_pair.0[..], pos_pair_closing_loop),
+          get_hairpin_loop_length(&seq_pair.1[..], pos_pair_closing_loop),
         );
         if is_canonical(&base_pair) {
           self.observed_feature_count_sets.terminal_mismatch_count_mat[base_pair.0][base_pair.1]
@@ -1702,7 +1694,7 @@ impl<T: HashIndex> TrainDatum<T> {
             [CONSPROB_MAX_HAIRPIN_LOOP_LEN] += 1.;
         }
       } else if num_of_basepairings_in_loop == 1 {
-        let ref pos_pair_in_loop = pos_pairs_in_loop[0];
+        let pos_pair_in_loop = &pos_pairs_in_loop[0];
         let base_pair_3 = (
           seq_pair.0[pos_pair_in_loop.0],
           seq_pair.0[pos_pair_in_loop.1],
@@ -1712,10 +1704,10 @@ impl<T: HashIndex> TrainDatum<T> {
           seq_pair.1[pos_pair_in_loop.1],
         );
         let twoloop_length_pair =
-          get_2loop_length_pair(&seq_pair.0[..], &pos_pair_closing_loop, &pos_pair_in_loop);
+          get_2loop_length_pair(&seq_pair.0[..], pos_pair_closing_loop, pos_pair_in_loop);
         let sum = twoloop_length_pair.0 + twoloop_length_pair.1;
         let twoloop_length_pair_2 =
-          get_2loop_length_pair(&seq_pair.1[..], &pos_pair_closing_loop, &pos_pair_in_loop);
+          get_2loop_length_pair(&seq_pair.1[..], pos_pair_closing_loop, pos_pair_in_loop);
         let sum_2 = twoloop_length_pair_2.0 + twoloop_length_pair_2.1;
         let mismatch_pair_3 = get_mismatch_pair(&seq_pair.0[..], pos_pair_in_loop, false);
         let mismatch_pair_4 = get_mismatch_pair(&seq_pair.1[..], pos_pair_in_loop, false);
@@ -1786,17 +1778,15 @@ impl<T: HashIndex> TrainDatum<T> {
                     .interior_loop_length_counts_symm[CONSPROB_MAX_INTERIOR_LOOP_LEN_SYMM - 1] +=
                     1.;
                 }
+              } else if diff <= CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM {
+                self
+                  .observed_feature_count_sets
+                  .interior_loop_length_counts_asymm[diff - 1] += 1.;
               } else {
-                if diff <= CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM {
-                  self
-                    .observed_feature_count_sets
-                    .interior_loop_length_counts_asymm[diff - 1] += 1.;
-                } else {
-                  self
-                    .observed_feature_count_sets
-                    .interior_loop_length_counts_asymm[CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM - 1] +=
-                    1.;
-                }
+                self
+                  .observed_feature_count_sets
+                  .interior_loop_length_counts_asymm[CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM - 1] +=
+                  1.;
               }
             }
           }
@@ -1879,17 +1869,15 @@ impl<T: HashIndex> TrainDatum<T> {
                     .interior_loop_length_counts_symm[CONSPROB_MAX_INTERIOR_LOOP_LEN_SYMM - 1] +=
                     1.;
                 }
+              } else if diff_2 <= CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM {
+                self
+                  .observed_feature_count_sets
+                  .interior_loop_length_counts_asymm[diff_2 - 1] += 1.;
               } else {
-                if diff_2 <= CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM {
-                  self
-                    .observed_feature_count_sets
-                    .interior_loop_length_counts_asymm[diff_2 - 1] += 1.;
-                } else {
-                  self
-                    .observed_feature_count_sets
-                    .interior_loop_length_counts_asymm[CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM - 1] +=
-                    1.;
-                }
+                self
+                  .observed_feature_count_sets
+                  .interior_loop_length_counts_asymm[CONSPROB_MAX_INTERIOR_LOOP_LEN_ASYMM - 1] +=
+                  1.;
               }
             }
           }
@@ -1980,8 +1968,7 @@ impl<T: HashIndex> TrainDatum<T> {
       .observed_feature_count_sets
       .external_loop_accessible_basepairing_count += 2. * stored_pos_pairs.len() as Prob;
     let mut stored_pos_pairs_sorted = stored_pos_pairs
-      .iter()
-      .map(|x| *x)
+      .iter().copied()
       .collect::<Vec<(usize, usize)>>();
     stored_pos_pairs_sorted.sort();
     let num_of_baseunpairing_nucs_in_external_loop =
@@ -2005,8 +1992,8 @@ impl<T: HashIndex> TrainDatum<T> {
         seq_pair.1[pos_pair_in_loop.0],
         seq_pair.1[pos_pair_in_loop.1],
       );
-      let mismatch_pair = get_mismatch_pair(&seq_pair.0[..], &pos_pair_in_loop, false);
-      let mismatch_pair_2 = get_mismatch_pair(&seq_pair.1[..], &pos_pair_in_loop, false);
+      let mismatch_pair = get_mismatch_pair(&seq_pair.0[..], pos_pair_in_loop, false);
+      let mismatch_pair_2 = get_mismatch_pair(&seq_pair.1[..], pos_pair_in_loop, false);
       if is_canonical(&base_pair) {
         if mismatch_pair.1 != PSEUDO_BASE {
           self.observed_feature_count_sets.left_dangle_count_mat[base_pair.1][base_pair.0]
@@ -2075,7 +2062,7 @@ impl InsertScoreRangeSets {
     ];
     insert_score_range_sets.insert_scores_range_2 = mat.clone();
     insert_score_range_sets.insert_scores_range_4_el_2 = mat.clone();
-    insert_score_range_sets.insert_scores_range_4_ml_2 = mat.clone();
+    insert_score_range_sets.insert_scores_range_4_ml_2 = mat;
     for i in 1..seq_len_pair.1 - 1 {
       let base = seq_pair.1[i];
       let mut sum = feature_score_sets.insert_counts[base];
@@ -2146,9 +2133,9 @@ pub const CONSPROB_INSERT_TRANSITION_GROUP_SIZE: usize = 2;
 pub const GAMMA_DIST_ALPHA: FeatureCount = 0.;
 pub const GAMMA_DIST_BETA: FeatureCount = 1.;
 pub const DEFAULT_LEARNING_TOLERANCE: FeatureCount = 0.000_1;
-pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH: &'static str =
+pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH: &str =
   "../src/trained_feature_score_sets.rs";
-pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH_RANDOM_INIT: &'static str =
+pub const TRAINED_FEATURE_SCORE_SETS_FILE_PATH_RANDOM_INIT: &str =
   "../src/trained_feature_score_sets_random_init.rs";
 pub const README_FILE_NAME: &str = "README.md";
 #[derive(Clone, Copy)]
@@ -2167,7 +2154,7 @@ pub fn get_sps_expected<T>(
 where
   T: HashIndex,
 {
-  let ref align_prob_mat = prob_mats.align_prob_mat.clone();
+  let align_prob_mat = &prob_mats.align_prob_mat.clone();
   let seq_len_pair = (seq_pair.0.len(), seq_pair.1.len());
   let mut insert_probs_pair = (vec![1.; seq_len_pair.0], vec![1.; seq_len_pair.1]);
   for (pos_pair, &align_prob) in align_prob_mat {
@@ -2198,8 +2185,8 @@ where
     .iter()
     .map(|&x| insert_probs_pair.1[x.to_usize().unwrap()])
     .sum::<FeatureCount>();
-  let sps = pt / total as FeatureCount;
-  sps
+  
+  pt / total as FeatureCount
 }
 
 pub fn io_algo_4_prob_mats<T>(
@@ -2314,7 +2301,7 @@ where
             let base_pair_2 = (seq_pair.1[long_k], seq_pair.1[long_l]);
             let pos_quadruple = (i, j, k, l);
             let (part_func_on_sa, part_func_4_ml) = get_tmp_part_func_set_mat::<T>(
-              &seq_pair,
+              seq_pair,
               feature_score_sets,
               align_prob_mat,
               &pos_quadruple,
@@ -2326,7 +2313,7 @@ where
               matchable_pos_sets_2,
             );
             let _ = get_tmp_part_func_set_mat::<T>(
-              &seq_pair,
+              seq_pair,
               feature_score_sets,
               align_prob_mat,
               &pos_quadruple,
@@ -2349,10 +2336,8 @@ where
               let score = hairpin_loop_score + hairpin_loop_score_2 + part_func_on_sa;
               logsumexp(&mut sum, score);
             }
-            let ref forward_tmp_part_func_set_mat =
-              sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs_decode[&(i, k)];
-            let ref backward_tmp_part_func_set_mat =
-              sta_part_func_mats.backward_tmp_part_func_set_mats_with_pos_pairs_decode[&(j, l)];
+            let forward_tmp_part_func_set_mat = &sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs_decode[&(i, k)];
+            let backward_tmp_part_func_set_mat = &sta_part_func_mats.backward_tmp_part_func_set_mats_with_pos_pairs_decode[&(j, l)];
             let min = T::from_usize(if train_score_params {
               2
             } else {
@@ -2523,106 +2508,104 @@ where
         None => {}
       }
       let base_2 = seq_pair.1[long_j];
-      if i > T::zero() && j > T::zero() {
-        if align_prob_mat.contains_key(&pos_pair) {
-          let mut sum_2 = NEG_INFINITY;
-          let loop_align_score = feature_score_sets.align_count_mat[base][base_2]
-            + 2. * feature_score_sets.external_loop_accessible_baseunpairing_count;
-          let pos_pair_2 = (i - T::one(), j - T::one());
-          let long_pos_pair_2 = (
-            pos_pair_2.0.to_usize().unwrap(),
-            pos_pair_2.1.to_usize().unwrap(),
-          );
-          let is_begin = pos_pair_2 == leftmost_pos_pair;
-          match sta_part_func_mats
+      if i > T::zero() && j > T::zero() && align_prob_mat.contains_key(&pos_pair) {
+        let mut sum_2 = NEG_INFINITY;
+        let loop_align_score = feature_score_sets.align_count_mat[base][base_2]
+          + 2. * feature_score_sets.external_loop_accessible_baseunpairing_count;
+        let pos_pair_2 = (i - T::one(), j - T::one());
+        let long_pos_pair_2 = (
+          pos_pair_2.0.to_usize().unwrap(),
+          pos_pair_2.1.to_usize().unwrap(),
+        );
+        let is_begin = pos_pair_2 == leftmost_pos_pair;
+        match sta_part_func_mats
+          .forward_part_func_mat_4_external_loop
+          .get(&pos_pair_2)
+        {
+          Some(&part_func) => {
+            let score = part_func
+              + if is_begin {
+                feature_score_sets.init_match_count
+              } else {
+                feature_score_sets.match_2_match_count
+              };
+            logsumexp(&mut sum_2, score);
+          }
+          None => {}
+        }
+        match matchable_pos_sets_1.get(&pos_pair_2.0) {
+          Some(matchable_poss) => {
+            for &x in matchable_poss {
+              if x >= pos_pair_2.1 {
+                continue;
+              }
+              let pos_pair_3 = (pos_pair_2.0, x);
+              match sta_part_func_mats
+                .forward_part_func_mat_4_external_loop
+                .get(&pos_pair_3)
+              {
+                Some(&part_func) => {
+                  let long_x = x.to_usize().unwrap();
+                  let is_begin = pos_pair_3 == leftmost_pos_pair;
+                  let insert_score_range = insert_score_range_sets.insert_scores_range_4_el_2
+                    [long_x + 1][long_pos_pair_2.1]
+                    + if is_begin {
+                      feature_score_sets.init_insert_count
+                    } else {
+                      feature_score_sets.match_2_insert_count
+                    };
+                  let score =
+                    part_func + insert_score_range + feature_score_sets.match_2_insert_count;
+                  logsumexp(&mut sum_2, score);
+                }
+                None => {}
+              }
+            }
+          }
+          None => {}
+        }
+        match matchable_pos_sets_2.get(&pos_pair_2.1) {
+          Some(matchable_poss) => {
+            for &x in matchable_poss {
+              if x >= pos_pair_2.0 {
+                continue;
+              }
+              let pos_pair_3 = (x, pos_pair_2.1);
+              match sta_part_func_mats
+                .forward_part_func_mat_4_external_loop
+                .get(&pos_pair_3)
+              {
+                Some(&part_func) => {
+                  let long_x = x.to_usize().unwrap();
+                  let is_begin = pos_pair_3 == leftmost_pos_pair;
+                  let insert_score_range = insert_score_range_sets.insert_scores_range_4_el
+                    [long_x + 1][long_pos_pair_2.0]
+                    + if is_begin {
+                      feature_score_sets.init_insert_count
+                    } else {
+                      feature_score_sets.match_2_insert_count
+                    };
+                  let score =
+                    part_func + insert_score_range + feature_score_sets.match_2_insert_count;
+                  logsumexp(&mut sum_2, score);
+                }
+                None => {}
+              }
+            }
+          }
+          None => {}
+        }
+        if sum_2 > NEG_INFINITY {
+          sta_part_func_mats
+            .forward_part_func_mat_4_external_loop_decode
+            .insert(pos_pair_2, sum_2);
+        }
+        let term = sum_2 + loop_align_score;
+        logsumexp(&mut sum, term);
+        if sum > NEG_INFINITY {
+          sta_part_func_mats
             .forward_part_func_mat_4_external_loop
-            .get(&pos_pair_2)
-          {
-            Some(&part_func) => {
-              let score = part_func
-                + if is_begin {
-                  feature_score_sets.init_match_count
-                } else {
-                  feature_score_sets.match_2_match_count
-                };
-              logsumexp(&mut sum_2, score);
-            }
-            None => {}
-          }
-          match matchable_pos_sets_1.get(&pos_pair_2.0) {
-            Some(matchable_poss) => {
-              for &x in matchable_poss {
-                if x >= pos_pair_2.1 {
-                  continue;
-                }
-                let pos_pair_3 = (pos_pair_2.0, x);
-                match sta_part_func_mats
-                  .forward_part_func_mat_4_external_loop
-                  .get(&pos_pair_3)
-                {
-                  Some(&part_func) => {
-                    let long_x = x.to_usize().unwrap();
-                    let is_begin = pos_pair_3 == leftmost_pos_pair;
-                    let insert_score_range = insert_score_range_sets.insert_scores_range_4_el_2
-                      [long_x + 1][long_pos_pair_2.1]
-                      + if is_begin {
-                        feature_score_sets.init_insert_count
-                      } else {
-                        feature_score_sets.match_2_insert_count
-                      };
-                    let score =
-                      part_func + insert_score_range + feature_score_sets.match_2_insert_count;
-                    logsumexp(&mut sum_2, score);
-                  }
-                  None => {}
-                }
-              }
-            }
-            None => {}
-          }
-          match matchable_pos_sets_2.get(&pos_pair_2.1) {
-            Some(matchable_poss) => {
-              for &x in matchable_poss {
-                if x >= pos_pair_2.0 {
-                  continue;
-                }
-                let pos_pair_3 = (x, pos_pair_2.1);
-                match sta_part_func_mats
-                  .forward_part_func_mat_4_external_loop
-                  .get(&pos_pair_3)
-                {
-                  Some(&part_func) => {
-                    let long_x = x.to_usize().unwrap();
-                    let is_begin = pos_pair_3 == leftmost_pos_pair;
-                    let insert_score_range = insert_score_range_sets.insert_scores_range_4_el
-                      [long_x + 1][long_pos_pair_2.0]
-                      + if is_begin {
-                        feature_score_sets.init_insert_count
-                      } else {
-                        feature_score_sets.match_2_insert_count
-                      };
-                    let score =
-                      part_func + insert_score_range + feature_score_sets.match_2_insert_count;
-                    logsumexp(&mut sum_2, score);
-                  }
-                  None => {}
-                }
-              }
-            }
-            None => {}
-          }
-          if sum_2 > NEG_INFINITY {
-            sta_part_func_mats
-              .forward_part_func_mat_4_external_loop_decode
-              .insert(pos_pair_2, sum_2);
-          }
-          let term = sum_2 + loop_align_score;
-          logsumexp(&mut sum, term);
-          if sum > NEG_INFINITY {
-            sta_part_func_mats
-              .forward_part_func_mat_4_external_loop
-              .insert(pos_pair, sum);
-          }
+            .insert(pos_pair, sum);
         }
       }
     }
@@ -2902,14 +2885,14 @@ where
       TmpPartFuncSetMat::<T>::new(),
     );
   }
-  let ref mut tmp_part_func_set_mat = tmp_part_func_set_mats_with_pos_pairs
+  let tmp_part_func_set_mat = &mut tmp_part_func_set_mats_with_pos_pairs
     .get_mut(&if is_forward {
       leftmost_pos_pair
     } else {
       rightmost_pos_pair
     })
     .unwrap();
-  let ref mut tmp_part_func_set_mat_decode = tmp_part_func_set_mats_with_pos_pairs_decode
+  let tmp_part_func_set_mat_decode = &mut tmp_part_func_set_mats_with_pos_pairs_decode
     .get_mut(&if is_forward {
       leftmost_pos_pair
     } else {
@@ -2954,10 +2937,8 @@ where
               if !(i < m && k < n) {
                 continue;
               }
-            } else {
-              if !(m < j && n < l) {
-                continue;
-              }
+            } else if !(m < j && n < l) {
+              continue;
             }
             let pos_pair_2 = if is_forward {
               (m - T::one(), n - T::one())
@@ -3263,7 +3244,7 @@ where
   } else {
     &sta_part_func_mats.backward_tmp_part_func_set_mats_with_pos_pairs_decode
   };
-  let ref tmp_part_func_set_mat_decode = tmp_part_func_set_mats_with_pos_pairs_decode[&if is_forward
+  let tmp_part_func_set_mat_decode = &tmp_part_func_set_mats_with_pos_pairs_decode[&if is_forward
   {
     leftmost_pos_pair
   } else {
@@ -3299,10 +3280,8 @@ where
               if !(i < m && k < n) {
                 continue;
               }
-            } else {
-              if !(m < j && n < l) {
-                continue;
-              }
+            } else if !(m < j && n < l) {
+              continue;
             }
             let pos_pair_2 = if is_forward {
               (m - T::one(), n - T::one())
@@ -3657,11 +3636,11 @@ where
                                 (loop_len_pair_2.0 == 0 || loop_len_pair_2.1 == 0) && !is_stack_2;
                               let mismatch_pair_4 =
                                 (seq_pair.1[long_o + 1], seq_pair.1[long_p - 1]);
-                              let ref forward_tmp_part_func_set_mat = sta_part_func_mats
+                              let forward_tmp_part_func_set_mat = &sta_part_func_mats
                                 .forward_tmp_part_func_set_mats_with_pos_pairs[&(m, o)];
-                              let ref forward_tmp_part_func_set_mat_decode = sta_part_func_mats
+                              let forward_tmp_part_func_set_mat_decode = &sta_part_func_mats
                                 .forward_tmp_part_func_set_mats_with_pos_pairs_decode[&(m, o)];
-                              let ref backward_tmp_part_func_set_mat_decode = sta_part_func_mats
+                              let backward_tmp_part_func_set_mat_decode = &sta_part_func_mats
                                 .backward_tmp_part_func_set_mats_with_pos_pairs_decode[&(n, p)];
                               let mut forward_term = NEG_INFINITY;
                               let mut forward_term_4_align = forward_term;
@@ -4030,7 +4009,7 @@ where
                   if !(u < i && v < k) {
                     continue;
                   }
-                  let ref forward_tmp_part_func_set_mat_decode = sta_part_func_mats
+                  let forward_tmp_part_func_set_mat_decode = &sta_part_func_mats
                     .forward_tmp_part_func_set_mats_with_pos_pairs_decode[pos_pair];
                   let pos_quadruple_2 = (u, j, v, l);
                   let mut forward_term = NEG_INFINITY;
@@ -4235,9 +4214,8 @@ where
                   if train_score_params {
                     let mismatch_pair = (seq_pair.0[long_i + 1], seq_pair.0[long_j - 1]);
                     let mismatch_pair_2 = (seq_pair.1[long_k + 1], seq_pair.1[long_l - 1]);
-                    let ref forward_tmp_part_func_set_mat =
-                      sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs[&(i, k)];
-                    let ref forward_tmp_part_func_set_mat_decode = sta_part_func_mats
+                    let forward_tmp_part_func_set_mat = &sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs[&(i, k)];
+                    let forward_tmp_part_func_set_mat_decode = &sta_part_func_mats
                       .forward_tmp_part_func_set_mats_with_pos_pairs_decode[&(i, k)];
                     if substr_len_1.to_usize().unwrap() - 2 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN
                       && substr_len_2.to_usize().unwrap() - 2 <= CONSPROB_MAX_HAIRPIN_LOOP_LEN
@@ -4372,7 +4350,7 @@ where
                     + basepair_align_score
                     + multi_loop_closing_basepairing_score
                     + multi_loop_closing_basepairing_score_2;
-                  let ref backward_tmp_part_func_set_mat_decode = sta_part_func_mats
+                  let backward_tmp_part_func_set_mat_decode = &sta_part_func_mats
                     .backward_tmp_part_func_set_mats_with_pos_pairs_decode[&(j, l)];
                   for pos_pair in align_prob_mat.keys() {
                     let &(u, v) = pos_pair;
@@ -4719,22 +4697,18 @@ where
       let basepair_align_score = feature_score_sets.align_count_mat[base_pair.0][base_pair_2.0]
         + feature_score_sets.align_count_mat[base_pair.1][base_pair_2.1];
       let prob_coeff = part_func_4_bpa - global_part_func + basepair_align_score;
-      let ref forward_tmp_part_func_set_mat =
-        sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs[&(i, k)];
-      let ref forward_tmp_part_func_set_mat_decode =
-        sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs_decode[&(i, k)];
-      let ref backward_tmp_part_func_set_mat =
-        sta_part_func_mats.backward_tmp_part_func_set_mats_with_pos_pairs[&(j, l)];
-      let ref backward_tmp_part_func_set_mat_decode =
-        sta_part_func_mats.backward_tmp_part_func_set_mats_with_pos_pairs_decode[&(j, l)];
+      let forward_tmp_part_func_set_mat = &sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs[&(i, k)];
+      let forward_tmp_part_func_set_mat_decode = &sta_part_func_mats.forward_tmp_part_func_set_mats_with_pos_pairs_decode[&(i, k)];
+      let backward_tmp_part_func_set_mat = &sta_part_func_mats.backward_tmp_part_func_set_mats_with_pos_pairs[&(j, l)];
+      let backward_tmp_part_func_set_mat_decode = &sta_part_func_mats.backward_tmp_part_func_set_mats_with_pos_pairs_decode[&(j, l)];
       let (forward_part_func_mat_4_2loop, forward_part_func_mat_4_2loop_decode) =
         if need_twoloop_part_funcs {
           get_part_func_mat_2loop(
             seq_pair,
             feature_score_sets,
             align_prob_mat,
-            &pos_quadruple,
-            &sta_part_func_mats,
+            pos_quadruple,
+            sta_part_func_mats,
             true,
             forward_pos_pair_mat_set,
             bp_score_param_set_pair,
@@ -4754,8 +4728,8 @@ where
             seq_pair,
             feature_score_sets,
             align_prob_mat,
-            &pos_quadruple,
-            &sta_part_func_mats,
+            pos_quadruple,
+            sta_part_func_mats,
             false,
             backward_pos_pair_mat_set,
             bp_score_param_set_pair,
@@ -5769,10 +5743,10 @@ where
   let trained = FeatureCountSets::load_trained_score_params();
   let mut align_feature_score_sets = AlignFeatureCountSets::new(0.);
   copy_feature_count_sets_align(&mut align_feature_score_sets, &trained);
-  let ref ref_2_align_feature_score_sets = align_feature_score_sets;
+  let ref_2_align_feature_score_sets = &align_feature_score_sets;
   let mut struct_feature_score_sets = StructFeatureCountSets::new(0.);
   copy_feature_count_sets_struct(&mut struct_feature_score_sets, &trained);
-  let ref ref_2_struct_feature_score_sets = struct_feature_score_sets;
+  let ref_2_struct_feature_score_sets = &struct_feature_score_sets;
   let feature_score_sets = if matches!(train_type, TrainType::TrainedTransfer) {
     trained
   } else if matches!(train_type, TrainType::TrainedRandomInit) {
@@ -5786,7 +5760,7 @@ where
   let mut sparse_bpp_mats = vec![SparseProbMat::<T>::new(); num_of_seqs];
   let mut max_bp_spans = vec![T::zero(); num_of_seqs];
   let mut bp_score_param_set_seqs = vec![BpScoreParamSets::<T>::new(); num_of_seqs];
-  let ref ref_2_feature_score_sets = feature_score_sets;
+  let ref_2_feature_score_sets = &feature_score_sets;
   thread_pool.scoped(|scope| {
     for (sparse_bpp_mat, max_bp_span, seq, bp_score_param_sets) in multizip((
       sparse_bpp_mats.iter_mut(),
@@ -5846,7 +5820,7 @@ where
         &bp_score_param_set_seqs[rna_id_pair.0],
         &bp_score_param_set_seqs[rna_id_pair.1],
       );
-      let ref align_prob_mat = align_prob_mats_with_rna_id_pairs[rna_id_pair];
+      let align_prob_mat = &align_prob_mats_with_rna_id_pairs[rna_id_pair];
       let (
         forward_pos_pair_mat_set,
         backward_pos_pair_mat_set,
@@ -5855,7 +5829,7 @@ where
         matchable_pos_sets_1,
         matchable_pos_sets_2,
       ) = get_sparse_pos_sets(&bpp_mat_pair, align_prob_mat, &seq_len_pair);
-      let ref ref_2_feature_score_sets = feature_score_sets;
+      let ref_2_feature_score_sets = &feature_score_sets;
       scope.execute(move || {
         *prob_mats = io_algo_4_prob_mats::<T>(
           &seq_pair,
@@ -5877,7 +5851,7 @@ where
       });
     }
   });
-  let ref ref_2_prob_mats_with_rna_id_pairs = prob_mats_with_rna_id_pairs;
+  let ref_2_prob_mats_with_rna_id_pairs = &prob_mats_with_rna_id_pairs;
   let mut prob_mat_sets = vec![PctStaProbMats::<T>::origin(); num_of_seqs];
   thread_pool.scoped(|scope| {
     for (rna_id, prob_mats) in prob_mat_sets.iter_mut().enumerate() {
@@ -5898,7 +5872,7 @@ where
     for rna_id_1 in 0..num_of_seqs {
       for rna_id_2 in rna_id_1 + 1..num_of_seqs {
         let rna_id_pair = (rna_id_1, rna_id_2);
-        let ref prob_mats = prob_mats_with_rna_id_pairs[&rna_id_pair];
+        let prob_mats = &prob_mats_with_rna_id_pairs[&rna_id_pair];
         let mut align_prob_mats = AlignProbMats::<T>::new();
         align_prob_mats.loop_align_prob_mat = prob_mats.loop_align_prob_mat.clone();
         align_prob_mats.basepair_align_prob_mat = prob_mats.basepair_align_prob_mat.clone();
@@ -5937,22 +5911,22 @@ pub fn constrain<'a, T>(
   let mut regularizers = Regularizers::from(vec![1.; feature_score_sets.get_len()]);
   let num_of_data = train_data.len() as FeatureCount;
   loop {
-    let ref ref_2_feature_score_sets = feature_score_sets;
+    let ref_2_feature_score_sets = &feature_score_sets;
     thread_pool.scoped(|scope| {
       for train_datum in train_data.iter_mut() {
         train_datum.expected_feature_count_sets = FeatureCountSets::new(NEG_INFINITY);
         let seq_pair = (&train_datum.seq_pair.0[..], &train_datum.seq_pair.1[..]);
-        let ref max_bp_span_pair = train_datum.max_bp_span_pair;
-        let ref mut expected_feature_count_sets = train_datum.expected_feature_count_sets;
-        let ref mut acc = train_datum.acc;
-        let ref mut part_func = train_datum.part_func;
-        let ref forward_pos_pair_mat_set = train_datum.forward_pos_pair_mat_set;
-        let ref backward_pos_pair_mat_set = train_datum.backward_pos_pair_mat_set;
-        let ref pos_quadruple_mat_with_len_pairs = train_datum.pos_quadruple_mat_with_len_pairs;
-        let ref matchable_pos_sets_1 = train_datum.matchable_pos_sets_1;
-        let ref matchable_pos_sets_2 = train_datum.matchable_pos_sets_2;
-        let ref align_prob_mat = train_datum.align_prob_mat;
-        let ref align = train_datum.align;
+        let max_bp_span_pair = &train_datum.max_bp_span_pair;
+        let expected_feature_count_sets = &mut train_datum.expected_feature_count_sets;
+        let acc = &mut train_datum.acc;
+        let part_func = &mut train_datum.part_func;
+        let forward_pos_pair_mat_set = &train_datum.forward_pos_pair_mat_set;
+        let backward_pos_pair_mat_set = &train_datum.backward_pos_pair_mat_set;
+        let pos_quadruple_mat_with_len_pairs = &train_datum.pos_quadruple_mat_with_len_pairs;
+        let matchable_pos_sets_1 = &train_datum.matchable_pos_sets_1;
+        let matchable_pos_sets_2 = &train_datum.matchable_pos_sets_2;
+        let align_prob_mat = &train_datum.align_prob_mat;
+        let align = &train_datum.align;
         let bp_score_param_set_pair = (
           &train_datum.bp_score_param_set_pair.0,
           &train_datum.bp_score_param_set_pair.1,
@@ -5974,7 +5948,7 @@ pub fn constrain<'a, T>(
             matchable_pos_sets_1,
             matchable_pos_sets_2,
           );
-          *acc = get_sps_expected::<T>(&seq_pair, &align, &result.0);
+          *acc = get_sps_expected::<T>(&seq_pair, align, &result.0);
           *part_func = result.1;
         });
       }
@@ -5983,15 +5957,14 @@ pub fn constrain<'a, T>(
       train_data.iter().map(|x| x.acc).sum::<FeatureCount>() / train_data.len() as FeatureCount;
     let acc_change = acc - old_acc;
     if acc_change <= learning_tolerance {
-      feature_score_sets = old_feature_score_sets.clone();
+      feature_score_sets = old_feature_score_sets;
       println!(
-        "Accuracy change {} is <= learning tolerance {}; training finished",
-        acc_change, learning_tolerance
+        "Accuracy change {acc_change} is <= learning tolerance {learning_tolerance}; training finished"
       );
       break;
     }
     old_feature_score_sets = feature_score_sets.clone();
-    feature_score_sets.update(&train_data, &mut regularizers);
+    feature_score_sets.update(train_data, &mut regularizers);
     for train_datum in train_data.iter_mut() {
       train_datum.set_curr_params(&feature_score_sets);
     }
@@ -5999,10 +5972,9 @@ pub fn constrain<'a, T>(
     let avg_cost_change = (cost - old_cost) / num_of_data;
     if avg_cost_change >= 0. {
       println!(
-        "Average cost change {} is not negative; training finished",
-        avg_cost_change
+        "Average cost change {avg_cost_change} is not negative; training finished"
       );
-      feature_score_sets = old_feature_score_sets.clone();
+      feature_score_sets = old_feature_score_sets;
       break;
     }
     costs.push(cost);
@@ -6019,8 +5991,7 @@ pub fn constrain<'a, T>(
 pub fn remove_gaps(seq: &Seq) -> Seq {
   seq
     .iter()
-    .filter(|&&x| x != PSEUDO_BASE)
-    .map(|&x| x)
+    .filter(|&&x| x != PSEUDO_BASE).copied()
     .collect()
 }
 
@@ -6703,7 +6674,7 @@ pub fn write_logs(costs: &Probs, accs: &Probs, output_file_path: &Path) {
   let mut writer_2_output_file = BufWriter::new(File::create(output_file_path).unwrap());
   let mut buf_4_writer_2_output_file = String::new();
   for (cost, acc) in costs.iter().zip(accs.iter()) {
-    buf_4_writer_2_output_file.push_str(&format!("{},{}\n", cost, acc));
+    buf_4_writer_2_output_file.push_str(&format!("{cost},{acc}\n"));
   }
   let _ = writer_2_output_file.write_all(buf_4_writer_2_output_file.as_bytes());
 }
@@ -6931,7 +6902,7 @@ pub fn print_train_info(feature_score_sets: &FeatureCountSets) {
       }
     }
   }
-  println!("Stacking (group size {})", group_size);
+  println!("Stacking (group size {group_size})");
   num_of_groups += 1;
   let mut group_size = 0;
   let len = feature_score_sets.terminal_mismatch_count_mat.len();
@@ -6947,7 +6918,7 @@ pub fn print_train_info(feature_score_sets: &FeatureCountSets) {
       }
     }
   }
-  println!("Terminal mismatch (group size {})", group_size);
+  println!("Terminal mismatch (group size {group_size})");
   num_of_groups += 1;
   let mut group_size = 0;
   let len = feature_score_sets.left_dangle_count_mat.len();
@@ -6972,7 +6943,7 @@ pub fn print_train_info(feature_score_sets: &FeatureCountSets) {
       }
     }
   }
-  println!("Dangling (group size {})", group_size);
+  println!("Dangling (group size {group_size})");
   num_of_groups += 1;
   let mut group_size = 0;
   let len = feature_score_sets.helix_end_count_mat.len();
@@ -6984,7 +6955,7 @@ pub fn print_train_info(feature_score_sets: &FeatureCountSets) {
       group_size += 1;
     }
   }
-  println!("Helix end (group size {})", group_size);
+  println!("Helix end (group size {group_size})");
   num_of_groups += 1;
   let mut group_size = 0;
   let len = feature_score_sets.base_pair_count_mat.len();
@@ -7000,7 +6971,7 @@ pub fn print_train_info(feature_score_sets: &FeatureCountSets) {
       group_size += 1;
     }
   }
-  println!("Base-pairing (group size {})", group_size);
+  println!("Base-pairing (group size {group_size})");
   num_of_groups += 1;
   let mut group_size = 0;
   let len = feature_score_sets
@@ -7015,7 +6986,7 @@ pub fn print_train_info(feature_score_sets: &FeatureCountSets) {
       group_size += 1;
     }
   }
-  println!("Interior loop length explicit (group size {})", group_size);
+  println!("Interior loop length explicit (group size {group_size})");
   num_of_groups += 1;
   println!(
     "Bulge loop length 0x1 (group size {})",
@@ -7033,28 +7004,24 @@ pub fn print_train_info(feature_score_sets: &FeatureCountSets) {
       group_size += 1;
     }
   }
-  println!("Interior loop length 1x1 (group size {})", group_size);
+  println!("Interior loop length 1x1 (group size {group_size})");
   num_of_groups += 1;
   println!(
-    "Multi-loop length (group size {})",
-    CONSPROB_MULTI_LOOP_GROUP_SIZE
+    "Multi-loop length (group size {CONSPROB_MULTI_LOOP_GROUP_SIZE})"
   );
   num_of_groups += 1;
   println!(
-    "External-loop length (group size {})",
-    CONSPROB_EXTERNAL_LOOP_GROUP_SIZE
+    "External-loop length (group size {CONSPROB_EXTERNAL_LOOP_GROUP_SIZE})"
   );
   num_of_groups += 1;
   println!("-----------------------------------");
   println!("Groups from the CONTRAlign model...");
   println!(
-    "Match transition (group size {})",
-    CONSPROB_MATCH_TRANSITION_GROUP_SIZE
+    "Match transition (group size {CONSPROB_MATCH_TRANSITION_GROUP_SIZE})"
   );
   num_of_groups += 1;
   println!(
-    "Insert transition (group size {})",
-    CONSPROB_INSERT_TRANSITION_GROUP_SIZE
+    "Insert transition (group size {CONSPROB_INSERT_TRANSITION_GROUP_SIZE})"
   );
   num_of_groups += 1;
   println!(
@@ -7073,7 +7040,7 @@ pub fn print_train_info(feature_score_sets: &FeatureCountSets) {
       group_size += 1;
     }
   }
-  println!("Match emission (group size {})", group_size);
+  println!("Match emission (group size {group_size})");
   num_of_groups += 1;
   println!("-----------------------------------");
   println!(
