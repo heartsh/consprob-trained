@@ -84,8 +84,7 @@ fn main() {
     } else if train_type_str == "transferred_only" {
       TrainType::TransferredOnly
     } else {
-      assert!(false);
-      TrainType::TrainedTransfer
+      panic!();
     }
   } else {
     TrainType::TrainedTransfer
