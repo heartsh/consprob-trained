@@ -16,39 +16,39 @@ fn main() {
   opts.reqopt("o", "output_dir_path", "An output directory path", "STR");
   opts.optopt(
     "",
-    "min_base_pair_prob",
-    &format!("A minimum base-pairing probability (Use {DEFAULT_MIN_BPP} by default)"),
+    "min_basepair_prob",
+    &format!("A minimum base-pairing probability (Use {DEFAULT_MIN_BASEPAIR_PROB} by default)"),
     "FLOAT",
   );
   opts.optopt(
     "",
-    "min_align_prob",
-    &format!("A minimum aligning probability (Use {DEFAULT_MIN_ALIGN_PROB} by default)"),
+    "min_match_prob",
+    &format!("A minimum matching probability (Use {DEFAULT_MIN_MATCH_PROB} by default)"),
     "FLOAT",
   );
   opts.optopt("u", "train_type", &format!("Choose a scoring parameter training type from trained_transfer, trained_random_init, transferred_only (Use {DEFAULT_TRAIN_TYPE} by default)"), "STR");
   opts.optopt(
     "t",
-    "num_of_threads",
+    "num_threads",
     "The number of threads in multithreading (Use all the threads of this computer by default)",
     "UINT",
   );
   opts.optflag(
     "s",
-    "produce_struct_profs",
+    "produces_struct_profs",
     "Also compute RNA structural context profiles",
   );
   opts.optflag(
-    "a",
-    "produce_align_probs",
-    "Also compute nucleotide alignment probabilities",
+    "m",
+    "produces_match_probs",
+    "Also compute nucleotide matching probabilities",
   );
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
-    Ok(opt) => opt,
-    Err(failure) => {
+    Ok(x) => x,
+    Err(x) => {
       print_program_usage(&program_name, &opts);
-      panic!("{}", failure.to_string())
+      panic!("{}", x.to_string())
     }
   };
   if matches.opt_present("h") {
@@ -57,26 +57,26 @@ fn main() {
   }
   let input_file_path = matches.opt_str("i").unwrap();
   let input_file_path = Path::new(&input_file_path);
-  let min_bpp = if matches.opt_present("min_base_pair_prob") {
+  let min_basepair_prob = if matches.opt_present("min_basepair_prob") {
     matches
-      .opt_str("min_base_pair_prob")
+      .opt_str("min_basepair_prob")
       .unwrap()
       .parse()
       .unwrap()
   } else {
-    DEFAULT_MIN_BPP
+    DEFAULT_MIN_BASEPAIR_PROB
   };
-  let min_align_prob = if matches.opt_present("min_align_prob") {
-    matches.opt_str("min_align_prob").unwrap().parse().unwrap()
+  let min_match_prob = if matches.opt_present("min_match_prob") {
+    matches.opt_str("min_match_prob").unwrap().parse().unwrap()
   } else {
-    DEFAULT_MIN_ALIGN_PROB
+    DEFAULT_MIN_MATCH_PROB
   };
   let train_type = if matches.opt_present("u") {
     let train_type_str = matches.opt_str("u").unwrap();
     if train_type_str == "trained_transfer" {
       TrainType::TrainedTransfer
     } else if train_type_str == "trained_random_init" {
-      TrainType::TrainedRandomInit
+      TrainType::TrainedRandinit
     } else if train_type_str == "transferred_only" {
       TrainType::TransferredOnly
     } else {
@@ -85,64 +85,64 @@ fn main() {
   } else {
     TrainType::TrainedTransfer
   };
-  let num_of_threads = if matches.opt_present("t") {
+  let num_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
-    num_cpus::get() as NumOfThreads
+    num_cpus::get() as NumThreads
   };
-  let produce_struct_profs = matches.opt_present("s");
-  let produce_align_probs = matches.opt_present("a");
+  let produces_struct_profs = matches.opt_present("s");
+  let produces_match_probs = matches.opt_present("m");
   let output_dir_path = matches.opt_str("o").unwrap();
   let output_dir_path = Path::new(&output_dir_path);
   let fasta_file_reader = Reader::from_file(Path::new(&input_file_path)).unwrap();
   let mut fasta_records = FastaRecords::new();
   let mut max_seq_len = 0;
-  for fasta_record in fasta_file_reader.records() {
-    let fasta_record = fasta_record.unwrap();
-    let mut seq = convert(fasta_record.seq());
-    seq.insert(0, PSEUDO_BASE);
-    seq.push(PSEUDO_BASE);
-    let seq_len = seq.len();
-    if seq_len > max_seq_len {
-      max_seq_len = seq_len;
+  for x in fasta_file_reader.records() {
+    let x = x.unwrap();
+    let mut y = bytes2seq(x.seq());
+    y.insert(0, PSEUDO_BASE);
+    y.push(PSEUDO_BASE);
+    let z = y.len();
+    if z > max_seq_len {
+      max_seq_len = z;
     }
-    fasta_records.push(FastaRecord::new(String::from(fasta_record.id()), seq));
+    fasta_records.push(FastaRecord::new(String::from(x.id()), y));
   }
-  let mut thread_pool = Pool::new(num_of_threads);
+  let mut thread_pool = Pool::new(num_threads);
   let seqs = fasta_records.iter().map(|x| &x.seq[..]).collect();
   if max_seq_len <= u8::MAX as usize {
-    let (prob_mat_sets, align_prob_mat_sets_with_rna_id_pairs) = consprob_trained::<u8>(
+    let (alignfold_prob_mats_avg, match_probs_hashed_ids) = consprob_trained::<u8>(
       &mut thread_pool,
       &seqs,
-      min_bpp,
-      min_align_prob,
-      produce_struct_profs,
-      produce_align_probs,
+      min_basepair_prob,
+      min_match_prob,
+      produces_struct_profs,
+      produces_match_probs,
       train_type,
     );
-    write_prob_mat_sets(
+    write_alignfold_prob_mats(
       output_dir_path,
-      &prob_mat_sets,
-      produce_struct_profs,
-      &align_prob_mat_sets_with_rna_id_pairs,
-      produce_align_probs,
+      &alignfold_prob_mats_avg,
+      &match_probs_hashed_ids,
+      produces_struct_profs,
+      produces_match_probs,
     );
   } else {
-    let (prob_mat_sets, align_prob_mat_sets_with_rna_id_pairs) = consprob_trained::<u16>(
+    let (alignfold_prob_mats_avg, match_probs_hashed_ids) = consprob_trained::<u16>(
       &mut thread_pool,
       &seqs,
-      min_bpp,
-      min_align_prob,
-      produce_struct_profs,
-      produce_align_probs,
+      min_basepair_prob,
+      min_match_prob,
+      produces_struct_profs,
+      produces_match_probs,
       train_type,
     );
-    write_prob_mat_sets(
+    write_alignfold_prob_mats(
       output_dir_path,
-      &prob_mat_sets,
-      produce_struct_profs,
-      &align_prob_mat_sets_with_rna_id_pairs,
-      produce_align_probs,
+      &alignfold_prob_mats_avg,
+      &match_probs_hashed_ids,
+      produces_struct_profs,
+      produces_match_probs,
     );
   }
   write_readme(output_dir_path, &String::from(README_CONTENTS));

@@ -21,14 +21,14 @@ fn main() {
   );
   opts.optopt(
     "",
-    "min_base_pair_prob",
-    &format!("A minimum base-pairing probability (Use {DEFAULT_MIN_BPP_TRAIN} by default)"),
+    "min_basepair_prob",
+    &format!("A minimum base-pairing probability (Use {DEFAULT_BASEPAIR_PROB_TRAIN} by default)"),
     "FLOAT",
   );
   opts.optopt(
     "",
-    "min_align_prob",
-    &format!("A minimum aligning probability (Use {DEFAULT_MIN_ALIGN_PROB_TRAIN} by default)"),
+    "min_match_prob",
+    &format!("A minimum matching probability (Use {DEFAULT_MATCH_PROB_TRAIN} by default)"),
     "FLOAT",
   );
   opts.optopt(
@@ -41,21 +41,21 @@ fn main() {
   );
   opts.optopt(
     "t",
-    "num_of_threads",
+    "num_threads",
     "The number of threads in multithreading (Use all the threads of this computer by default)",
     "UINT",
   );
   opts.optflag(
     "r",
-    "enable_random_init",
+    "enables_randinit",
     "Enable the random initialization of alignment scoring parameters to be trained",
   );
   opts.optflag("h", "help", "Print a help menu");
   let matches = match opts.parse(&args[1..]) {
-    Ok(opt) => opt,
-    Err(failure) => {
+    Ok(x) => x,
+    Err(x) => {
       print_program_usage(&program_name, &opts);
-      panic!("{}", failure.to_string())
+      panic!("{}", x.to_string())
     }
   };
   if matches.opt_present("h") {
@@ -64,19 +64,19 @@ fn main() {
   }
   let input_dir_path = matches.opt_str("i").unwrap();
   let input_dir_path = Path::new(&input_dir_path);
-  let min_bpp = if matches.opt_present("min_base_pair_prob") {
+  let min_basepair_prob = if matches.opt_present("min_basepair_prob") {
     matches
-      .opt_str("min_base_pair_prob")
+      .opt_str("min_basepair_prob")
       .unwrap()
       .parse()
       .unwrap()
   } else {
-    DEFAULT_MIN_BPP_TRAIN
+    DEFAULT_BASEPAIR_PROB_TRAIN
   };
-  let min_align_prob = if matches.opt_present("min_align_prob") {
-    matches.opt_str("min_align_prob").unwrap().parse().unwrap()
+  let min_match_prob = if matches.opt_present("min_match_prob") {
+    matches.opt_str("min_match_prob").unwrap().parse().unwrap()
   } else {
-    DEFAULT_MIN_ALIGN_PROB_TRAIN
+    DEFAULT_MATCH_PROB_TRAIN
   };
   let learning_tolerance = if matches.opt_present("learning_tolerance") {
     matches
@@ -87,34 +87,34 @@ fn main() {
   } else {
     DEFAULT_LEARNING_TOLERANCE
   };
-  let enable_random_init = matches.opt_present("r");
-  let num_of_threads = if matches.opt_present("t") {
+  let enables_randinit = matches.opt_present("r");
+  let num_threads = if matches.opt_present("t") {
     matches.opt_str("t").unwrap().parse().unwrap()
   } else {
-    num_cpus::get() as NumOfThreads
+    num_cpus::get() as NumThreads
   };
-  println!("# threads = {num_of_threads}");
+  println!("# threads = {num_threads}");
   let output_file_path = matches.opt_str("o").unwrap();
   let output_file_path = Path::new(&output_file_path);
-  print_train_info(&FeatureCountSets::new(0.));
+  print_train_info(&AlignfoldScores::new(0.));
   let entries: Vec<DirEntry> = read_dir(input_dir_path)
     .unwrap()
     .map(|x| x.unwrap())
     .collect();
-  let num_of_entries = entries.len();
-  let mut train_data = vec![TrainDatum::origin(); num_of_entries];
-  let mut thread_pool = Pool::new(num_of_threads);
-  let mut align_feature_score_sets = AlignFeatureCountSets::new(0.);
-  align_feature_score_sets.transfer();
-  let ref_2_align_feature_score_sets = &align_feature_score_sets;
-  thread_pool.scoped(|scope| {
-    for (input_file_path, train_datum) in entries.iter().zip(train_data.iter_mut()) {
-      scope.execute(move || {
-        *train_datum = TrainDatum::<u16>::new(
-          &input_file_path.path(),
-          min_bpp,
-          min_align_prob,
-          ref_2_align_feature_score_sets,
+  let num_entries = entries.len();
+  let mut train_data = vec![TrainDatum::origin(); num_entries];
+  let mut thread_pool = Pool::new(num_threads);
+  let mut align_scores = AlignScores::new(0.);
+  align_scores.transfer();
+  thread_pool.scoped(|x| {
+    let y = &align_scores;
+    for (z, a) in entries.iter().zip(train_data.iter_mut()) {
+      x.execute(move || {
+        *a = TrainDatum::<u16>::new(
+          &z.path(),
+          min_basepair_prob,
+          min_match_prob,
+          y,
         );
       });
     }
@@ -123,7 +123,7 @@ fn main() {
     &mut thread_pool,
     &mut train_data,
     output_file_path,
-    enable_random_init,
+    enables_randinit,
     learning_tolerance,
   );
 }
