@@ -110,12 +110,7 @@ fn main() {
     let y = &align_scores;
     for (z, a) in entries.iter().zip(train_data.iter_mut()) {
       x.execute(move || {
-        *a = TrainDatum::<u16>::new(
-          &z.path(),
-          min_basepair_prob,
-          min_match_prob,
-          y,
-        );
+        *a = TrainDatum::<u16>::new(&z.path(), min_basepair_prob, min_match_prob, y);
       });
     }
   });

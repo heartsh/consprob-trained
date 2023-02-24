@@ -221,9 +221,7 @@ impl<T: HashIndex> FoldScoresTrained<T> {
       );
       if long_pos_pair.1 - long_pos_pair.0 - 1 <= MAX_LOOP_LEN {
         let x = get_hairpin_score(alignfold_scores, seq, &long_pos_pair);
-        fold_scores
-          .hairpin_scores
-          .insert(*pos_pair, x);
+        fold_scores.hairpin_scores.insert(*pos_pair, x);
       }
       let multibranch_close_score = alignfold_scores.multibranch_score_base
         + alignfold_scores.multibranch_score_basepair
@@ -232,18 +230,15 @@ impl<T: HashIndex> FoldScoresTrained<T> {
         .multibranch_close_scores
         .insert(*pos_pair, multibranch_close_score);
       let basepair = (seq[long_pos_pair.0], seq[long_pos_pair.1]);
-      let junction_score = get_junction_score(
-        alignfold_scores,
-        seq,
-        &(long_pos_pair.1, long_pos_pair.0),
-      ) + alignfold_scores.basepair_scores[basepair.0][basepair.1];
+      let junction_score =
+        get_junction_score(alignfold_scores, seq, &(long_pos_pair.1, long_pos_pair.0))
+          + alignfold_scores.basepair_scores[basepair.0][basepair.1];
       let multibranch_accessible_score =
         junction_score + alignfold_scores.multibranch_score_basepair;
       fold_scores
         .multibranch_accessible_scores
         .insert(*pos_pair, multibranch_accessible_score);
-      let external_accessible_score =
-        junction_score + alignfold_scores.external_score_basepair;
+      let external_accessible_score = junction_score + alignfold_scores.external_score_basepair;
       fold_scores
         .external_accessible_scores
         .insert(*pos_pair, external_accessible_score);
@@ -251,21 +246,14 @@ impl<T: HashIndex> FoldScoresTrained<T> {
         if !(x.0 < pos_pair.0 && pos_pair.1 < x.1) {
           continue;
         }
-        let y = (
-          x.0.to_usize().unwrap(),
-          x.1.to_usize().unwrap(),
-        );
-        if long_pos_pair.0 - y.0 - 1 + y.1 - long_pos_pair.1 - 1
-          > MAX_LOOP_LEN
-        {
+        let y = (x.0.to_usize().unwrap(), x.1.to_usize().unwrap());
+        if long_pos_pair.0 - y.0 - 1 + y.1 - long_pos_pair.1 - 1 > MAX_LOOP_LEN {
           continue;
         }
-        let y =
-          get_twoloop_score(alignfold_scores, seq, &y, &long_pos_pair);
-        fold_scores.twoloop_scores.insert(
-          (x.0, x.1, pos_pair.0, pos_pair.1),
-          y,
-        );
+        let y = get_twoloop_score(alignfold_scores, seq, &y, &long_pos_pair);
+        fold_scores
+          .twoloop_scores
+          .insert((x.0, x.1, pos_pair.0, pos_pair.1), y);
       }
     }
     fold_scores
@@ -291,8 +279,7 @@ impl AlignfoldScores {
       dangling_scores_right: mat_3d,
       helix_close_scores: mat_2d,
       basepair_scores: mat_2d,
-      interior_scores_explicit: [[init_val; MAX_INTERIOR_EXPLICIT];
-        MAX_INTERIOR_EXPLICIT],
+      interior_scores_explicit: [[init_val; MAX_INTERIOR_EXPLICIT]; MAX_INTERIOR_EXPLICIT],
       bulge_scores_0x1: init_vals,
       interior_scores_1x1: mat_2d,
       multibranch_score_base: init_val,
@@ -313,8 +300,7 @@ impl AlignfoldScores {
       bulge_scores_len_cumulative: [init_val; MAX_LOOP_LEN],
       interior_scores_len_cumulative: [init_val; MAX_LOOP_LEN - 1],
       interior_scores_symmetric_cumulative: [init_val; MAX_INTERIOR_SYMMETRIC],
-      interior_scores_asymmetric_cumulative: [init_val;
-        MAX_INTERIOR_ASYMMETRIC],
+      interior_scores_asymmetric_cumulative: [init_val; MAX_INTERIOR_ASYMMETRIC],
     }
   }
 
@@ -439,6 +425,10 @@ impl AlignfoldScores {
       }
     }
     sum
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.len() == 0
   }
 
   pub fn update_regularizers(&self, regularizers: &mut Regularizers) {
@@ -749,8 +739,7 @@ impl AlignfoldScores {
     let mut squared_sum = 0.;
     squared_sum += self.multibranch_score_base * self.multibranch_score_base;
     squared_sum += self.multibranch_score_basepair * self.multibranch_score_basepair;
-    squared_sum += self.multibranch_score_unpair
-      * self.multibranch_score_unpair;
+    squared_sum += self.multibranch_score_unpair * self.multibranch_score_unpair;
     let regularizer = get_regularizer(GROUP_SIZE_MULTIBRANCH, squared_sum);
     regularizers2[offset] = regularizer;
     offset += 1;
@@ -759,10 +748,8 @@ impl AlignfoldScores {
     regularizers2[offset] = regularizer;
     offset += 1;
     let mut squared_sum = 0.;
-    squared_sum += self.external_score_basepair
-      * self.external_score_basepair;
-    squared_sum += self.external_score_unpair
-      * self.external_score_unpair;
+    squared_sum += self.external_score_basepair * self.external_score_basepair;
+    squared_sum += self.external_score_unpair * self.external_score_unpair;
     let regularizer = get_regularizer(GROUP_SIZE_EXTERNAL, squared_sum);
     regularizers2[offset] = regularizer;
     offset += 1;
@@ -834,9 +821,7 @@ impl AlignfoldScores {
     regularizers: &mut Regularizers,
   ) {
     let f = |_: &BfgsScores| self.get_cost(train_data, regularizers) as BfgsScore;
-    let g = |_: &BfgsScores| {
-      scores2bfgs_scores(&self.get_grad(train_data, regularizers))
-    };
+    let g = |_: &BfgsScores| scores2bfgs_scores(&self.get_grad(train_data, regularizers));
     let uses_cumulative_scores = false;
     match bfgs(
       scores2bfgs_scores(&struct2vec(self, uses_cumulative_scores)),
@@ -844,10 +829,7 @@ impl AlignfoldScores {
       g,
     ) {
       Ok(solution) => {
-        *self = vec2struct(
-          &bfgs_scores2scores(&solution),
-          uses_cumulative_scores,
-        );
+        *self = vec2struct(&bfgs_scores2scores(&solution), uses_cumulative_scores);
       }
       Err(_) => {
         println!("BFGS failed");
@@ -888,8 +870,7 @@ impl AlignfoldScores {
         if (i, j) == dict_min_basepair {
           continue;
         }
-        self.basepair_scores[i][j] =
-          self.basepair_scores[dict_min_basepair.0][dict_min_basepair.1];
+        self.basepair_scores[i][j] = self.basepair_scores[dict_min_basepair.0][dict_min_basepair.1];
       }
     }
     let len = self.interior_scores_explicit.len();
@@ -899,9 +880,8 @@ impl AlignfoldScores {
         if (i, j) == dict_min_len_pair {
           continue;
         }
-        self.interior_scores_explicit[i][j] = self
-          .interior_scores_explicit[dict_min_len_pair.0]
-          [dict_min_len_pair.1];
+        self.interior_scores_explicit[i][j] =
+          self.interior_scores_explicit[dict_min_len_pair.0][dict_min_len_pair.1];
       }
     }
     for i in 0..NUM_BASES {
@@ -1688,14 +1668,12 @@ impl<T: HashIndex> TrainDatum<T> {
         let y = (seq_pair.0[x], seq_pair.0[i]);
         if has_canonical_basepair(&y) {
           let y = get_dict_min_pair(&y);
-          self.alignfold_counts_observed.basepair_scores[y.0]
-            [y.1] += 1.;
+          self.alignfold_counts_observed.basepair_scores[y.0][y.1] += 1.;
         }
         let y = (seq_pair.1[x], seq_pair.1[i]);
         if has_canonical_basepair(&y) {
           let y = get_dict_min_pair(&y);
-          self.alignfold_counts_observed.basepair_scores[y.0]
-            [y.1] += 1.;
+          self.alignfold_counts_observed.basepair_scores[y.0][y.1] += 1.;
         }
       }
     }
@@ -1727,14 +1705,8 @@ impl<T: HashIndex> TrainDatum<T> {
     }
     for (basepair_close, basepairs_loop) in loop_struct.iter() {
       let num_basepairs_loop = basepairs_loop.len();
-      let basepair = (
-        seq_pair.0[basepair_close.0],
-        seq_pair.0[basepair_close.1],
-      );
-      let basepair2 = (
-        seq_pair.1[basepair_close.0],
-        seq_pair.1[basepair_close.1],
-      );
+      let basepair = (seq_pair.0[basepair_close.0], seq_pair.0[basepair_close.1]);
+      let basepair2 = (seq_pair.1[basepair_close.0], seq_pair.1[basepair_close.1]);
       let closes = true;
       let mismatch_pair = get_mismatch_pair(&seq_pair.0[..], basepair_close, closes);
       let mismatch_pair2 = get_mismatch_pair(&seq_pair.1[..], basepair_close, closes);
@@ -1749,39 +1721,27 @@ impl<T: HashIndex> TrainDatum<T> {
           self.alignfold_counts_observed.helix_close_scores[basepair.0][basepair.1] += 1.;
         }
         if has_canonical_basepair(&basepair2) {
-          self.alignfold_counts_observed.terminal_mismatch_scores[basepair2.0]
-            [basepair2.1][mismatch_pair2.0][mismatch_pair2.1] += 1.;
+          self.alignfold_counts_observed.terminal_mismatch_scores[basepair2.0][basepair2.1]
+            [mismatch_pair2.0][mismatch_pair2.1] += 1.;
           self.alignfold_counts_observed.helix_close_scores[basepair2.0][basepair2.1] += 1.;
         }
         if hairpin_len_pair.0 <= MAX_LOOP_LEN {
-          self.alignfold_counts_observed.hairpin_scores_len
-            [hairpin_len_pair.0] += 1.;
+          self.alignfold_counts_observed.hairpin_scores_len[hairpin_len_pair.0] += 1.;
         } else {
-          self.alignfold_counts_observed.hairpin_scores_len
-            [MAX_LOOP_LEN] += 1.;
+          self.alignfold_counts_observed.hairpin_scores_len[MAX_LOOP_LEN] += 1.;
         }
         if hairpin_len_pair.1 <= MAX_LOOP_LEN {
-          self.alignfold_counts_observed.hairpin_scores_len
-            [hairpin_len_pair.1] += 1.;
+          self.alignfold_counts_observed.hairpin_scores_len[hairpin_len_pair.1] += 1.;
         } else {
-          self.alignfold_counts_observed.hairpin_scores_len
-            [MAX_LOOP_LEN] += 1.;
+          self.alignfold_counts_observed.hairpin_scores_len[MAX_LOOP_LEN] += 1.;
         }
       } else if num_basepairs_loop == 1 {
         let basepair_loop = &basepairs_loop[0];
-        let basepair3 = (
-          seq_pair.0[basepair_loop.0],
-          seq_pair.0[basepair_loop.1],
-        );
-        let basepair4 = (
-          seq_pair.1[basepair_loop.0],
-          seq_pair.1[basepair_loop.1],
-        );
-        let twoloop_len_pair =
-          get_2loop_len_pair(&seq_pair.0[..], basepair_close, basepair_loop);
+        let basepair3 = (seq_pair.0[basepair_loop.0], seq_pair.0[basepair_loop.1]);
+        let basepair4 = (seq_pair.1[basepair_loop.0], seq_pair.1[basepair_loop.1]);
+        let twoloop_len_pair = get_2loop_len_pair(&seq_pair.0[..], basepair_close, basepair_loop);
         let sum = twoloop_len_pair.0 + twoloop_len_pair.1;
-        let twoloop_len_pair2 =
-          get_2loop_len_pair(&seq_pair.1[..], basepair_close, basepair_loop);
+        let twoloop_len_pair2 = get_2loop_len_pair(&seq_pair.1[..], basepair_close, basepair_loop);
         let sum2 = twoloop_len_pair2.0 + twoloop_len_pair2.1;
         let closes = false;
         let mismatch_pair3 = get_mismatch_pair(&seq_pair.0[..], basepair_loop, closes);
@@ -1802,79 +1762,60 @@ impl<T: HashIndex> TrainDatum<T> {
                 } else {
                   mismatch_pair.0
                 };
-                self
-                  .alignfold_counts_observed
-                  .bulge_scores_0x1[mismatch] += 1.;
+                self.alignfold_counts_observed.bulge_scores_0x1[mismatch] += 1.;
               }
             } else {
-              self.alignfold_counts_observed.bulge_scores_len
-                [MAX_LOOP_LEN - 1] += 1.;
+              self.alignfold_counts_observed.bulge_scores_len[MAX_LOOP_LEN - 1] += 1.;
             }
           } else {
             let diff = get_diff(twoloop_len_pair.0, twoloop_len_pair.1);
             if sum <= MAX_LOOP_LEN {
               self.alignfold_counts_observed.interior_scores_len[sum - 2] += 1.;
               if diff == 0 {
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_symmetric[twoloop_len_pair.0 - 1] += 1.;
+                self.alignfold_counts_observed.interior_scores_symmetric[twoloop_len_pair.0 - 1] +=
+                  1.;
               } else {
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_asymmetric[diff - 1] += 1.;
+                self.alignfold_counts_observed.interior_scores_asymmetric[diff - 1] += 1.;
               }
               if twoloop_len_pair.0 == 1 && twoloop_len_pair.1 == 1 {
                 let dict_min_mismatch_pair = get_dict_min_pair(&mismatch_pair);
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_1x1[dict_min_mismatch_pair.0]
+                self.alignfold_counts_observed.interior_scores_1x1[dict_min_mismatch_pair.0]
                   [dict_min_mismatch_pair.1] += 1.;
               }
               if twoloop_len_pair.0 <= MAX_INTERIOR_EXPLICIT
                 && twoloop_len_pair.1 <= MAX_INTERIOR_EXPLICIT
               {
                 let dict_min_len_pair = get_dict_min_pair(&twoloop_len_pair);
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_explicit[dict_min_len_pair.0 - 1]
+                self.alignfold_counts_observed.interior_scores_explicit[dict_min_len_pair.0 - 1]
                   [dict_min_len_pair.1 - 1] += 1.;
               }
             } else {
-              self.alignfold_counts_observed.interior_scores_len
-                [MAX_LOOP_LEN - 2] += 1.;
+              self.alignfold_counts_observed.interior_scores_len[MAX_LOOP_LEN - 2] += 1.;
               if diff == 0 {
                 if twoloop_len_pair.0 <= MAX_INTERIOR_SYMMETRIC {
-                  self
-                    .alignfold_counts_observed
-                    .interior_scores_symmetric[twoloop_len_pair.0 - 1] += 1.;
+                  self.alignfold_counts_observed.interior_scores_symmetric
+                    [twoloop_len_pair.0 - 1] += 1.;
                 } else {
-                  self
-                    .alignfold_counts_observed
-                    .interior_scores_symmetric[MAX_INTERIOR_SYMMETRIC - 1] +=
-                    1.;
+                  self.alignfold_counts_observed.interior_scores_symmetric
+                    [MAX_INTERIOR_SYMMETRIC - 1] += 1.;
                 }
               } else if diff <= MAX_INTERIOR_ASYMMETRIC {
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_asymmetric[diff - 1] += 1.;
+                self.alignfold_counts_observed.interior_scores_asymmetric[diff - 1] += 1.;
               } else {
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_asymmetric[MAX_INTERIOR_ASYMMETRIC - 1] +=
-                  1.;
+                self.alignfold_counts_observed.interior_scores_asymmetric
+                  [MAX_INTERIOR_ASYMMETRIC - 1] += 1.;
               }
             }
           }
           if has_canonical_basepair(&basepair) {
-            self.alignfold_counts_observed.terminal_mismatch_scores[basepair.0]
-              [basepair.1][mismatch_pair.0][mismatch_pair.1] += 1.;
+            self.alignfold_counts_observed.terminal_mismatch_scores[basepair.0][basepair.1]
+              [mismatch_pair.0][mismatch_pair.1] += 1.;
             self.alignfold_counts_observed.helix_close_scores[basepair.0][basepair.1] += 1.;
           }
           if has_canonical_basepair(&basepair3) {
-            self.alignfold_counts_observed.terminal_mismatch_scores[basepair3.1]
-              [basepair3.0][mismatch_pair3.1][mismatch_pair3.0] += 1.;
-            self.alignfold_counts_observed.helix_close_scores[basepair3.1][basepair3.0] +=
-              1.;
+            self.alignfold_counts_observed.terminal_mismatch_scores[basepair3.1][basepair3.0]
+              [mismatch_pair3.1][mismatch_pair3.0] += 1.;
+            self.alignfold_counts_observed.helix_close_scores[basepair3.1][basepair3.0] += 1.;
           }
         }
         if sum2 == 0 {
@@ -1893,80 +1834,60 @@ impl<T: HashIndex> TrainDatum<T> {
                 } else {
                   mismatch_pair2.0
                 };
-                self
-                  .alignfold_counts_observed
-                  .bulge_scores_0x1[mismatch2] += 1.;
+                self.alignfold_counts_observed.bulge_scores_0x1[mismatch2] += 1.;
               }
             } else {
-              self.alignfold_counts_observed.bulge_scores_len
-                [MAX_LOOP_LEN - 1] += 1.;
+              self.alignfold_counts_observed.bulge_scores_len[MAX_LOOP_LEN - 1] += 1.;
             }
           } else {
             let diff2 = get_diff(twoloop_len_pair2.0, twoloop_len_pair2.1);
             if sum2 <= MAX_LOOP_LEN {
               self.alignfold_counts_observed.interior_scores_len[sum2 - 2] += 1.;
               if diff2 == 0 {
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_symmetric[twoloop_len_pair2.0 - 1] += 1.;
+                self.alignfold_counts_observed.interior_scores_symmetric
+                  [twoloop_len_pair2.0 - 1] += 1.;
               } else {
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_asymmetric[diff2 - 1] += 1.;
+                self.alignfold_counts_observed.interior_scores_asymmetric[diff2 - 1] += 1.;
               }
               if twoloop_len_pair2.0 == 1 && twoloop_len_pair2.1 == 1 {
                 let dict_min_mismatch_pair2 = get_dict_min_pair(&mismatch_pair2);
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_1x1[dict_min_mismatch_pair2.0]
+                self.alignfold_counts_observed.interior_scores_1x1[dict_min_mismatch_pair2.0]
                   [dict_min_mismatch_pair2.1] += 1.;
               }
               if twoloop_len_pair2.0 <= MAX_INTERIOR_EXPLICIT
                 && twoloop_len_pair2.1 <= MAX_INTERIOR_EXPLICIT
               {
                 let dict_min_len_pair2 = get_dict_min_pair(&twoloop_len_pair2);
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_explicit[dict_min_len_pair2.0 - 1]
-                  [dict_min_len_pair2.1 - 1] += 1.;
+                self.alignfold_counts_observed.interior_scores_explicit
+                  [dict_min_len_pair2.0 - 1][dict_min_len_pair2.1 - 1] += 1.;
               }
             } else {
-              self.alignfold_counts_observed.interior_scores_len
-                [MAX_LOOP_LEN - 2] += 1.;
+              self.alignfold_counts_observed.interior_scores_len[MAX_LOOP_LEN - 2] += 1.;
               if diff2 == 0 {
                 if twoloop_len_pair2.0 <= MAX_INTERIOR_SYMMETRIC {
-                  self
-                    .alignfold_counts_observed
-                    .interior_scores_symmetric[twoloop_len_pair2.0 - 1] += 1.;
+                  self.alignfold_counts_observed.interior_scores_symmetric
+                    [twoloop_len_pair2.0 - 1] += 1.;
                 } else {
-                  self
-                    .alignfold_counts_observed
-                    .interior_scores_symmetric[MAX_INTERIOR_SYMMETRIC - 1] +=
-                    1.;
+                  self.alignfold_counts_observed.interior_scores_symmetric
+                    [MAX_INTERIOR_SYMMETRIC - 1] += 1.;
                 }
               } else if diff2 <= MAX_INTERIOR_ASYMMETRIC {
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_asymmetric[diff2 - 1] += 1.;
+                self.alignfold_counts_observed.interior_scores_asymmetric[diff2 - 1] += 1.;
               } else {
-                self
-                  .alignfold_counts_observed
-                  .interior_scores_asymmetric[MAX_INTERIOR_ASYMMETRIC - 1] +=
-                  1.;
+                self.alignfold_counts_observed.interior_scores_asymmetric
+                  [MAX_INTERIOR_ASYMMETRIC - 1] += 1.;
               }
             }
           }
           if has_canonical_basepair(&basepair2) {
-            self.alignfold_counts_observed.terminal_mismatch_scores[basepair2.0]
-              [basepair2.1][mismatch_pair2.0][mismatch_pair2.1] += 1.;
-            self.alignfold_counts_observed.helix_close_scores[basepair2.0][basepair2.1] +=
-              1.;
+            self.alignfold_counts_observed.terminal_mismatch_scores[basepair2.0][basepair2.1]
+              [mismatch_pair2.0][mismatch_pair2.1] += 1.;
+            self.alignfold_counts_observed.helix_close_scores[basepair2.0][basepair2.1] += 1.;
           }
           if has_canonical_basepair(&basepair4) {
-            self.alignfold_counts_observed.terminal_mismatch_scores[basepair4.1]
-              [basepair4.0][mismatch_pair4.1][mismatch_pair4.0] += 1.;
-            self.alignfold_counts_observed.helix_close_scores[basepair4.1][basepair4.0] +=
-              1.;
+            self.alignfold_counts_observed.terminal_mismatch_scores[basepair4.1][basepair4.0]
+              [mismatch_pair4.1][mismatch_pair4.0] += 1.;
+            self.alignfold_counts_observed.helix_close_scores[basepair4.1][basepair4.0] += 1.;
           }
         }
       } else {
@@ -1985,90 +1906,51 @@ impl<T: HashIndex> TrainDatum<T> {
           self.alignfold_counts_observed.helix_close_scores[basepair2.0][basepair2.1] += 1.;
         }
         self.alignfold_counts_observed.multibranch_score_base += 2.;
-        self
-          .alignfold_counts_observed
-          .multibranch_score_basepair += 2.;
-        self
-          .alignfold_counts_observed
-          .multibranch_score_basepair += 2. * num_basepairs_loop as Prob;
-        let num_unpairs_multibranch = get_num_unpairs_multibranch(
-          basepair_close,
-          basepairs_loop,
-          &seq_pair.0[..],
-        );
-        self
-          .alignfold_counts_observed
-          .multibranch_score_unpair +=
-          num_unpairs_multibranch as Prob;
-        let num_unpairs_multibranch2 = get_num_unpairs_multibranch(
-          basepair_close,
-          basepairs_loop,
-          &seq_pair.1[..],
-        );
-        self
-          .alignfold_counts_observed
-          .multibranch_score_unpair +=
-          num_unpairs_multibranch2 as Prob;
+        self.alignfold_counts_observed.multibranch_score_basepair += 2.;
+        self.alignfold_counts_observed.multibranch_score_basepair +=
+          2. * num_basepairs_loop as Prob;
+        let num_unpairs_multibranch =
+          get_num_unpairs_multibranch(basepair_close, basepairs_loop, &seq_pair.0[..]);
+        self.alignfold_counts_observed.multibranch_score_unpair += num_unpairs_multibranch as Prob;
+        let num_unpairs_multibranch2 =
+          get_num_unpairs_multibranch(basepair_close, basepairs_loop, &seq_pair.1[..]);
+        self.alignfold_counts_observed.multibranch_score_unpair += num_unpairs_multibranch2 as Prob;
         for basepair_loop in basepairs_loop.iter() {
-          let basepair3 = (
-            seq_pair.0[basepair_loop.0],
-            seq_pair.0[basepair_loop.1],
-          );
+          let basepair3 = (seq_pair.0[basepair_loop.0], seq_pair.0[basepair_loop.1]);
           let closes = false;
           let mismatch_pair3 = get_mismatch_pair(&seq_pair.0[..], basepair_loop, closes);
-          let basepair4 = (
-            seq_pair.1[basepair_loop.0],
-            seq_pair.1[basepair_loop.1],
-          );
+          let basepair4 = (seq_pair.1[basepair_loop.0], seq_pair.1[basepair_loop.1]);
           let mismatch_pair4 = get_mismatch_pair(&seq_pair.1[..], basepair_loop, closes);
           if has_canonical_basepair(&basepair3) {
             self.alignfold_counts_observed.dangling_scores_left[basepair3.1][basepair3.0]
               [mismatch_pair3.1] += 1.;
-            self.alignfold_counts_observed.dangling_scores_right[basepair3.1]
-              [basepair3.0][mismatch_pair3.0] += 1.;
-            self.alignfold_counts_observed.helix_close_scores[basepair3.1][basepair3.0] +=
-              1.;
+            self.alignfold_counts_observed.dangling_scores_right[basepair3.1][basepair3.0]
+              [mismatch_pair3.0] += 1.;
+            self.alignfold_counts_observed.helix_close_scores[basepair3.1][basepair3.0] += 1.;
           }
           if has_canonical_basepair(&basepair4) {
             self.alignfold_counts_observed.dangling_scores_left[basepair4.1][basepair4.0]
               [mismatch_pair4.1] += 1.;
-            self.alignfold_counts_observed.dangling_scores_right[basepair4.1]
-              [basepair4.0][mismatch_pair4.0] += 1.;
-            self.alignfold_counts_observed.helix_close_scores[basepair4.1][basepair4.0] +=
-              1.;
+            self.alignfold_counts_observed.dangling_scores_right[basepair4.1][basepair4.0]
+              [mismatch_pair4.0] += 1.;
+            self.alignfold_counts_observed.helix_close_scores[basepair4.1][basepair4.0] += 1.;
           }
         }
       }
     }
-    self
-      .alignfold_counts_observed
-      .external_score_basepair += 2. * stored_basepairs.len() as Prob;
+    self.alignfold_counts_observed.external_score_basepair += 2. * stored_basepairs.len() as Prob;
     let mut stored_basepairs_sorted = stored_basepairs
       .iter()
       .copied()
       .collect::<Vec<(usize, usize)>>();
     stored_basepairs_sorted.sort();
-    let num_unpairs_external =
-      get_num_unpairs_external(&stored_basepairs_sorted, &seq_pair.0[..]);
-    self
-      .alignfold_counts_observed
-      .external_score_unpair +=
-      num_unpairs_external as Prob;
-    let num_unpairs_external2 =
-      get_num_unpairs_external(&stored_basepairs_sorted, &seq_pair.1[..]);
-    self
-      .alignfold_counts_observed
-      .external_score_unpair +=
-      num_unpairs_external2 as Prob;
+    let num_unpairs_external = get_num_unpairs_external(&stored_basepairs_sorted, &seq_pair.0[..]);
+    self.alignfold_counts_observed.external_score_unpair += num_unpairs_external as Prob;
+    let num_unpairs_external2 = get_num_unpairs_external(&stored_basepairs_sorted, &seq_pair.1[..]);
+    self.alignfold_counts_observed.external_score_unpair += num_unpairs_external2 as Prob;
     for basepair_loop in stored_basepairs.iter() {
-      let basepair = (
-        seq_pair.0[basepair_loop.0],
-        seq_pair.0[basepair_loop.1],
-      );
-      let basepair2 = (
-        seq_pair.1[basepair_loop.0],
-        seq_pair.1[basepair_loop.1],
-      );
+      let basepair = (seq_pair.0[basepair_loop.0], seq_pair.0[basepair_loop.1]);
+      let basepair2 = (seq_pair.1[basepair_loop.0], seq_pair.1[basepair_loop.1]);
       let closes = false;
       let mismatch_pair = get_mismatch_pair(&seq_pair.0[..], basepair_loop, closes);
       let mismatch_pair2 = get_mismatch_pair(&seq_pair.1[..], basepair_loop, closes);
@@ -2211,8 +2093,7 @@ pub const GAMMA_DISTRO_ALPHA: Score = 0.;
 pub const GAMMA_DISTRO_BETA: Score = 1.;
 pub const DEFAULT_LEARNING_TOLERANCE: Score = 0.000_1;
 pub const TRAINED_SCORES_FILE: &str = "../src/trained_alignfold_scores.rs";
-pub const TRAINED_SCORES_FILE_RANDINIT: &str =
-  "../src/trained_alignfold_scores_randinit.rs";
+pub const TRAINED_SCORES_FILE_RANDINIT: &str = "../src/trained_alignfold_scores_randinit.rs";
 #[derive(Clone, Copy)]
 pub enum TrainType {
   TrainedTransfer,
@@ -2232,15 +2113,13 @@ where
   let seq_len_pair = (seq_pair.0.len(), seq_pair.1.len());
   let mut insert_probs_pair = (vec![1.; seq_len_pair.0], vec![1.; seq_len_pair.1]);
   for (x, &y) in match_probs {
-    let x = (
-      x.0.to_usize().unwrap(),
-      x.1.to_usize().unwrap(),
-    );
+    let x = (x.0.to_usize().unwrap(), x.1.to_usize().unwrap());
     insert_probs_pair.0[x.0] -= y;
     insert_probs_pair.1[x.1] -= y;
   }
-  let total =
-    alignfold.matched_pos_pairs.len() + alignfold.inserted_poss.len() + alignfold.deleted_poss.len();
+  let total = alignfold.matched_pos_pairs.len()
+    + alignfold.inserted_poss.len()
+    + alignfold.deleted_poss.len();
   let mut total_expected = alignfold
     .matched_pos_pairs
     .iter()
@@ -2321,9 +2200,7 @@ where
   )
 }
 
-pub fn get_alignfold_sums<T>(
-  inputs: InputsInsideSumsGetter<T>,
-) -> (AlignfoldSums<T>, Sum)
+pub fn get_alignfold_sums<T>(inputs: InputsInsideSumsGetter<T>) -> (AlignfoldSums<T>, Sum)
 where
   T: HashIndex,
 {
@@ -2413,10 +2290,8 @@ where
             let score = hairpin_score + hairpin_score2 + sum_seqalign;
             logsumexp(&mut sum, score);
           }
-          let forward_sums =
-            &alignfold_sums.forward_sums_hashed_poss2[&(i, k)];
-          let backward_sums =
-            &alignfold_sums.backward_sums_hashed_poss2[&(j, l)];
+          let forward_sums = &alignfold_sums.forward_sums_hashed_poss2[&(i, k)];
+          let backward_sums = &alignfold_sums.backward_sums_hashed_poss2[&(j, l)];
           let min = T::from_usize(if trains_alignfold_scores {
             2
           } else {
@@ -2437,29 +2312,20 @@ where
           );
           for substr_len3 in range(min_len_pair.0, substr_len - T::one()) {
             for substr_len4 in range(min_len_pair.1, substr_len2 - T::one()) {
-              if let Some(pos_pairs2) =
-                pos_quads_hashed_lens.get(&(substr_len3, substr_len4))
-              {
+              if let Some(pos_pairs2) = pos_quads_hashed_lens.get(&(substr_len3, substr_len4)) {
                 for &(m, o) in pos_pairs2 {
                   let (n, p) = (m + substr_len3 - T::one(), o + substr_len4 - T::one());
                   if !(i < m && n < j && k < o && p < l) {
                     continue;
                   }
-                  if m - i - T::one() + j - n - T::one()
-                    > T::from_usize(MAX_LOOP_LEN).unwrap()
-                  {
+                  if m - i - T::one() + j - n - T::one() > T::from_usize(MAX_LOOP_LEN).unwrap() {
                     continue;
                   }
-                  if o - k - T::one() + l - p - T::one()
-                    > T::from_usize(MAX_LOOP_LEN).unwrap()
-                  {
+                  if o - k - T::one() + l - p - T::one() > T::from_usize(MAX_LOOP_LEN).unwrap() {
                     continue;
                   }
                   let pos_quad2 = (m, n, o, p);
-                  if let Some(&x) = alignfold_sums
-                    .sums_close
-                    .get(&pos_quad2)
-                  {
+                  if let Some(&x) = alignfold_sums.sums_close.get(&pos_quad2) {
                     let mut forward_term = NEG_INFINITY;
                     let mut backward_term = forward_term;
                     let pos_pair2 = (m - T::one(), o - T::one());
@@ -2472,51 +2338,34 @@ where
                     }
                     let twoloop_score = fold_scores_pair.0.twoloop_scores[&(i, j, m, n)];
                     let twoloop_score2 = fold_scores_pair.1.twoloop_scores[&(k, l, o, p)];
-                    let x =
-                      twoloop_score + twoloop_score2 + x + forward_term + backward_term;
+                    let x = twoloop_score + twoloop_score2 + x + forward_term + backward_term;
                     logsumexp(&mut sum, x);
                   }
                 }
               }
             }
           }
-          let multibranch_close_score =
-            fold_scores_pair.0.multibranch_close_scores[&(i, j)];
-          let multibranch_close_score2 =
-            fold_scores_pair.1.multibranch_close_scores[&(k, l)];
-          let score = multibranch_close_score
-            + multibranch_close_score2
-            + sum_multibranch;
+          let multibranch_close_score = fold_scores_pair.0.multibranch_close_scores[&(i, j)];
+          let multibranch_close_score2 = fold_scores_pair.1.multibranch_close_scores[&(k, l)];
+          let score = multibranch_close_score + multibranch_close_score2 + sum_multibranch;
           logsumexp(&mut sum, score);
           if sum > NEG_INFINITY {
             let sum = sum + pairmatch_score;
-            alignfold_sums
-              .sums_close
-              .insert(pos_quad, sum);
-            let external_accessible_score =
-              fold_scores_pair.0.external_accessible_scores[&(i, j)];
-            let external_accessible_score2 =
-              fold_scores_pair.1.external_accessible_scores[&(k, l)];
-            alignfold_sums
-              .sums_accessible_external
-              .insert(
-                pos_quad,
-                sum
-                  + external_accessible_score
-                  + external_accessible_score2,
-              );
+            alignfold_sums.sums_close.insert(pos_quad, sum);
+            let external_accessible_score = fold_scores_pair.0.external_accessible_scores[&(i, j)];
+            let external_accessible_score2 = fold_scores_pair.1.external_accessible_scores[&(k, l)];
+            alignfold_sums.sums_accessible_external.insert(
+              pos_quad,
+              sum + external_accessible_score + external_accessible_score2,
+            );
             let multibranch_accessible_score =
               fold_scores_pair.0.multibranch_accessible_scores[&(i, j)];
             let multibranch_accessible_score2 =
               fold_scores_pair.1.multibranch_accessible_scores[&(k, l)];
-            alignfold_sums
-              .sums_accessible_multibranch
-              .insert(
-                pos_quad,
-                sum
-                  + multibranch_accessible_score
-                  + multibranch_accessible_score2,
-              );
+            alignfold_sums.sums_accessible_multibranch.insert(
+              pos_quad,
+              sum + multibranch_accessible_score + multibranch_accessible_score2,
+            );
           }
         }
       }
@@ -2544,14 +2393,8 @@ where
         for &(k, l) in x {
           let pos_pair2 = (k - T::one(), l - T::one());
           let pos_quad = (k, i, l, j);
-          if let Some(&x) = alignfold_sums
-            .sums_accessible_external
-            .get(&pos_quad)
-          {
-            if let Some(&y) = alignfold_sums
-              .forward_sums_external2
-              .get(&pos_pair2)
-            {
+          if let Some(&x) = alignfold_sums.sums_accessible_external.get(&pos_quad) {
+            if let Some(&y) = alignfold_sums.forward_sums_external2.get(&pos_pair2) {
               let y = x + y;
               logsumexp(&mut sum, y);
             }
@@ -2561,18 +2404,15 @@ where
       let base2 = seq_pair.1[long_j];
       if i > T::zero() && j > T::zero() && match_probs.contains_key(&pos_pair) {
         let mut sum2 = NEG_INFINITY;
-        let loopmatch_score = alignfold_scores.match_scores[base][base2]
-          + 2. * alignfold_scores.external_score_unpair;
+        let loopmatch_score =
+          alignfold_scores.match_scores[base][base2] + 2. * alignfold_scores.external_score_unpair;
         let pos_pair2 = (i - T::one(), j - T::one());
         let long_pos_pair2 = (
           pos_pair2.0.to_usize().unwrap(),
           pos_pair2.1.to_usize().unwrap(),
         );
         let begins_sum = pos_pair2 == leftmost_pos_pair;
-        if let Some(&x) = alignfold_sums
-          .forward_sums_external
-          .get(&pos_pair2)
-        {
+        if let Some(&x) = alignfold_sums.forward_sums_external.get(&pos_pair2) {
           let x = x
             + if begins_sum {
               alignfold_scores.init_match_score
@@ -2587,14 +2427,10 @@ where
               continue;
             }
             let pos_pair3 = (pos_pair2.0, x);
-            if let Some(&y) = alignfold_sums
-              .forward_sums_external
-              .get(&pos_pair3)
-            {
+            if let Some(&y) = alignfold_sums.forward_sums_external.get(&pos_pair3) {
               let long_x = x.to_usize().unwrap();
               let begins_sum = pos_pair3 == leftmost_pos_pair;
-              let z = range_insert_scores.insert_scores_external2
-                [long_x + 1][long_pos_pair2.1]
+              let z = range_insert_scores.insert_scores_external2[long_x + 1][long_pos_pair2.1]
                 + if begins_sum {
                   alignfold_scores.init_insert_score
                 } else {
@@ -2611,14 +2447,10 @@ where
               continue;
             }
             let pos_pair3 = (x, pos_pair2.1);
-            if let Some(&y) = alignfold_sums
-              .forward_sums_external
-              .get(&pos_pair3)
-            {
+            if let Some(&y) = alignfold_sums.forward_sums_external.get(&pos_pair3) {
               let long_x = x.to_usize().unwrap();
               let begins_sum = pos_pair3 == leftmost_pos_pair;
-              let z = range_insert_scores.insert_scores_external[long_x + 1]
-                [long_pos_pair2.0]
+              let z = range_insert_scores.insert_scores_external[long_x + 1][long_pos_pair2.0]
                 + if begins_sum {
                   alignfold_scores.init_insert_score
                 } else {
@@ -2637,9 +2469,7 @@ where
         let term = sum2 + loopmatch_score;
         logsumexp(&mut sum, term);
         if sum > NEG_INFINITY {
-          alignfold_sums
-            .forward_sums_external
-            .insert(pos_pair, sum);
+          alignfold_sums.forward_sums_external.insert(pos_pair, sum);
         }
       }
     }
@@ -2653,10 +2483,7 @@ where
     pos_pair2.0.to_usize().unwrap(),
     pos_pair2.1.to_usize().unwrap(),
   );
-  if let Some(&x) = alignfold_sums
-    .forward_sums_external
-    .get(&pos_pair2)
-  {
+  if let Some(&x) = alignfold_sums.forward_sums_external.get(&pos_pair2) {
     logsumexp(&mut global_sum, x);
   }
   if let Some(x) = matchable_poss.get(&pos_pair2.0) {
@@ -2664,13 +2491,9 @@ where
       if x >= pos_pair2.1 {
         continue;
       }
-      if let Some(&y) = alignfold_sums
-        .forward_sums_external
-        .get(&(pos_pair2.0, x))
-      {
+      if let Some(&y) = alignfold_sums.forward_sums_external.get(&(pos_pair2.0, x)) {
         let long_x = x.to_usize().unwrap();
-        let z = range_insert_scores.insert_scores_external2[long_x + 1]
-          [long_pos_pair2.1]
+        let z = range_insert_scores.insert_scores_external2[long_x + 1][long_pos_pair2.1]
           + alignfold_scores.match2insert_score;
         let z = y + z;
         logsumexp(&mut global_sum, z);
@@ -2682,13 +2505,9 @@ where
       if x >= pos_pair2.0 {
         continue;
       }
-      if let Some(&y) = alignfold_sums
-        .forward_sums_external
-        .get(&(x, pos_pair2.1))
-      {
+      if let Some(&y) = alignfold_sums.forward_sums_external.get(&(x, pos_pair2.1)) {
         let long_x = x.to_usize().unwrap();
-        let z = range_insert_scores.insert_scores_external[long_x + 1]
-          [long_pos_pair2.0]
+        let z = range_insert_scores.insert_scores_external[long_x + 1][long_pos_pair2.0]
           + alignfold_scores.match2insert_score;
         let z = y + z;
         logsumexp(&mut global_sum, z);
@@ -2709,14 +2528,8 @@ where
         for &(k, l) in x {
           let pos_pair2 = (k + T::one(), l + T::one());
           let pos_quad = (i, k, j, l);
-          if let Some(&x) = alignfold_sums
-            .sums_accessible_external
-            .get(&pos_quad)
-          {
-            if let Some(&y) = alignfold_sums
-              .backward_sums_external2
-              .get(&pos_pair2)
-            {
+          if let Some(&x) = alignfold_sums.sums_accessible_external.get(&pos_quad) {
+            if let Some(&y) = alignfold_sums.backward_sums_external2.get(&pos_pair2) {
               let y = x + y;
               logsumexp(&mut sum, y);
             }
@@ -2735,10 +2548,7 @@ where
           let mut sum2 = NEG_INFINITY;
           let loopmatch_score = alignfold_scores.match_scores[base][base2]
             + 2. * alignfold_scores.external_score_unpair;
-          if let Some(&x) = alignfold_sums
-            .backward_sums_external
-            .get(&pos_pair2)
-          {
+          if let Some(&x) = alignfold_sums.backward_sums_external.get(&pos_pair2) {
             let x = x
               + if ends_sum {
                 0.
@@ -2753,21 +2563,16 @@ where
                 continue;
               }
               let pos_pair3 = (pos_pair2.0, x);
-              if let Some(&y) = alignfold_sums
-                .backward_sums_external
-                .get(&pos_pair3)
-              {
+              if let Some(&y) = alignfold_sums.backward_sums_external.get(&pos_pair3) {
                 let long_x = x.to_usize().unwrap();
                 let ends_sum = pos_pair3 == rightmost_pos_pair;
-                let z = range_insert_scores.insert_scores_external2
-                  [long_pos_pair2.1][long_x - 1]
+                let z = range_insert_scores.insert_scores_external2[long_pos_pair2.1][long_x - 1]
                   + if ends_sum {
                     0.
                   } else {
                     alignfold_scores.match2insert_score
                   };
-                let z =
-                  y + z + alignfold_scores.match2insert_score;
+                let z = y + z + alignfold_scores.match2insert_score;
                 logsumexp(&mut sum2, z);
               }
             }
@@ -2778,21 +2583,16 @@ where
                 continue;
               }
               let pos_pair3 = (x, pos_pair2.1);
-              if let Some(&y) = alignfold_sums
-                .backward_sums_external
-                .get(&pos_pair3)
-              {
+              if let Some(&y) = alignfold_sums.backward_sums_external.get(&pos_pair3) {
                 let long_x = x.to_usize().unwrap();
                 let ends_sum = pos_pair3 == rightmost_pos_pair;
-                let z = range_insert_scores.insert_scores_external
-                  [long_pos_pair2.0][long_x - 1]
+                let z = range_insert_scores.insert_scores_external[long_pos_pair2.0][long_x - 1]
                   + if ends_sum {
                     0.
                   } else {
                     alignfold_scores.match2insert_score
                   };
-                let z =
-                  y + z + alignfold_scores.match2insert_score;
+                let z = y + z + alignfold_scores.match2insert_score;
                 logsumexp(&mut sum2, z);
               }
             }
@@ -2805,9 +2605,7 @@ where
           let term = sum2 + loopmatch_score;
           logsumexp(&mut sum, term);
           if sum > NEG_INFINITY {
-            alignfold_sums
-              .backward_sums_external
-              .insert(pos_pair, sum);
+            alignfold_sums.backward_sums_external.insert(pos_pair, sum);
           }
         }
       }
@@ -2914,7 +2712,8 @@ where
         continue;
       }
       let mut sums = LoopSums::new();
-      if (computes_forward_sums && u == i && v == k) || (!computes_forward_sums && u == j && v == l) {
+      if (computes_forward_sums && u == i && v == k) || (!computes_forward_sums && u == j && v == l)
+      {
         sums.sum_seqalign = 0.;
         sums.sum_seqalign_multibranch = 0.;
         sums.sum_0ormore_pairmatches = 0.;
@@ -2944,10 +2743,7 @@ where
           } else {
             (u, m, v, n)
           };
-          if let Some(&x) = alignfold_sums
-            .sums_accessible_multibranch
-            .get(&pos_quad2)
-          {
+          if let Some(&x) = alignfold_sums.sums_accessible_multibranch.get(&pos_quad2) {
             if let Some(y) = sums_mat2.get(&pos_pair2) {
               let z = x + y.sum_1ormore_pairmatches;
               logsumexp(&mut sum_multibranch, z);
@@ -2989,7 +2785,9 @@ where
         }
         if let Some(x) = matchable_poss.get(&pos_pair2.0) {
           for &x in x {
-            if computes_forward_sums && x >= pos_pair2.1 || (!computes_forward_sums && x <= pos_pair2.1) {
+            if computes_forward_sums && x >= pos_pair2.1
+              || (!computes_forward_sums && x <= pos_pair2.1)
+            {
               continue;
             }
             if let Some(y) = sums_mat.get(&(pos_pair2.0, x)) {
@@ -3004,23 +2802,22 @@ where
               } else {
                 range_insert_scores.insert_scores_multibranch2[long_pos_pair2.1][long_x - 1]
               } + alignfold_scores.match2insert_score;
-              let x =
-                y.sum_multibranch + alignfold_scores.match2insert_score + a;
+              let x = y.sum_multibranch + alignfold_scores.match2insert_score + a;
               logsumexp(&mut sum_multibranch2, x);
-              let x =
-                y.sum_1st_pairmatches + alignfold_scores.match2insert_score + a;
+              let x = y.sum_1st_pairmatches + alignfold_scores.match2insert_score + a;
               logsumexp(&mut sum_1st_pairmatches2, x);
               let x = y.sum_seqalign + alignfold_scores.match2insert_score + z;
               logsumexp(&mut sum_seqalign2, x);
-              let x =
-                y.sum_seqalign_multibranch + alignfold_scores.match2insert_score + a;
+              let x = y.sum_seqalign_multibranch + alignfold_scores.match2insert_score + a;
               logsumexp(&mut sum_seqalign_multibranch2, x);
             }
           }
         }
         if let Some(x) = matchable_poss2.get(&pos_pair2.1) {
           for &x in x {
-            if computes_forward_sums && x >= pos_pair2.0 || (!computes_forward_sums && x <= pos_pair2.0) {
+            if computes_forward_sums && x >= pos_pair2.0
+              || (!computes_forward_sums && x <= pos_pair2.0)
+            {
               continue;
             }
             if let Some(y) = sums_mat.get(&(x, pos_pair2.1)) {
@@ -3035,16 +2832,13 @@ where
               } else {
                 range_insert_scores.insert_scores_multibranch[long_pos_pair2.0][long_x - 1]
               } + alignfold_scores.match2insert_score;
-              let x =
-                y.sum_multibranch + alignfold_scores.match2insert_score + a;
+              let x = y.sum_multibranch + alignfold_scores.match2insert_score + a;
               logsumexp(&mut sum_multibranch2, x);
-              let x =
-                y.sum_1st_pairmatches + alignfold_scores.match2insert_score + a;
+              let x = y.sum_1st_pairmatches + alignfold_scores.match2insert_score + a;
               logsumexp(&mut sum_1st_pairmatches2, x);
               let x = y.sum_seqalign + alignfold_scores.match2insert_score + z;
               logsumexp(&mut sum_seqalign2, x);
-              let x =
-                y.sum_seqalign_multibranch + alignfold_scores.match2insert_score + a;
+              let x = y.sum_seqalign_multibranch + alignfold_scores.match2insert_score + a;
               logsumexp(&mut sum_seqalign_multibranch2, x);
             }
           }
@@ -3103,11 +2897,9 @@ where
         }
         if let Some(y) = sums_mat.get(&(pos_pair2.0, x)) {
           let long_x = x.to_usize().unwrap();
-          let z = range_insert_scores.insert_scores2[long_x + 1]
-            [long_pos_pair2.1]
+          let z = range_insert_scores.insert_scores2[long_x + 1][long_pos_pair2.1]
             + alignfold_scores.match2insert_score;
-          let a = range_insert_scores.insert_scores_multibranch2
-            [long_x + 1][long_pos_pair2.1]
+          let a = range_insert_scores.insert_scores_multibranch2[long_x + 1][long_pos_pair2.1]
             + alignfold_scores.match2insert_score;
           let x = y.sum_multibranch + alignfold_scores.match2insert_score + a;
           logsumexp(&mut final_sum_multibranch, x);
@@ -3123,11 +2915,9 @@ where
         }
         if let Some(y) = sums_mat.get(&(x, pos_pair2.1)) {
           let long_x = x.to_usize().unwrap();
-          let z = range_insert_scores.insert_scores[long_x + 1]
-            [long_pos_pair2.0]
+          let z = range_insert_scores.insert_scores[long_x + 1][long_pos_pair2.0]
             + alignfold_scores.match2insert_score;
-          let a = range_insert_scores.insert_scores_multibranch
-            [long_x + 1][long_pos_pair2.0]
+          let a = range_insert_scores.insert_scores_multibranch[long_x + 1][long_pos_pair2.0]
             + alignfold_scores.match2insert_score;
           let x = y.sum_multibranch + alignfold_scores.match2insert_score + a;
           logsumexp(&mut final_sum_multibranch, x);
@@ -3144,9 +2934,7 @@ where
   (final_sum_seqalign, final_sum_multibranch)
 }
 
-pub fn get_2loop_sums<T>(
-  inputs: Inputs2loopSumsGetter<T>,
-) -> (SparseSumMat<T>, SparseSumMat<T>)
+pub fn get_2loop_sums<T>(inputs: Inputs2loopSumsGetter<T>) -> (SparseSumMat<T>, SparseSumMat<T>)
 where
   T: HashIndex,
 {
@@ -3201,7 +2989,8 @@ where
     let base = seq_pair.0[long_u];
     for &v in iter2.iter() {
       let pos_pair = (u, v);
-      if (computes_forward_sums && u == i && v == k) || (!computes_forward_sums && u == j && v == l) {
+      if (computes_forward_sums && u == i && v == k) || (!computes_forward_sums && u == j && v == l)
+      {
         continue;
       }
       let long_v = v.to_usize().unwrap();
@@ -3235,15 +3024,12 @@ where
           {
             continue;
           }
-          if let Some(&x) = alignfold_sums
-            .sums_close
-            .get(&pos_quad2)
-          {
+          if let Some(&x) = alignfold_sums.sums_close.get(&pos_quad2) {
             if let Some(y) = sums.get(&pos_pair2) {
-              let twoloop_score = fold_scores_pair.0.twoloop_scores
-                [&(i, j, pos_quad2.0, pos_quad2.1)];
-              let twoloop_score2 = fold_scores_pair.1.twoloop_scores
-                [&(k, l, pos_quad2.2, pos_quad2.3)];
+              let twoloop_score =
+                fold_scores_pair.0.twoloop_scores[&(i, j, pos_quad2.0, pos_quad2.1)];
+              let twoloop_score2 =
+                fold_scores_pair.1.twoloop_scores[&(k, l, pos_quad2.2, pos_quad2.3)];
               let y = x + y.sum_seqalign + twoloop_score + twoloop_score2;
               logsumexp(&mut sum, y);
             }
@@ -3269,7 +3055,9 @@ where
         }
         if let Some(x) = matchable_poss.get(&pos_pair2.0) {
           for &x in x {
-            if computes_forward_sums && x >= pos_pair2.1 || (!computes_forward_sums && x <= pos_pair2.1) {
+            if computes_forward_sums && x >= pos_pair2.1
+              || (!computes_forward_sums && x <= pos_pair2.1)
+            {
               continue;
             }
             if let Some(&y) = sum_mat.get(&(pos_pair2.0, x)) {
@@ -3286,7 +3074,9 @@ where
         }
         if let Some(x) = matchable_poss2.get(&pos_pair2.1) {
           for &x in x {
-            if computes_forward_sums && x >= pos_pair2.0 || (!computes_forward_sums && x <= pos_pair2.0) {
+            if computes_forward_sums && x >= pos_pair2.0
+              || (!computes_forward_sums && x <= pos_pair2.0)
+            {
               continue;
             }
             if let Some(&y) = sum_mat.get(&(x, pos_pair2.1)) {
@@ -3377,10 +3167,7 @@ where
         for &(i, k) in pos_pairs {
           let (j, l) = (i + substr_len - T::one(), k + substr_len2 - T::one());
           let pos_quad = (i, j, k, l);
-          if let Some(&sum_close) = alignfold_sums
-            .sums_close
-            .get(&pos_quad)
-          {
+          if let Some(&sum_close) = alignfold_sums.sums_close.get(&pos_quad) {
             let (long_i, long_j, long_k, long_l) = (
               i.to_usize().unwrap(),
               j.to_usize().unwrap(),
@@ -3397,17 +3184,11 @@ where
             let mut forward_term_match = sum;
             let mut backward_term = sum;
             let pos_pair2 = (i - T::one(), k - T::one());
-            if let Some(&x) = alignfold_sums
-              .forward_sums_external2
-              .get(&pos_pair2)
-            {
+            if let Some(&x) = alignfold_sums.forward_sums_external2.get(&pos_pair2) {
               logsumexp(&mut forward_term, x);
             }
             if trains_alignfold_scores {
-              if let Some(&x) = alignfold_sums
-                .forward_sums_external
-                .get(&pos_pair2)
-              {
+              if let Some(&x) = alignfold_sums.forward_sums_external.get(&pos_pair2) {
                 let begins_sum = pos_pair2 == leftmost_pos_pair;
                 let x = x
                   + if begins_sum {
@@ -3419,15 +3200,10 @@ where
               }
             }
             let pos_pair2 = (j + T::one(), l + T::one());
-            if let Some(&x) = alignfold_sums
-              .backward_sums_external2
-              .get(&pos_pair2)
-            {
+            if let Some(&x) = alignfold_sums.backward_sums_external2.get(&pos_pair2) {
               logsumexp(&mut backward_term, x);
             }
-            let coeff = alignfold_sums.sums_accessible_external
-              [&pos_quad]
-              - sum_close;
+            let coeff = alignfold_sums.sums_accessible_external[&pos_quad] - sum_close;
             if trains_alignfold_scores {
               let begins_sum = (i - T::one(), k - T::one()) == leftmost_pos_pair;
               let x = prob_coeff + coeff + forward_term_match + backward_term;
@@ -3453,36 +3229,35 @@ where
                   x,
                 );
                 logsumexp(
-                  &mut alignfold_counts_expected.helix_close_scores[basepair2.1]
-                    [basepair2.0],
+                  &mut alignfold_counts_expected.helix_close_scores[basepair2.1][basepair2.0],
                   x,
                 );
                 // Count external loop terminal mismatches.
                 if j < seq_len_pair.0 - T::from_usize(2).unwrap() {
                   logsumexp(
-                    &mut alignfold_counts_expected.dangling_scores_left[basepair.1]
-                      [basepair.0][mismatch_pair.1],
+                    &mut alignfold_counts_expected.dangling_scores_left[basepair.1][basepair.0]
+                      [mismatch_pair.1],
                     x,
                   );
                 }
                 if i > T::one() {
                   logsumexp(
-                    &mut alignfold_counts_expected.dangling_scores_right[basepair.1]
-                      [basepair.0][mismatch_pair.0],
+                    &mut alignfold_counts_expected.dangling_scores_right[basepair.1][basepair.0]
+                      [mismatch_pair.0],
                     x,
                   );
                 }
                 if l < seq_len_pair.1 - T::from_usize(2).unwrap() {
                   logsumexp(
-                    &mut alignfold_counts_expected.dangling_scores_left[basepair2.1]
-                      [basepair2.0][mismatch_pair2.1],
+                    &mut alignfold_counts_expected.dangling_scores_left[basepair2.1][basepair2.0]
+                      [mismatch_pair2.1],
                     x,
                   );
                 }
                 if k > T::one() {
                   logsumexp(
-                    &mut alignfold_counts_expected.dangling_scores_right[basepair2.1]
-                      [basepair2.0][mismatch_pair2.0],
+                    &mut alignfold_counts_expected.dangling_scores_right[basepair2.1][basepair2.0]
+                      [mismatch_pair2.0],
                     x,
                   );
                 }
@@ -3490,17 +3265,14 @@ where
             }
             for substr_len3 in range_inclusive(
               substr_len + T::from_usize(2).unwrap(),
-              (substr_len + T::from_usize(MAX_LOOP_LEN + 2).unwrap())
-                .min(max_basepair_span_pair.0),
+              (substr_len + T::from_usize(MAX_LOOP_LEN + 2).unwrap()).min(max_basepair_span_pair.0),
             ) {
               for substr_len4 in range_inclusive(
                 substr_len2 + T::from_usize(2).unwrap(),
                 (substr_len2 + T::from_usize(MAX_LOOP_LEN + 2).unwrap())
                   .min(max_basepair_span_pair.1),
               ) {
-                if let Some(pos_pairs2) =
-                  pos_quads_hashed_lens.get(&(substr_len3, substr_len4))
-                {
+                if let Some(pos_pairs2) = pos_quads_hashed_lens.get(&(substr_len3, substr_len4)) {
                   for &(m, o) in pos_pairs2 {
                     let (n, p) = (m + substr_len3 - T::one(), o + substr_len4 - T::one());
                     if !(m < i && j < n && o < k && l < p) {
@@ -3523,29 +3295,23 @@ where
                     let basepair3 = (seq_pair.0[long_m], seq_pair.0[long_n]);
                     let basepair4 = (seq_pair.1[long_o], seq_pair.1[long_p]);
                     let found_stack = loop_len_pair.0 == 0 && loop_len_pair.1 == 0;
-                    let found_bulge = (loop_len_pair.0 == 0 || loop_len_pair.1 == 0) && !found_stack;
+                    let found_bulge =
+                      (loop_len_pair.0 == 0 || loop_len_pair.1 == 0) && !found_stack;
                     let mismatch_pair3 = (seq_pair.0[long_m + 1], seq_pair.0[long_n - 1]);
                     let pos_quad2 = (m, n, o, p);
-                    if let Some(&outside_sum) =
-                      alignfold_outside_sums.get(&pos_quad2)
-                    {
+                    if let Some(&outside_sum) = alignfold_outside_sums.get(&pos_quad2) {
                       let found_stack2 = loop_len_pair2.0 == 0 && loop_len_pair2.1 == 0;
                       let found_bulge2 =
                         (loop_len_pair2.0 == 0 || loop_len_pair2.1 == 0) && !found_stack2;
                       let mismatch_pair4 = (seq_pair.1[long_o + 1], seq_pair.1[long_p - 1]);
-                      let forward_sums =
-                        &alignfold_sums.forward_sums_hashed_poss[&(m, o)];
-                      let forward_sums2 = &alignfold_sums
-                        .forward_sums_hashed_poss2[&(m, o)];
-                      let backward_sums = &alignfold_sums
-                        .backward_sums_hashed_poss2[&(n, p)];
+                      let forward_sums = &alignfold_sums.forward_sums_hashed_poss[&(m, o)];
+                      let forward_sums2 = &alignfold_sums.forward_sums_hashed_poss2[&(m, o)];
+                      let backward_sums = &alignfold_sums.backward_sums_hashed_poss2[&(n, p)];
                       let mut forward_term = NEG_INFINITY;
                       let mut forward_term_match = forward_term;
                       let mut backward_term = forward_term;
                       let pos_pair2 = (i - T::one(), k - T::one());
-                      if let Some(x) =
-                        forward_sums2.get(&pos_pair2)
-                      {
+                      if let Some(x) = forward_sums2.get(&pos_pair2) {
                         logsumexp(&mut forward_term, x.sum_seqalign);
                       }
                       if trains_alignfold_scores {
@@ -3555,18 +3321,14 @@ where
                         }
                       }
                       let pos_pair2 = (j + T::one(), l + T::one());
-                      if let Some(x) =
-                        backward_sums.get(&pos_pair2)
-                      {
+                      if let Some(x) = backward_sums.get(&pos_pair2) {
                         logsumexp(&mut backward_term, x.sum_seqalign);
                       }
-                      let pairmatch_score = alignfold_scores.match_scores[basepair3.0]
-                        [basepair4.0]
+                      let pairmatch_score = alignfold_scores.match_scores[basepair3.0][basepair4.0]
                         + alignfold_scores.match_scores[basepair3.1][basepair4.1];
                       let twoloop_score = fold_scores_pair.0.twoloop_scores[&(m, n, i, j)];
                       let twoloop_score2 = fold_scores_pair.1.twoloop_scores[&(o, p, k, l)];
-                      let coeff =
-                        pairmatch_score + twoloop_score + twoloop_score2 + outside_sum;
+                      let coeff = pairmatch_score + twoloop_score + twoloop_score2 + outside_sum;
                       if trains_alignfold_scores {
                         let x = prob_coeff + coeff + forward_term_match + backward_term;
                         logsumexp(&mut alignfold_counts_expected.match2match_score, x);
@@ -3583,8 +3345,7 @@ where
                           for q in long_m + 1..long_i {
                             if found_bulge {
                               logsumexp(
-                                &mut alignfold_probs.context_profs_pair.0
-                                  [(q, CONTEXT_INDEX_BULGE)],
+                                &mut alignfold_probs.context_profs_pair.0[(q, CONTEXT_INDEX_BULGE)],
                                 pairmatch_prob_2loop,
                               );
                             } else if found_interior {
@@ -3598,8 +3359,7 @@ where
                           for q in long_j + 1..long_n {
                             if found_bulge {
                               logsumexp(
-                                &mut alignfold_probs.context_profs_pair.0
-                                  [(q, CONTEXT_INDEX_BULGE)],
+                                &mut alignfold_probs.context_profs_pair.0[(q, CONTEXT_INDEX_BULGE)],
                                 pairmatch_prob_2loop,
                               );
                             } else if found_interior {
@@ -3616,8 +3376,7 @@ where
                           for q in long_o + 1..long_k {
                             if found_bulge {
                               logsumexp(
-                                &mut alignfold_probs.context_profs_pair.1
-                                  [(q, CONTEXT_INDEX_BULGE)],
+                                &mut alignfold_probs.context_profs_pair.1[(q, CONTEXT_INDEX_BULGE)],
                                 pairmatch_prob_2loop,
                               );
                             } else if found_interior {
@@ -3631,8 +3390,7 @@ where
                           for q in long_l + 1..long_p {
                             if found_bulge {
                               logsumexp(
-                                &mut alignfold_probs.context_profs_pair.1
-                                  [(q, CONTEXT_INDEX_BULGE)],
+                                &mut alignfold_probs.context_profs_pair.1[(q, CONTEXT_INDEX_BULGE)],
                                 pairmatch_prob_2loop,
                               );
                             } else if found_interior {
@@ -3662,8 +3420,7 @@ where
                                 loop_len_pair.0
                               };
                               logsumexp(
-                                &mut alignfold_counts_expected.bulge_scores_len
-                                  [bulge_len - 1],
+                                &mut alignfold_counts_expected.bulge_scores_len[bulge_len - 1],
                                 pairmatch_prob_2loop,
                               );
                               // Count a 0x1 bulge loop.
@@ -3674,8 +3431,7 @@ where
                                   mismatch_pair3.0
                                 };
                                 logsumexp(
-                                  &mut alignfold_counts_expected.bulge_scores_0x1
-                                    [mismatch],
+                                  &mut alignfold_counts_expected.bulge_scores_0x1[mismatch],
                                   pairmatch_prob_2loop,
                                 );
                               }
@@ -3695,19 +3451,17 @@ where
                                 );
                               } else {
                                 logsumexp(
-                                  &mut alignfold_counts_expected
-                                    .interior_scores_asymmetric[diff - 1],
+                                  &mut alignfold_counts_expected.interior_scores_asymmetric
+                                    [diff - 1],
                                   pairmatch_prob_2loop,
                                 );
                               }
                               // Count a 1x1 interior loop.
                               if loop_len_pair.0 == 1 && loop_len_pair.1 == 1 {
-                                let dict_min_mismatch_pair3 =
-                                  get_dict_min_pair(&mismatch_pair3);
+                                let dict_min_mismatch_pair3 = get_dict_min_pair(&mismatch_pair3);
                                 logsumexp(
-                                  &mut alignfold_counts_expected
-                                    .interior_scores_1x1[dict_min_mismatch_pair3.0]
-                                    [dict_min_mismatch_pair3.1],
+                                  &mut alignfold_counts_expected.interior_scores_1x1
+                                    [dict_min_mismatch_pair3.0][dict_min_mismatch_pair3.1],
                                   pairmatch_prob_2loop,
                                 );
                               }
@@ -3715,11 +3469,9 @@ where
                               if loop_len_pair.0 <= MAX_INTERIOR_EXPLICIT
                                 && loop_len_pair.1 <= MAX_INTERIOR_EXPLICIT
                               {
-                                let dict_min_len_pair =
-                                  get_dict_min_pair(&loop_len_pair);
+                                let dict_min_len_pair = get_dict_min_pair(&loop_len_pair);
                                 logsumexp(
-                                  &mut alignfold_counts_expected
-                                    .interior_scores_explicit
+                                  &mut alignfold_counts_expected.interior_scores_explicit
                                     [dict_min_len_pair.0 - 1][dict_min_len_pair.1 - 1],
                                   pairmatch_prob_2loop,
                                 );
@@ -3738,14 +3490,13 @@ where
                             );
                             // Count 2-loop terminal mismatches.
                             logsumexp(
-                              &mut alignfold_counts_expected.terminal_mismatch_scores
-                                [basepair3.0][basepair3.1][mismatch_pair3.0]
-                                [mismatch_pair3.1],
+                              &mut alignfold_counts_expected.terminal_mismatch_scores[basepair3.0]
+                                [basepair3.1][mismatch_pair3.0][mismatch_pair3.1],
                               pairmatch_prob_2loop,
                             );
                             logsumexp(
-                              &mut alignfold_counts_expected.terminal_mismatch_scores
-                                [basepair.1][basepair.0][mismatch_pair.1][mismatch_pair.0],
+                              &mut alignfold_counts_expected.terminal_mismatch_scores[basepair.1]
+                                [basepair.0][mismatch_pair.1][mismatch_pair.0],
                               pairmatch_prob_2loop,
                             );
                           }
@@ -3753,9 +3504,8 @@ where
                             // Count a stack.
                             let dict_min_stack2 = get_dict_min_stack(&basepair4, &basepair2);
                             logsumexp(
-                              &mut alignfold_counts_expected.stack_scores
-                                [dict_min_stack2.0 .0][dict_min_stack2.0 .1]
-                                [dict_min_stack2.1 .0][dict_min_stack2.1 .1],
+                              &mut alignfold_counts_expected.stack_scores[dict_min_stack2.0 .0]
+                                [dict_min_stack2.0 .1][dict_min_stack2.1 .0][dict_min_stack2.1 .1],
                               pairmatch_prob_2loop,
                             );
                           } else {
@@ -3767,8 +3517,7 @@ where
                                 loop_len_pair2.0
                               };
                               logsumexp(
-                                &mut alignfold_counts_expected.bulge_scores_len
-                                  [bulge_len2 - 1],
+                                &mut alignfold_counts_expected.bulge_scores_len[bulge_len2 - 1],
                                 pairmatch_prob_2loop,
                               );
                               // Count a 0x1 bulge loop.
@@ -3779,8 +3528,7 @@ where
                                   mismatch_pair4.0
                                 };
                                 logsumexp(
-                                  &mut alignfold_counts_expected.bulge_scores_0x1
-                                    [mismatch2],
+                                  &mut alignfold_counts_expected.bulge_scores_0x1[mismatch2],
                                   pairmatch_prob_2loop,
                                 );
                               }
@@ -3800,19 +3548,17 @@ where
                                 );
                               } else {
                                 logsumexp(
-                                  &mut alignfold_counts_expected
-                                    .interior_scores_asymmetric[diff2 - 1],
+                                  &mut alignfold_counts_expected.interior_scores_asymmetric
+                                    [diff2 - 1],
                                   pairmatch_prob_2loop,
                                 );
                               }
                               // Count a 1x1 interior loop.
                               if loop_len_pair2.0 == 1 && loop_len_pair2.1 == 1 {
-                                let dict_min_mismatch_pair4 =
-                                  get_dict_min_pair(&mismatch_pair4);
+                                let dict_min_mismatch_pair4 = get_dict_min_pair(&mismatch_pair4);
                                 logsumexp(
-                                  &mut alignfold_counts_expected
-                                    .interior_scores_1x1[dict_min_mismatch_pair4.0]
-                                    [dict_min_mismatch_pair4.1],
+                                  &mut alignfold_counts_expected.interior_scores_1x1
+                                    [dict_min_mismatch_pair4.0][dict_min_mismatch_pair4.1],
                                   pairmatch_prob_2loop,
                                 );
                               }
@@ -3820,13 +3566,10 @@ where
                               if loop_len_pair2.0 <= MAX_INTERIOR_EXPLICIT
                                 && loop_len_pair2.1 <= MAX_INTERIOR_EXPLICIT
                               {
-                                let dict_min_len_pair2 =
-                                  get_dict_min_pair(&loop_len_pair2);
+                                let dict_min_len_pair2 = get_dict_min_pair(&loop_len_pair2);
                                 logsumexp(
-                                  &mut alignfold_counts_expected
-                                    .interior_scores_explicit
-                                    [dict_min_len_pair2.0 - 1]
-                                    [dict_min_len_pair2.1 - 1],
+                                  &mut alignfold_counts_expected.interior_scores_explicit
+                                    [dict_min_len_pair2.0 - 1][dict_min_len_pair2.1 - 1],
                                   pairmatch_prob_2loop,
                                 );
                               }
@@ -3844,15 +3587,13 @@ where
                             );
                             // Count 2-loop terminal mismatches.
                             logsumexp(
-                              &mut alignfold_counts_expected.terminal_mismatch_scores
-                                [basepair4.0][basepair4.1][mismatch_pair4.0]
-                                [mismatch_pair4.1],
+                              &mut alignfold_counts_expected.terminal_mismatch_scores[basepair4.0]
+                                [basepair4.1][mismatch_pair4.0][mismatch_pair4.1],
                               pairmatch_prob_2loop,
                             );
                             logsumexp(
-                              &mut alignfold_counts_expected.terminal_mismatch_scores
-                                [basepair2.1][basepair2.0][mismatch_pair2.1]
-                                [mismatch_pair2.0],
+                              &mut alignfold_counts_expected.terminal_mismatch_scores[basepair2.1]
+                                [basepair2.0][mismatch_pair2.1][mismatch_pair2.0],
                               pairmatch_prob_2loop,
                             );
                           }
@@ -3863,18 +3604,13 @@ where
                 }
               }
             }
-            let sum_ratio = alignfold_sums.sums_accessible_multibranch
-              [&pos_quad]
-              - sum_close;
-            for (pos_pair, forward_sums) in
-              &alignfold_sums.forward_sums_hashed_poss
-            {
+            let sum_ratio = alignfold_sums.sums_accessible_multibranch[&pos_quad] - sum_close;
+            for (pos_pair, forward_sums) in &alignfold_sums.forward_sums_hashed_poss {
               let &(u, v) = pos_pair;
               if !(u < i && v < k) {
                 continue;
               }
-              let forward_sums2 =
-                &alignfold_sums.forward_sums_hashed_poss2[pos_pair];
+              let forward_sums2 = &alignfold_sums.forward_sums_hashed_poss2[pos_pair];
               let pos_quad2 = (u, j, v, l);
               let mut forward_term = NEG_INFINITY;
               let mut forward_term_match = forward_term;
@@ -3918,23 +3654,23 @@ where
                 if trains_alignfold_scores {
                   // Count multi-loop terminal mismatches.
                   logsumexp(
-                    &mut alignfold_counts_expected.dangling_scores_left[basepair.1]
-                      [basepair.0][mismatch_pair.1],
+                    &mut alignfold_counts_expected.dangling_scores_left[basepair.1][basepair.0]
+                      [mismatch_pair.1],
                     pairmatch_prob_multibranch,
                   );
                   logsumexp(
-                    &mut alignfold_counts_expected.dangling_scores_right[basepair.1]
-                      [basepair.0][mismatch_pair.0],
+                    &mut alignfold_counts_expected.dangling_scores_right[basepair.1][basepair.0]
+                      [mismatch_pair.0],
                     pairmatch_prob_multibranch,
                   );
                   logsumexp(
-                    &mut alignfold_counts_expected.dangling_scores_left[basepair2.1]
-                      [basepair2.0][mismatch_pair2.1],
+                    &mut alignfold_counts_expected.dangling_scores_left[basepair2.1][basepair2.0]
+                      [mismatch_pair2.1],
                     pairmatch_prob_multibranch,
                   );
                   logsumexp(
-                    &mut alignfold_counts_expected.dangling_scores_right[basepair2.1]
-                      [basepair2.0][mismatch_pair2.0],
+                    &mut alignfold_counts_expected.dangling_scores_right[basepair2.1][basepair2.0]
+                      [mismatch_pair2.0],
                     pairmatch_prob_multibranch,
                   );
                   // Count helix ends.
@@ -3943,8 +3679,7 @@ where
                     pairmatch_prob_multibranch,
                   );
                   logsumexp(
-                    &mut alignfold_counts_expected.helix_close_scores[basepair2.1]
-                      [basepair2.0],
+                    &mut alignfold_counts_expected.helix_close_scores[basepair2.1][basepair2.0],
                     pairmatch_prob_multibranch,
                   );
                   // Count multi-loop closings.
@@ -4006,14 +3741,12 @@ where
                 // Count alignments.
                 let dict_min_match = get_dict_min_pair(&(basepair.0, basepair2.0));
                 logsumexp(
-                  &mut alignfold_counts_expected.match_scores[dict_min_match.0]
-                    [dict_min_match.1],
+                  &mut alignfold_counts_expected.match_scores[dict_min_match.0][dict_min_match.1],
                   pairmatch_prob,
                 );
                 let dict_min_match = get_dict_min_pair(&(basepair.1, basepair2.1));
                 logsumexp(
-                  &mut alignfold_counts_expected.match_scores[dict_min_match.0]
-                    [dict_min_match.1],
+                  &mut alignfold_counts_expected.match_scores[dict_min_match.0][dict_min_match.1],
                   pairmatch_prob,
                 );
               }
@@ -4022,7 +3755,10 @@ where
                   logsumexp(x, pairmatch_prob);
                 }
                 None => {
-                  alignfold_probs.basepair_probs_pair.0.insert((i, j), pairmatch_prob);
+                  alignfold_probs
+                    .basepair_probs_pair
+                    .0
+                    .insert((i, j), pairmatch_prob);
                 }
               }
               match alignfold_probs.basepair_probs_pair.1.get_mut(&(k, l)) {
@@ -4030,7 +3766,10 @@ where
                   logsumexp(x, pairmatch_prob);
                 }
                 None => {
-                  alignfold_probs.basepair_probs_pair.1.insert((k, l), pairmatch_prob);
+                  alignfold_probs
+                    .basepair_probs_pair
+                    .1
+                    .insert((k, l), pairmatch_prob);
                 }
               }
               if produces_struct_profs {
@@ -4051,20 +3790,15 @@ where
                   pairmatch_prob,
                 );
               }
-              let pairmatch_score = alignfold_scores.match_scores[basepair.0]
-                [basepair2.0]
+              let pairmatch_score = alignfold_scores.match_scores[basepair.0][basepair2.0]
                 + alignfold_scores.match_scores[basepair.1][basepair2.1];
-              let multibranch_close_score =
-                fold_scores_pair.0.multibranch_close_scores[&(i, j)];
-              let multibranch_close_score2 =
-                fold_scores_pair.1.multibranch_close_scores[&(k, l)];
+              let multibranch_close_score = fold_scores_pair.0.multibranch_close_scores[&(i, j)];
+              let multibranch_close_score2 = fold_scores_pair.1.multibranch_close_scores[&(k, l)];
               if trains_alignfold_scores {
                 let mismatch_pair = (seq_pair.0[long_i + 1], seq_pair.0[long_j - 1]);
                 let mismatch_pair2 = (seq_pair.1[long_k + 1], seq_pair.1[long_l - 1]);
-                let forward_sums =
-                  &alignfold_sums.forward_sums_hashed_poss[&(i, k)];
-                let forward_sums2 =
-                  &alignfold_sums.forward_sums_hashed_poss2[&(i, k)];
+                let forward_sums = &alignfold_sums.forward_sums_hashed_poss[&(i, k)];
+                let forward_sums2 = &alignfold_sums.forward_sums_hashed_poss2[&(i, k)];
                 if substr_len.to_usize().unwrap() - 2 <= MAX_LOOP_LEN
                   && substr_len2.to_usize().unwrap() - 2 <= MAX_LOOP_LEN
                 {
@@ -4092,18 +3826,16 @@ where
                     + hairpin_score2
                     + pairmatch_score;
                   logsumexp(
-                    &mut alignfold_counts_expected.hairpin_scores_len
-                      [long_j - long_i - 1],
+                    &mut alignfold_counts_expected.hairpin_scores_len[long_j - long_i - 1],
                     pairmatch_prob_hairpin,
                   );
                   logsumexp(
-                    &mut alignfold_counts_expected.hairpin_scores_len
-                      [long_l - long_k - 1],
+                    &mut alignfold_counts_expected.hairpin_scores_len[long_l - long_k - 1],
                     pairmatch_prob_hairpin,
                   );
                   logsumexp(
-                    &mut alignfold_counts_expected.terminal_mismatch_scores[basepair.0]
-                      [basepair.1][mismatch_pair.0][mismatch_pair.1],
+                    &mut alignfold_counts_expected.terminal_mismatch_scores[basepair.0][basepair.1]
+                      [mismatch_pair.0][mismatch_pair.1],
                     pairmatch_prob_hairpin,
                   );
                   logsumexp(
@@ -4117,8 +3849,7 @@ where
                     pairmatch_prob_hairpin,
                   );
                   logsumexp(
-                    &mut alignfold_counts_expected.helix_close_scores[basepair2.0]
-                      [basepair2.1],
+                    &mut alignfold_counts_expected.helix_close_scores[basepair2.0][basepair2.1],
                     pairmatch_prob_hairpin,
                   );
                 }
@@ -4154,13 +3885,13 @@ where
                   pairmatch_prob_multibranch,
                 );
                 logsumexp(
-                  &mut alignfold_counts_expected.dangling_scores_left[basepair2.0]
-                    [basepair2.1][mismatch_pair2.0],
+                  &mut alignfold_counts_expected.dangling_scores_left[basepair2.0][basepair2.1]
+                    [mismatch_pair2.0],
                   pairmatch_prob_multibranch,
                 );
                 logsumexp(
-                  &mut alignfold_counts_expected.dangling_scores_right[basepair2.0]
-                    [basepair2.1][mismatch_pair2.1],
+                  &mut alignfold_counts_expected.dangling_scores_right[basepair2.0][basepair2.1]
+                    [mismatch_pair2.1],
                   pairmatch_prob_multibranch,
                 );
                 // Count helix ends.
@@ -4169,17 +3900,13 @@ where
                   pairmatch_prob_multibranch,
                 );
                 logsumexp(
-                  &mut alignfold_counts_expected.helix_close_scores[basepair2.0]
-                    [basepair2.1],
+                  &mut alignfold_counts_expected.helix_close_scores[basepair2.0][basepair2.1],
                   pairmatch_prob_multibranch,
                 );
               }
-              let coeff = sum
-                + pairmatch_score
-                + multibranch_close_score
-                + multibranch_close_score2;
-              let backward_sums =
-                &alignfold_sums.backward_sums_hashed_poss2[&(j, l)];
+              let coeff =
+                sum + pairmatch_score + multibranch_close_score + multibranch_close_score2;
+              let backward_sums = &alignfold_sums.backward_sums_hashed_poss2[&(j, l)];
               for pos_pair in match_probs.keys() {
                 let &(u, v) = pos_pair;
                 if !(i < u && u < j && k < v && v < l) {
@@ -4251,10 +3978,7 @@ where
           let loopmatch_score = alignfold_scores.match_scores[base][base2]
             + 2. * alignfold_scores.external_score_unpair;
           let mut backward_term = NEG_INFINITY;
-          if let Some(&x) = alignfold_sums
-            .backward_sums_external2
-            .get(&pos_pair2)
-          {
+          if let Some(&x) = alignfold_sums.backward_sums_external2.get(&pos_pair2) {
             logsumexp(&mut backward_term, x);
           }
           if let Some(&x) = alignfold_sums
@@ -4316,10 +4040,7 @@ where
           }
         }
         if needs_indel_info {
-          if let Some(&sum) = alignfold_sums
-            .forward_sums_external
-            .get(&pos_pair)
-          {
+          if let Some(&sum) = alignfold_sums.forward_sums_external.get(&pos_pair) {
             let begins_sum = pos_pair == leftmost_pos_pair;
             let forward_term = sum
               + if begins_sum {
@@ -4333,14 +4054,10 @@ where
                   continue;
                 }
                 let pos_pair3 = (pos_pair2.0, x);
-                if let Some(&y) = alignfold_sums
-                  .backward_sums_external
-                  .get(&pos_pair3)
-                {
+                if let Some(&y) = alignfold_sums.backward_sums_external.get(&pos_pair3) {
                   let long_x = x.to_usize().unwrap();
                   let ends_sum = pos_pair3 == rightmost_pos_pair;
-                  let z = range_insert_scores.insert_scores_external2
-                    [long_pos_pair2.1][long_x - 1]
+                  let z = range_insert_scores.insert_scores_external2[long_pos_pair2.1][long_x - 1]
                     + if ends_sum {
                       0.
                     } else {
@@ -4397,14 +4114,10 @@ where
                   continue;
                 }
                 let pos_pair3 = (x, pos_pair2.1);
-                if let Some(&y) = alignfold_sums
-                  .backward_sums_external
-                  .get(&pos_pair3)
-                {
+                if let Some(&y) = alignfold_sums.backward_sums_external.get(&pos_pair3) {
                   let long_x = x.to_usize().unwrap();
                   let ends_sum = pos_pair3 == rightmost_pos_pair;
-                  let z = range_insert_scores.insert_scores_external
-                    [long_pos_pair2.0][long_x - 1]
+                  let z = range_insert_scores.insert_scores_external[long_pos_pair2.0][long_x - 1]
                     + if ends_sum {
                       0.
                     } else {
@@ -4469,77 +4182,61 @@ where
       );
       let basepair = (seq_pair.0[long_i], seq_pair.0[long_j]);
       let basepair2 = (seq_pair.1[long_k], seq_pair.1[long_l]);
-      let hairpin_score =
-        if j - i - T::one() <= T::from_usize(MAX_LOOP_LEN).unwrap() {
-          fold_scores_pair.0.hairpin_scores[&(i, j)]
-        } else {
-          NEG_INFINITY
-        };
-      let hairpin_score2 =
-        if l - k - T::one() <= T::from_usize(MAX_LOOP_LEN).unwrap() {
-          fold_scores_pair.1.hairpin_scores[&(k, l)]
-        } else {
-          NEG_INFINITY
-        };
-      let multibranch_close_score =
-        fold_scores_pair.0.multibranch_close_scores[&(i, j)];
-      let multibranch_close_score2 =
-        fold_scores_pair.1.multibranch_close_scores[&(k, l)];
+      let hairpin_score = if j - i - T::one() <= T::from_usize(MAX_LOOP_LEN).unwrap() {
+        fold_scores_pair.0.hairpin_scores[&(i, j)]
+      } else {
+        NEG_INFINITY
+      };
+      let hairpin_score2 = if l - k - T::one() <= T::from_usize(MAX_LOOP_LEN).unwrap() {
+        fold_scores_pair.1.hairpin_scores[&(k, l)]
+      } else {
+        NEG_INFINITY
+      };
+      let multibranch_close_score = fold_scores_pair.0.multibranch_close_scores[&(i, j)];
+      let multibranch_close_score2 = fold_scores_pair.1.multibranch_close_scores[&(k, l)];
       let pairmatch_score = alignfold_scores.match_scores[basepair.0][basepair2.0]
         + alignfold_scores.match_scores[basepair.1][basepair2.1];
       let prob_coeff = outside_sum - global_sum + pairmatch_score;
-      let forward_sums =
-        &alignfold_sums.forward_sums_hashed_poss[&(i, k)];
-      let forward_sums2 =
-        &alignfold_sums.forward_sums_hashed_poss2[&(i, k)];
-      let backward_sums =
-        &alignfold_sums.backward_sums_hashed_poss[&(j, l)];
-      let backward_sums2 =
-        &alignfold_sums.backward_sums_hashed_poss2[&(j, l)];
-      let (forward_sums_2loop, forward_sums_2loop2) =
-        if needs_twoloop_sums {
-          let computes_forward_sums = true;
-          get_2loop_sums((
-            seq_pair,
-            alignfold_scores,
-            match_probs,
-            pos_quad,
-            alignfold_sums,
-            computes_forward_sums,
-            forward_pos_pairs,
-            fold_scores_pair,
-            range_insert_scores,
-            matchable_poss,
-            matchable_poss2,
-          ))
-        } else {
-          (
-            SparseSumMat::<T>::default(),
-            SparseSumMat::<T>::default(),
-          )
-        };
-      let (backward_sums_2loop, backward_sums_2loop2) =
-        if needs_twoloop_sums {
-          let computes_forward_sums = false;
-          get_2loop_sums((
-            seq_pair,
-            alignfold_scores,
-            match_probs,
-            pos_quad,
-            alignfold_sums,
-            computes_forward_sums,
-            backward_pos_pairs,
-            fold_scores_pair,
-            range_insert_scores,
-            matchable_poss,
-            matchable_poss2,
-          ))
-        } else {
-          (
-            SparseSumMat::<T>::default(),
-            SparseSumMat::<T>::default(),
-          )
-        };
+      let forward_sums = &alignfold_sums.forward_sums_hashed_poss[&(i, k)];
+      let forward_sums2 = &alignfold_sums.forward_sums_hashed_poss2[&(i, k)];
+      let backward_sums = &alignfold_sums.backward_sums_hashed_poss[&(j, l)];
+      let backward_sums2 = &alignfold_sums.backward_sums_hashed_poss2[&(j, l)];
+      let (forward_sums_2loop, forward_sums_2loop2) = if needs_twoloop_sums {
+        let computes_forward_sums = true;
+        get_2loop_sums((
+          seq_pair,
+          alignfold_scores,
+          match_probs,
+          pos_quad,
+          alignfold_sums,
+          computes_forward_sums,
+          forward_pos_pairs,
+          fold_scores_pair,
+          range_insert_scores,
+          matchable_poss,
+          matchable_poss2,
+        ))
+      } else {
+        (SparseSumMat::<T>::default(), SparseSumMat::<T>::default())
+      };
+      let (backward_sums_2loop, backward_sums_2loop2) = if needs_twoloop_sums {
+        let computes_forward_sums = false;
+        get_2loop_sums((
+          seq_pair,
+          alignfold_scores,
+          match_probs,
+          pos_quad,
+          alignfold_sums,
+          computes_forward_sums,
+          backward_pos_pairs,
+          fold_scores_pair,
+          range_insert_scores,
+          matchable_poss,
+          matchable_poss2,
+        ))
+      } else {
+        (SparseSumMat::<T>::default(), SparseSumMat::<T>::default())
+      };
       if trains_alignfold_scores {
         let pos_pair2 = (j - T::one(), l - T::one());
         if let Some(&x) = forward_sums_2loop.get(&pos_pair2) {
@@ -4569,8 +4266,14 @@ where
             logsumexp(&mut backward_term_seqalign, x.sum_seqalign);
             if needs_twoloop_sums {
               logsumexp(&mut backward_term_multibranch, x.sum_multibranch);
-              logsumexp(&mut backward_term_1ormore_pairmatches, x.sum_1ormore_pairmatches);
-              logsumexp(&mut backward_term_0ormore_pairmatches, x.sum_0ormore_pairmatches);
+              logsumexp(
+                &mut backward_term_1ormore_pairmatches,
+                x.sum_1ormore_pairmatches,
+              );
+              logsumexp(
+                &mut backward_term_0ormore_pairmatches,
+                x.sum_0ormore_pairmatches,
+              );
             }
           }
           if needs_twoloop_sums {
@@ -4579,9 +4282,8 @@ where
             }
           }
           let prob_coeff_hairpin = prob_coeff + hairpin_score + hairpin_score2;
-          let prob_coeff_multibranch = prob_coeff
-            + multibranch_close_score
-            + multibranch_close_score2;
+          let prob_coeff_multibranch =
+            prob_coeff + multibranch_close_score + multibranch_close_score2;
           if match_probs.contains_key(&pos_pair) {
             let pos_pair_loopmatch = (u - T::one(), v - T::one());
             let loopmatch_score = alignfold_scores.match_scores[base][base2];
@@ -4590,18 +4292,25 @@ where
             let mut loopmatch_prob_hairpin = NEG_INFINITY;
             let mut loopmatch_prob_multibranch = loopmatch_prob_hairpin;
             let mut loopmatch_prob_2loop = loopmatch_prob_hairpin;
-            if let Some(x) =
-              forward_sums2.get(&pos_pair_loopmatch)
-            {
-              let y = prob_coeff_hairpin + loopmatch_score + x.sum_seqalign + backward_term_seqalign;
+            if let Some(x) = forward_sums2.get(&pos_pair_loopmatch) {
+              let y =
+                prob_coeff_hairpin + loopmatch_score + x.sum_seqalign + backward_term_seqalign;
               logsumexp(&mut loopmatch_prob_hairpin, y);
               if needs_twoloop_sums {
-                let y = prob_coeff_multibranch + loopmatch_score_multibranch + x.sum_seqalign_multibranch + backward_term_multibranch;
+                let y = prob_coeff_multibranch
+                  + loopmatch_score_multibranch
+                  + x.sum_seqalign_multibranch
+                  + backward_term_multibranch;
                 logsumexp(&mut loopmatch_prob_multibranch, y);
-                let y =
-                  prob_coeff_multibranch + loopmatch_score_multibranch + x.sum_1st_pairmatches + backward_term_1ormore_pairmatches;
+                let y = prob_coeff_multibranch
+                  + loopmatch_score_multibranch
+                  + x.sum_1st_pairmatches
+                  + backward_term_1ormore_pairmatches;
                 logsumexp(&mut loopmatch_prob_multibranch, y);
-                let y = prob_coeff_multibranch + loopmatch_score_multibranch + x.sum_multibranch + backward_term_0ormore_pairmatches;
+                let y = prob_coeff_multibranch
+                  + loopmatch_score_multibranch
+                  + x.sum_multibranch
+                  + backward_term_0ormore_pairmatches;
                 logsumexp(&mut loopmatch_prob_multibranch, y);
                 let y = prob_coeff + loopmatch_score + x.sum_seqalign + backward_term_2loop;
                 logsumexp(&mut loopmatch_prob_2loop, y);
@@ -4618,9 +4327,7 @@ where
               );
             }
             if needs_twoloop_sums {
-              if let Some(&x) =
-                forward_sums_2loop2.get(&pos_pair_loopmatch)
-              {
+              if let Some(&x) = forward_sums_2loop2.get(&pos_pair_loopmatch) {
                 let x = prob_coeff + loopmatch_score + x + backward_term_seqalign;
                 logsumexp(&mut loopmatch_prob_2loop, x);
               }
@@ -4640,8 +4347,7 @@ where
               }
               if trains_alignfold_scores {
                 logsumexp(
-                  &mut alignfold_counts_expected.match_scores[dict_min_match.0]
-                    [dict_min_match.1],
+                  &mut alignfold_counts_expected.match_scores[dict_min_match.0][dict_min_match.1],
                   prob,
                 );
                 logsumexp(
@@ -4696,12 +4402,11 @@ where
             }
             if needs_indel_info {
               if let Some(sums) = forward_sums.get(&pos_pair) {
-                let forward_term_seqalign =
-                  sums.sum_seqalign + alignfold_scores.match2insert_score;
+                let forward_term_seqalign = sums.sum_seqalign + alignfold_scores.match2insert_score;
                 let forward_term_seqalign_multibranch =
                   sums.sum_seqalign_multibranch + alignfold_scores.match2insert_score;
-                let forward_term_1st_pairmatches = sums.sum_1st_pairmatches
-                  + alignfold_scores.match2insert_score;
+                let forward_term_1st_pairmatches =
+                  sums.sum_1st_pairmatches + alignfold_scores.match2insert_score;
                 let forward_term_multibranch =
                   sums.sum_multibranch + alignfold_scores.match2insert_score;
                 if let Some(x) = matchable_poss.get(&pos_pair2.0) {
@@ -4712,13 +4417,10 @@ where
                     let mut insert_prob = NEG_INFINITY;
                     let mut insert_prob_multibranch = insert_prob;
                     let long_x = x.to_usize().unwrap();
-                    let y = range_insert_scores.insert_scores2
-                      [long_pos_pair2.1][long_x - 1]
+                    let y = range_insert_scores.insert_scores2[long_pos_pair2.1][long_x - 1]
                       + alignfold_scores.match2insert_score;
-                    if let Some(z) = backward_sums.get(&(pos_pair2.0, x))
-                    {
-                      let a =
-                        prob_coeff_hairpin + forward_term_seqalign + y + z.sum_seqalign;
+                    if let Some(z) = backward_sums.get(&(pos_pair2.0, x)) {
+                      let a = prob_coeff_hairpin + forward_term_seqalign + y + z.sum_seqalign;
                       logsumexp(&mut insert_prob, a);
                       if produces_struct_profs {
                         let pos_pair4 = (pos_pair2.1, x - T::one());
@@ -4732,8 +4434,8 @@ where
                         }
                       }
                       if trains_alignfold_scores {
-                        let y = range_insert_scores
-                          .insert_scores_multibranch2[long_pos_pair2.1][long_x - 1]
+                        let y = range_insert_scores.insert_scores_multibranch2[long_pos_pair2.1]
+                          [long_x - 1]
                           + alignfold_scores.match2insert_score;
                         let a = prob_coeff_multibranch
                           + forward_term_seqalign_multibranch
@@ -4754,11 +4456,8 @@ where
                       }
                     }
                     if trains_alignfold_scores {
-                      if let Some(&z) =
-                        backward_sums_2loop.get(&(pos_pair2.0, x))
-                      {
-                        let z =
-                          prob_coeff + forward_term_seqalign + y + z;
+                      if let Some(&z) = backward_sums_2loop.get(&(pos_pair2.0, x)) {
+                        let z = prob_coeff + forward_term_seqalign + y + z;
                         logsumexp(&mut insert_prob, z);
                       }
                       logsumexp(
@@ -4795,13 +4494,10 @@ where
                     let mut insert_prob = NEG_INFINITY;
                     let mut insert_prob_multibranch = insert_prob;
                     let long_x = x.to_usize().unwrap();
-                    let y = range_insert_scores.insert_scores
-                      [long_pos_pair2.0][long_x - 1]
+                    let y = range_insert_scores.insert_scores[long_pos_pair2.0][long_x - 1]
                       + alignfold_scores.match2insert_score;
-                    if let Some(z) = backward_sums.get(&(x, pos_pair2.1))
-                    {
-                      let a =
-                        prob_coeff_hairpin + forward_term_seqalign + y + z.sum_seqalign;
+                    if let Some(z) = backward_sums.get(&(x, pos_pair2.1)) {
+                      let a = prob_coeff_hairpin + forward_term_seqalign + y + z.sum_seqalign;
                       logsumexp(&mut insert_prob, a);
                       if produces_struct_profs {
                         let pos_pair4 = (pos_pair2.0, x - T::one());
@@ -4815,8 +4511,8 @@ where
                         }
                       }
                       if trains_alignfold_scores {
-                        let y = range_insert_scores
-                          .insert_scores_multibranch[long_pos_pair2.0][long_x - 1]
+                        let y = range_insert_scores.insert_scores_multibranch[long_pos_pair2.0]
+                          [long_x - 1]
                           + alignfold_scores.match2insert_score;
                         let a = prob_coeff_multibranch
                           + forward_term_seqalign_multibranch
@@ -4836,11 +4532,8 @@ where
                         logsumexp(&mut insert_prob, insert_prob_multibranch);
                       }
                     }
-                    if let Some(&z) =
-                      backward_sums_2loop.get(&(x, pos_pair2.1))
-                    {
-                      let z =
-                        prob_coeff + forward_term_seqalign + y + z;
+                    if let Some(&z) = backward_sums_2loop.get(&(x, pos_pair2.1)) {
+                      let z = prob_coeff + forward_term_seqalign + y + z;
                       logsumexp(&mut insert_prob, z);
                     }
                     if trains_alignfold_scores {
@@ -4880,12 +4573,9 @@ where
                       }
                       let mut insert_prob = NEG_INFINITY;
                       let long_x = x.to_usize().unwrap();
-                      let y = range_insert_scores.insert_scores2
-                        [long_pos_pair2.1][long_x - 1]
+                      let y = range_insert_scores.insert_scores2[long_pos_pair2.1][long_x - 1]
                         + alignfold_scores.match2insert_score;
-                      if let Some(z) =
-                        backward_sums.get(&(pos_pair2.0, x))
-                      {
+                      if let Some(z) = backward_sums.get(&(pos_pair2.0, x)) {
                         let a = prob_coeff + forward_sum + y + z.sum_seqalign;
                         logsumexp(&mut insert_prob, a);
                         logsumexp(
@@ -4917,12 +4607,9 @@ where
                       }
                       let mut insert_prob = NEG_INFINITY;
                       let long_x = x.to_usize().unwrap();
-                      let y = range_insert_scores.insert_scores
-                        [long_pos_pair2.0][long_x - 1]
+                      let y = range_insert_scores.insert_scores[long_pos_pair2.0][long_x - 1]
                         + alignfold_scores.match2insert_score;
-                      if let Some(z) =
-                        backward_sums.get(&(x, pos_pair2.1))
-                      {
+                      if let Some(z) = backward_sums.get(&(x, pos_pair2.1)) {
                         let a = prob_coeff + forward_sum + y + z.sum_seqalign;
                         logsumexp(&mut insert_prob, a);
                         logsumexp(
@@ -5048,9 +4735,7 @@ where
             *x = expf(*x);
           }
           None => {
-            alignfold_probs
-              .match_probs
-              .insert(*x, expf(*y));
+            alignfold_probs.match_probs.insert(*x, expf(*y));
           }
         }
         *y = expf(*y);
@@ -5060,22 +4745,13 @@ where
       }
     }
     if trains_alignfold_scores {
-      for x in alignfold_counts_expected
-        .hairpin_scores_len
-        .iter_mut()
-      {
+      for x in alignfold_counts_expected.hairpin_scores_len.iter_mut() {
         *x = expf(*x);
       }
-      for x in alignfold_counts_expected
-        .bulge_scores_len
-        .iter_mut()
-      {
+      for x in alignfold_counts_expected.bulge_scores_len.iter_mut() {
         *x = expf(*x);
       }
-      for x in alignfold_counts_expected
-        .interior_scores_len
-        .iter_mut()
-      {
+      for x in alignfold_counts_expected.interior_scores_len.iter_mut() {
         *x = expf(*x);
       }
       for x in alignfold_counts_expected
@@ -5118,10 +4794,7 @@ where
           }
         }
       }
-      for x in alignfold_counts_expected
-        .dangling_scores_right
-        .iter_mut()
-      {
+      for x in alignfold_counts_expected.dangling_scores_right.iter_mut() {
         for x in x.iter_mut() {
           for x in x.iter_mut() {
             *x = expf(*x);
@@ -5136,16 +4809,10 @@ where
           *x = expf(*x);
         }
       }
-      for x in alignfold_counts_expected
-        .bulge_scores_0x1
-        .iter_mut()
-      {
+      for x in alignfold_counts_expected.bulge_scores_0x1.iter_mut() {
         *x = expf(*x);
       }
-      for x in alignfold_counts_expected
-        .interior_scores_1x1
-        .iter_mut()
-      {
+      for x in alignfold_counts_expected.interior_scores_1x1.iter_mut() {
         for x in x.iter_mut() {
           *x = expf(*x);
         }
@@ -5176,8 +4843,7 @@ where
         expf(alignfold_counts_expected.match2insert_score);
       alignfold_counts_expected.insert_extend_score =
         expf(alignfold_counts_expected.insert_extend_score);
-      alignfold_counts_expected.init_match_score =
-        expf(alignfold_counts_expected.init_match_score);
+      alignfold_counts_expected.init_match_score = expf(alignfold_counts_expected.init_match_score);
       alignfold_counts_expected.init_insert_score =
         expf(alignfold_counts_expected.init_insert_score);
       for x in alignfold_counts_expected.insert_scores.iter_mut() {
@@ -5197,14 +4863,9 @@ pub fn get_diff(x: usize, y: usize) -> usize {
   max(x, y) - min(x, y)
 }
 
-pub fn get_hairpin_score(
-  x: &AlignfoldScores,
-  y: SeqSlice,
-  z: &(usize, usize),
-) -> Score {
+pub fn get_hairpin_score(x: &AlignfoldScores, y: SeqSlice, z: &(usize, usize)) -> Score {
   let a = z.1 - z.0 - 1;
-  x.hairpin_scores_len_cumulative[a]
-    + get_junction_score_single(x, y, z)
+  x.hairpin_scores_len_cumulative[a] + get_junction_score_single(x, y, z)
 }
 
 pub fn get_twoloop_score(
@@ -5232,8 +4893,7 @@ pub fn get_stack_score(
 ) -> Score {
   let b = (y[z.0], y[z.1]);
   let c = (y[a.0], y[a.1]);
-  x.stack_scores[b.0][b.1][c.0]
-    [c.1]
+  x.stack_scores[b.0][b.1][c.0][c.1]
 }
 
 pub fn get_bulge_score(
@@ -5244,8 +4904,7 @@ pub fn get_bulge_score(
 ) -> Score {
   let b = a.0 - z.0 + z.1 - a.1 - 2;
   let c = if b == 1 {
-    x.bulge_scores_0x1[if a.0 - z.0 - 1 == 1
-    {
+    x.bulge_scores_0x1[if a.0 - z.0 - 1 == 1 {
       y[z.0 + 1]
     } else {
       y[z.1 - 1]
@@ -5264,30 +4923,20 @@ pub fn get_interior_score(
   z: &(usize, usize),
   a: &(usize, usize),
 ) -> Score {
-  let b = (
-    a.0 - z.0 - 1,
-    z.1 - a.1 - 1,
-  );
+  let b = (a.0 - z.0 - 1, z.1 - a.1 - 1);
   let c = b.0 + b.1;
   let d = if b.0 == b.1 {
     let d = if c == 2 {
-      x.interior_scores_1x1[y[z.0 + 1]]
-        [y[z.1 - 1]]
+      x.interior_scores_1x1[y[z.0 + 1]][y[z.1 - 1]]
     } else {
       0.
     };
-    d
-      + x.interior_scores_symmetric_cumulative
-        [b.0 - 1]
+    d + x.interior_scores_symmetric_cumulative[b.0 - 1]
   } else {
-    x.interior_scores_asymmetric_cumulative[get_abs_diff(
-      b.0,
-      b.1,
-    ) - 1]
+    x.interior_scores_asymmetric_cumulative[get_abs_diff(b.0, b.1) - 1]
   };
   let e = if b.0 <= 4 && b.1 <= 4 {
-    x.interior_scores_explicit[b.0 - 1]
-      [b.1 - 1]
+    x.interior_scores_explicit[b.0 - 1][b.1 - 1]
   } else {
     0.
   };
@@ -5297,36 +4946,20 @@ pub fn get_interior_score(
     + get_junction_score_single(x, y, &(a.1, a.0))
 }
 
-pub fn get_junction_score_single(
-  x: &AlignfoldScores,
-  y: SeqSlice,
-  z: &(usize, usize),
-) -> Score {
+pub fn get_junction_score_single(x: &AlignfoldScores, y: SeqSlice, z: &(usize, usize)) -> Score {
   let a = (y[z.0], y[z.1]);
-  get_helix_close_score(x, &a)
-    + get_terminal_mismatch_score(x, &a, &(y[z.0 + 1], y[z.1 - 1]))
+  get_helix_close_score(x, &a) + get_terminal_mismatch_score(x, &a, &(y[z.0 + 1], y[z.1 - 1]))
 }
 
-pub fn get_helix_close_score(
-  x: &AlignfoldScores,
-  y: &Basepair,
-) -> Score {
+pub fn get_helix_close_score(x: &AlignfoldScores, y: &Basepair) -> Score {
   x.helix_close_scores[y.0][y.1]
 }
 
-pub fn get_terminal_mismatch_score(
-  x: &AlignfoldScores,
-  y: &Basepair,
-  z: &Basepair,
-) -> Score {
+pub fn get_terminal_mismatch_score(x: &AlignfoldScores, y: &Basepair, z: &Basepair) -> Score {
   x.terminal_mismatch_scores[y.0][y.1][z.0][z.1]
 }
 
-pub fn get_junction_score(
-  x: &AlignfoldScores,
-  y: SeqSlice,
-  z: &(usize, usize),
-) -> Score {
+pub fn get_junction_score(x: &AlignfoldScores, y: SeqSlice, z: &(usize, usize)) -> Score {
   let a = (y[z.0], y[z.1]);
   let b = 1;
   let c = y.len() - 2;
@@ -5343,15 +4976,9 @@ pub fn get_junction_score(
     }
 }
 
-pub fn get_dict_min_stack(
-  x: &Basepair,
-  y: &Basepair,
-) -> (Basepair, Basepair) {
+pub fn get_dict_min_stack(x: &Basepair, y: &Basepair) -> (Basepair, Basepair) {
   let z = (*x, *y);
-  let a = (
-    (y.1, y.0),
-    (x.1, x.0),
-  );
+  let a = ((y.1, y.0), (x.1, x.0));
   if z < a {
     z
   } else {
@@ -5376,41 +5003,30 @@ pub fn get_num_unpairs_multibranch(
   let mut a = 0;
   let mut b = (0, 0);
   for y in y {
-    let c = if b == (0, 0) {
-      x.0 + 1
-    } else {
-      b.1 + 1
-    };
+    let c = if b == (0, 0) { x.0 + 1 } else { b.1 + 1 };
     for &d in &z[c..y.0] {
-      a += if d != PSEUDO_BASE { 1 } else { 0 };
+      a += usize::from(d != PSEUDO_BASE);
     }
     b = *y;
   }
   for &c in &z[b.1 + 1..x.1] {
-    a += if c != PSEUDO_BASE { 1 } else { 0 };
+    a += usize::from(c != PSEUDO_BASE);
   }
   a
 }
 
-pub fn get_num_unpairs_external(
-  x: &Vec<(usize, usize)>,
-  y: SeqSlice,
-) -> usize {
+pub fn get_num_unpairs_external(x: &Vec<(usize, usize)>, y: SeqSlice) -> usize {
   let mut z = 0;
   let mut a = (0, 0);
   for x in x {
-    let b = if a == (0, 0) {
-      0
-    } else {
-      a.1 + 1
-    };
+    let b = if a == (0, 0) { 0 } else { a.1 + 1 };
     for &b in y[b..x.0].iter() {
-      z += if b != PSEUDO_BASE { 1 } else { 0 };
+      z += usize::from(b != PSEUDO_BASE);
     }
     a = *x;
   }
   for &b in y[a.1 + 1..y.len()].iter() {
-    z += if b != PSEUDO_BASE { 1 } else { 0 };
+    z += usize::from(b != PSEUDO_BASE);
   }
   z
 }
@@ -5468,8 +5084,7 @@ where
         .0;
         *x = filter_basepair_probs::<T>(&c, min_basepair_prob);
         *y = get_max_basepair_span::<T>(x);
-        *a =
-          FoldScoresTrained::<T>::set_curr_scores(ref_alignfold_scores, z, x);
+        *a = FoldScoresTrained::<T>::set_curr_scores(ref_alignfold_scores, z, x);
       });
     }
   });
@@ -5486,10 +5101,7 @@ where
     for (y, z) in match_probs_hashed_ids.iter_mut() {
       let y = (seqs[y.0], seqs[y.1]);
       x.execute(move || {
-        *z = filter_match_probs(
-          &durbin_algo(&y, ref_align_scores),
-          min_match_prob,
-        );
+        *z = filter_match_probs(&durbin_algo(&y, ref_align_scores), min_match_prob);
       });
     }
   });
@@ -5503,14 +5115,8 @@ where
         T::from_usize(seq_pair.1.len()).unwrap(),
       );
       let max_basepair_span_pair = (max_basepair_spans[y.0], max_basepair_spans[y.1]);
-      let basepair_probs_pair = (
-        &basepair_prob_mats[y.0],
-        &basepair_prob_mats[y.1],
-      );
-      let fold_scores_pair = (
-        &fold_score_sets[y.0],
-        &fold_score_sets[y.1],
-      );
+      let basepair_probs_pair = (&basepair_prob_mats[y.0], &basepair_prob_mats[y.1]);
+      let fold_scores_pair = (&fold_score_sets[y.0], &fold_score_sets[y.1]);
       let match_probs = &match_probs_hashed_ids[y];
       let (
         forward_pos_pairs,
@@ -5547,13 +5153,7 @@ where
     for (z, a) in alignfold_prob_mats_avg.iter_mut().enumerate() {
       let b = seqs[z].len();
       x.execute(move || {
-        *a = pair_probs2avg_probs::<T>(
-          y,
-          z,
-          num_seqs,
-          b,
-          produces_struct_profs,
-        );
+        *a = pair_probs2avg_probs::<T>(y, z, num_seqs, b, produces_struct_profs);
       });
     }
   });
@@ -5646,8 +5246,7 @@ pub fn constrain<T>(
         });
       }
     });
-    let accuracy =
-      train_data.iter().map(|x| x.accuracy).sum::<Score>() / train_data.len() as Score;
+    let accuracy = train_data.iter().map(|x| x.accuracy).sum::<Score>() / train_data.len() as Score;
     let accuracy_change = accuracy - old_accuracy;
     if accuracy_change <= learning_tolerance {
       alignfold_scores = old_alignfold_scores;
@@ -5702,11 +5301,7 @@ pub fn convert_char(x: u8) -> Base {
   }
 }
 
-pub fn get_mismatch_pair(
-  x: SeqSlice,
-  y: &(usize, usize),
-  z: bool,
-) -> (usize, usize) {
+pub fn get_mismatch_pair(x: SeqSlice, y: &(usize, usize), z: bool) -> (usize, usize) {
   let mut a = if z {
     (x[y.1], x[y.0])
   } else {
@@ -5756,11 +5351,7 @@ pub fn get_hairpin_len(x: SeqSlice, y: &(usize, usize)) -> usize {
   z
 }
 
-pub fn get_2loop_len_pair(
-  x: SeqSlice,
-  y: &(usize, usize),
-  z: &(usize, usize),
-) -> (usize, usize) {
+pub fn get_2loop_len_pair(x: SeqSlice, y: &(usize, usize), z: &(usize, usize)) -> (usize, usize) {
   let mut a = (0, 0);
   for &x in &x[y.0 + 1..z.0] {
     if x == PSEUDO_BASE {
@@ -5777,10 +5368,7 @@ pub fn get_2loop_len_pair(
   a
 }
 
-pub fn vec2struct(
-  source: &Scores,
-  uses_cumulative_scores: bool,
-) -> AlignfoldScores {
+pub fn vec2struct(source: &Scores, uses_cumulative_scores: bool) -> AlignfoldScores {
   let mut target = AlignfoldScores::new(0.);
   let mut offset = 0;
   let len = target.hairpin_scores_len.len();
@@ -5983,10 +5571,7 @@ pub fn vec2struct(
   target
 }
 
-pub fn struct2vec(
-  source: &AlignfoldScores,
-  uses_cumulative_scores: bool,
-) -> Scores {
+pub fn struct2vec(source: &AlignfoldScores, uses_cumulative_scores: bool) -> Scores {
   let mut target = vec![0.; source.len()];
   let mut offset = 0;
   let len = source.hairpin_scores_len.len();
@@ -6184,25 +5769,13 @@ pub fn struct2vec(
   Array::from(target)
 }
 
-pub fn scores2bfgs_scores(
-  x: &Scores,
-) -> BfgsScores {
-  let x: Vec<BfgsScore> = x
-    .to_vec()
-    .iter()
-    .map(|x| *x as BfgsScore)
-    .collect();
+pub fn scores2bfgs_scores(x: &Scores) -> BfgsScores {
+  let x: Vec<BfgsScore> = x.to_vec().iter().map(|x| *x as BfgsScore).collect();
   BfgsScores::from(x)
 }
 
-pub fn bfgs_scores2scores(
-  x: &BfgsScores,
-) -> Scores {
-  let x: Vec<Score> = x
-    .to_vec()
-    .iter()
-    .map(|x| *x as Score)
-    .collect();
+pub fn bfgs_scores2scores(x: &BfgsScores) -> Scores {
+  let x: Vec<Score> = x.to_vec().iter().map(|x| *x as Score).collect();
   Scores::from(x)
 }
 
@@ -6210,10 +5783,7 @@ pub fn get_regularizer(x: usize, y: Score) -> Regularizer {
   (x as Score / 2. + GAMMA_DISTRO_ALPHA) / (y / 2. + GAMMA_DISTRO_BETA)
 }
 
-pub fn write_alignfold_scores_trained(
-  alignfold_scores: &AlignfoldScores,
-  enables_randinit: bool,
-) {
+pub fn write_alignfold_scores_trained(alignfold_scores: &AlignfoldScores, enables_randinit: bool) {
   let mut writer = BufWriter::new(
     File::create(if enables_randinit {
       TRAINED_SCORES_FILE_RANDINIT
@@ -6348,8 +5918,7 @@ pub fn write_alignfold_scores_trained(
     &alignfold_scores.interior_scores_asymmetric_cumulative
   ));
   buf.push_str(&String::from("\n}\n}\n}"));
-  let _ = writer
-    .write_all(buf.as_bytes());
+  let _ = writer.write_all(buf.as_bytes());
 }
 
 pub fn write_logs(x: &Probs, y: &Probs, z: &Path) {
@@ -6361,10 +5930,7 @@ pub fn write_logs(x: &Probs, y: &Probs, z: &Path) {
   let _ = z.write_all(a.as_bytes());
 }
 
-pub fn copy_alignfold_scores_align(
-  x: &mut AlignScores,
-  y: &AlignfoldScores,
-) {
+pub fn copy_alignfold_scores_align(x: &mut AlignScores, y: &AlignfoldScores) {
   x.match2match_score = y.match2match_score;
   x.match2insert_score = y.match2insert_score;
   x.insert_extend_score = y.insert_extend_score;
@@ -6432,8 +5998,7 @@ pub fn copy_alignfold_scores_fold(
           if !has_canonical_basepair(&(k, l)) {
             continue;
           }
-          fold_scores.stack_scores[i][j][k][l] =
-            alignfold_scores.stack_scores[i][j][k][l];
+          fold_scores.stack_scores[i][j][k][l] = alignfold_scores.stack_scores[i][j][k][l];
         }
       }
     }
@@ -6459,8 +6024,7 @@ pub fn copy_alignfold_scores_fold(
         continue;
       }
       for k in 0..len {
-        fold_scores.dangling_scores_left[i][j][k] =
-          alignfold_scores.dangling_scores_left[i][j][k];
+        fold_scores.dangling_scores_left[i][j][k] = alignfold_scores.dangling_scores_left[i][j][k];
       }
     }
   }
@@ -6482,8 +6046,7 @@ pub fn copy_alignfold_scores_fold(
       if !has_canonical_basepair(&(i, j)) {
         continue;
       }
-      fold_scores.helix_close_scores[i][j] =
-        alignfold_scores.helix_close_scores[i][j];
+      fold_scores.helix_close_scores[i][j] = alignfold_scores.helix_close_scores[i][j];
     }
   }
   let len = fold_scores.basepair_scores.len();
@@ -6492,17 +6055,13 @@ pub fn copy_alignfold_scores_fold(
       if !has_canonical_basepair(&(i, j)) {
         continue;
       }
-      fold_scores.basepair_scores[i][j] =
-        alignfold_scores.basepair_scores[i][j];
+      fold_scores.basepair_scores[i][j] = alignfold_scores.basepair_scores[i][j];
     }
   }
-  let len = fold_scores
-    .interior_scores_explicit
-    .len();
+  let len = fold_scores.interior_scores_explicit.len();
   for i in 0..len {
     for j in 0..len {
-      fold_scores.interior_scores_explicit[i][j] =
-        alignfold_scores.interior_scores_explicit[i][j];
+      fold_scores.interior_scores_explicit[i][j] = alignfold_scores.interior_scores_explicit[i][j];
     }
   }
   for (x, &y) in fold_scores
@@ -6512,24 +6071,17 @@ pub fn copy_alignfold_scores_fold(
   {
     *x = y;
   }
-  let len = fold_scores
-    .interior_scores_1x1
-    .len();
+  let len = fold_scores.interior_scores_1x1.len();
   for i in 0..len {
     for j in 0..len {
-      fold_scores.interior_scores_1x1[i][j] =
-        alignfold_scores.interior_scores_1x1[i][j];
+      fold_scores.interior_scores_1x1[i][j] = alignfold_scores.interior_scores_1x1[i][j];
     }
   }
   fold_scores.multibranch_score_base = alignfold_scores.multibranch_score_base;
-  fold_scores.multibranch_score_basepair =
-    alignfold_scores.multibranch_score_basepair;
-  fold_scores.multibranch_score_unpair =
-    alignfold_scores.multibranch_score_unpair;
-  fold_scores.external_score_basepair =
-    alignfold_scores.external_score_basepair;
-  fold_scores.external_score_unpair =
-    alignfold_scores.external_score_unpair;
+  fold_scores.multibranch_score_basepair = alignfold_scores.multibranch_score_basepair;
+  fold_scores.multibranch_score_unpair = alignfold_scores.multibranch_score_unpair;
+  fold_scores.external_score_basepair = alignfold_scores.external_score_basepair;
+  fold_scores.external_score_unpair = alignfold_scores.external_score_unpair;
   fold_scores.accumulate();
 }
 
@@ -6656,9 +6208,7 @@ pub fn print_train_info(alignfold_scores: &AlignfoldScores) {
   println!("Base-pairing (group size {group_size})");
   num_groups += 1;
   let mut group_size = 0;
-  let len = alignfold_scores
-    .interior_scores_explicit
-    .len();
+  let len = alignfold_scores.interior_scores_explicit.len();
   for i in 0..len {
     for j in 0..len {
       let dict_min_len_pair = get_dict_min_pair(&(i, j));
