@@ -1442,7 +1442,7 @@ impl AlignfoldScores {
     self.multibranch_score_basepair = MULTIBRANCH_SCORE_BASEPAIR;
     self.multibranch_score_unpair = MULTIBRANCH_SCORE_UNPAIR;
     self.external_score_basepair = EXTERNAL_SCORE_BASEPAIR;
-    self.external_score_basepair = EXTERNAL_SCORE_UNPAIR;
+    self.external_score_unpair = EXTERNAL_SCORE_UNPAIR;
     self.match2match_score = MATCH2MATCH_SCORE;
     self.match2insert_score = MATCH2INSERT_SCORE;
     self.insert_extend_score = INSERT_EXTEND_SCORE;
